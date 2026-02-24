@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLITCH//FORGE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=VT323&display=swap');
+
+  :root {
+    --bg: #050508;
+    --surface: #0a0a0f;
+    --panel: #0e0e16;
+    --border: #1a1a2e;
+    --accent: #00ff88;
+    --accent2: #ff0066;
+    --accent3: #0088ff;
+    --text: #c8d0e0;
+    --dim: #556070;
+    --glow: 0 0 12px rgba(0,255,136,0.5);
+    --glow2: 0 0 12px rgba(255,0,102,0.5);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* Scanlines overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  header {
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    position: relative;
+  }
+
+  .logo span { color: var(--accent2); text-shadow: var(--glow2); }
+
+  .logo::after {
+    content: 'GLITCH//FORGE';
+    position: absolute;
+    left: 2px;
+    top: 0;
+    color: var(--accent3);
+    clip-path: polygon(0 40%, 100% 40%, 100% 60%, 0 60%);
+    animation: header-glitch 4s infinite;
+    opacity: 0.7;
+  }
+
+  @keyframes header-glitch {
+    0%,94%,100% { transform: translateX(0); opacity: 0; }
+    95% { transform: translateX(-3px); opacity: 0.7; }
+    97% { transform: translateX(3px); opacity: 0.7; }
+  }
+
+  .header-info {
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 1px;
+    text-align: right;
+  }
+
+  .header-info span { color: var(--accent); }
+
+  main {
+    display: grid;
+    grid-template-columns: 280px 1fr 300px;
+    flex: 1;
+    min-height: 0;
+    height: calc(100vh - 57px);
+  }
+
+  /* LEFT PANEL - Effects */
+  .effects-panel {
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .effects-panel::-webkit-scrollbar { width: 4px; }
+  .effects-panel::-webkit-scrollbar-track { background: transparent; }
+  .effects-panel::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+
+  .panel-title {
+    padding: 14px 20px;
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--dim);
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+  }
+
+  .effect-item {
+    border-bottom: 1px solid rgba(26,26,46,0.6);
+    user-select: none;
+  }
+
+  .effect-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+
+  .effect-header:hover { background: rgba(0,255,136,0.04); }
+
+  .effect-header.active { background: rgba(0,255,136,0.08); }
+
+  .effect-toggle {
+    width: 28px;
+    height: 16px;
+    background: var(--border);
+    border-radius: 8px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .effect-toggle.on { background: var(--accent); box-shadow: var(--glow); }
+
+  .effect-toggle::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s;
+  }
+
+  .effect-toggle.on::after { transform: translateX(12px); }
+
+  .effect-name {
+    font-size: 12px;
+    color: var(--text);
+    letter-spacing: 1px;
+    flex: 1;
+    text-transform: uppercase;
+  }
+
+  .effect-header.active .effect-name { color: var(--accent); }
+
+  .effect-expand {
+    font-size: 10px;
+    color: var(--dim);
+    transition: transform 0.2s;
+  }
+
+  .effect-header.open .effect-expand { transform: rotate(180deg); }
+
+  .effect-controls {
+    padding: 0 20px 12px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .effect-controls.open { display: flex; }
+
+  .ctrl-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ctrl-label {
+    font-size: 10px;
+    color: var(--dim);
+    width: 80px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+
+  .ctrl-val {
+    font-size: 10px;
+    color: var(--accent);
+    width: 32px;
+    text-align: right;
+  }
+
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 2px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: var(--glow);
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+  input[type=range]:focus::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(0,255,136,0.2); }
+
+  select {
+    background: var(--border);
+    color: var(--text);
+    border: 1px solid #222233;
+    padding: 3px 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    outline: none;
+    flex: 1;
+    cursor: pointer;
+  }
+
+  select:focus { border-color: var(--accent); }
+
+  /* CENTER - Canvas */
+  .canvas-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #030305;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .canvas-area::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 20% 50%, rgba(0,136,255,0.03) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 50%, rgba(255,0,102,0.03) 0%, transparent 60%);
+  }
+
+  .drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    transition: opacity 0.3s;
+  }
+
+  .drop-zone.hidden { opacity: 0; pointer-events: none; }
+
+  .drop-icon {
+    font-family: 'VT323', monospace;
+    font-size: 80px;
+    color: var(--dim);
+    line-height: 1;
+    animation: pulse-dim 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dim {
+    0%,100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+  }
+
+  .drop-text {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+
+  .drop-sub {
+    font-size: 10px;
+    color: #333344;
+    letter-spacing: 2px;
+  }
+
+  .canvas-wrapper {
+    position: relative;
+    display: none;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .canvas-wrapper.visible { display: flex; }
+
+  #outputCanvas {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    display: block;
+  }
+
+  .canvas-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.7);
+    z-index: 10;
+  }
+
+  .canvas-overlay.visible { display: flex; }
+
+  .processing-text {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 4px;
+    text-shadow: var(--glow);
+    animation: blink 0.5s infinite;
+  }
+
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* RIGHT PANEL */
+  .right-panel {
+    border-left: 1px solid var(--border);
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .right-panel::-webkit-scrollbar { width: 4px; }
+  .right-panel::-webkit-scrollbar-thumb { background: var(--accent2); border-radius: 2px; }
+
+  .section { border-bottom: 1px solid var(--border); }
+
+  .section-title {
+    padding: 14px 20px;
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+
+  .import-area {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn {
+    padding: 10px 16px;
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .btn:hover::after { opacity: 0.1; }
+
+  .btn-primary {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .btn-primary:hover { box-shadow: var(--glow); }
+
+  .btn-danger {
+    color: var(--accent2);
+    border-color: var(--accent2);
+  }
+
+  .btn-danger:hover { box-shadow: var(--glow2); }
+
+  .btn-blue {
+    color: var(--accent3);
+    border-color: var(--accent3);
+  }
+
+  .btn-blue:hover { box-shadow: 0 0 12px rgba(0,136,255,0.5); }
+
+  .btn-full { width: 100%; }
+
+  .file-input { display: none; }
+
+  .img-info {
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 1px;
+    line-height: 1.8;
+  }
+
+  .img-info span { color: var(--accent3); }
+
+  .presets-grid {
+    padding: 12px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .preset-btn {
+    padding: 7px 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    background: var(--border);
+    color: var(--dim);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .preset-btn:hover {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    box-shadow: var(--glow2);
+  }
+
+  .history-list {
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .history-item {
+    padding: 6px 10px;
+    background: var(--border);
+    font-size: 10px;
+    color: var(--dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+
+  .history-item:hover { border-color: var(--accent3); color: var(--text); }
+
+  .save-area {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .save-opts {
+    display: flex;
+    gap: 6px;
+  }
+
+  .fmt-btn {
+    flex: 1;
+    padding: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    background: var(--border);
+    color: var(--dim);
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+
+  .fmt-btn.selected {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,255,136,0.06);
+  }
+
+  .quality-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    color: var(--dim);
+  }
+
+  .quality-row input { flex: 1; }
+  .quality-val { color: var(--accent); width: 32px; text-align: right; }
+
+  /* Random glitch animation for header */
+  @keyframes rgb-shift {
+    0%,100% { text-shadow: 2px 0 var(--accent2), -2px 0 var(--accent3), 0 0 12px rgba(0,255,136,0.5); }
+    50% { text-shadow: -2px 0 var(--accent2), 2px 0 var(--accent3), 0 0 12px rgba(0,255,136,0.5); }
+  }
+
+  footer {
+    padding: 8px 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 9px;
+    color: #222233;
+    letter-spacing: 2px;
+    background: var(--panel);
+  }
+
+  footer span { color: var(--dim); }
+
+  .status-bar {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: var(--glow);
+    animation: pulse-dot 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.7); }
+  }
+
+  #statusText { color: var(--accent); }
+
+  /* Drag over state */
+  body.drag-over .canvas-area {
+    outline: 2px dashed var(--accent);
+    outline-offset: -4px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">GLITCH<span>//</span>FORGE</div>
+  <div class="header-info">
+    IMAGE CORRUPTION ENGINE v2.4<br>
+    STATUS: <span id="headerStatus">IDLE</span>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT: Effects -->
+  <div class="effects-panel">
+    <div class="panel-title">// EFFECT CHAIN</div>
+    <div id="effectList"></div>
+    <div style="padding:14px 20px; margin-top:auto; border-top:1px solid var(--border);">
+      <button class="btn btn-danger btn-full" onclick="applyAllEffects()">▶ RENDER GLITCH</button>
+    </div>
+  </div>
+
+  <!-- CENTER: Canvas -->
+  <div class="canvas-area" id="canvasArea"
+    ondragover="handleDragOver(event)"
+    ondragleave="handleDragLeave(event)"
+    ondrop="handleDrop(event)">
+    
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div class="drop-icon">⊟</div>
+      <div class="drop-text">DROP IMAGE HERE</div>
+      <div class="drop-sub">OR CLICK TO IMPORT · JPG / PNG / WEBP</div>
+    </div>
+
+    <div class="canvas-wrapper" id="canvasWrapper">
+      <canvas id="outputCanvas"></canvas>
+    </div>
+
+    <div class="canvas-overlay" id="processingOverlay">
+      <div class="processing-text">CORRUPTING DATA...</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Controls -->
+  <div class="right-panel">
+    <div class="section">
+      <div class="section-title">// INPUT</div>
+      <div class="import-area">
+        <button class="btn btn-primary btn-full" onclick="document.getElementById('fileInput').click()">⊕ IMPORT IMAGE</button>
+        <input type="file" id="fileInput" class="file-input" accept="image/*" onchange="loadImage(event)">
+        <div class="img-info" id="imgInfo">NO IMAGE LOADED</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">// PRESETS</div>
+      <div class="presets-grid">
+        <button class="preset-btn" onclick="applyPreset('mild')">MILD GLITCH</button>
+        <button class="preset-btn" onclick="applyPreset('heavy')">HEAVY CORRUPT</button>
+        <button class="preset-btn" onclick="applyPreset('retro')">RETRO WAVE</button>
+        <button class="preset-btn" onclick="applyPreset('databend')">DATABEND</button>
+        <button class="preset-btn" onclick="applyPreset('vhs')">VHS TAPE</button>
+        <button class="preset-btn" onclick="applyPreset('chaos')">FULL CHAOS</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">// HISTORY</div>
+      <div class="history-list" id="historyList">
+        <div style="font-size:10px;color:#333344;letter-spacing:1px;">NO HISTORY YET</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">// EXPORT</div>
+      <div class="save-area">
+        <div class="save-opts">
+          <div class="fmt-btn selected" onclick="selectFormat(this,'image/jpeg')">JPG</div>
+          <div class="fmt-btn" onclick="selectFormat(this,'image/png')">PNG</div>
+          <div class="fmt-btn" onclick="selectFormat(this,'image/webp')">WEBP</div>
+        </div>
+        <div class="quality-row">
+          <span>QUALITY</span>
+          <input type="range" id="saveQuality" min="10" max="100" value="92" oninput="this.nextElementSibling.textContent=this.value">
+          <span class="quality-val">92</span>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="saveImage()">⊠ SAVE RESULT</button>
+        <button class="btn btn-blue btn-full" onclick="resetToOriginal()">↺ RESET TO ORIGINAL</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="status-bar">
+    <div class="status-dot"></div>
+    <span id="statusText">READY</span>
+  </div>
+  <div>GLITCH//FORGE · IMAGE CORRUPTION ENGINE · 2024</div>
+</footer>
+
+<canvas id="sourceCanvas" style="display:none"></canvas>
+
+<script>
+// ============================
+// STATE
+// ============================
+let sourceImage = null;
+let currentFormat = 'image/jpeg';
+let historyStack = [];
+let processingTimeout = null;
+
+const effects = [
+  {
+    id: 'rgbOffset',
+    name: 'RGB OFFSET',
+    enabled: false,
+    params: [
+      { id: 'rX', label: 'R SHIFT X', min: -80, max: 80, value: 15, step: 1 },
+      { id: 'rY', label: 'R SHIFT Y', min: -40, max: 40, value: 0, step: 1 },
+      { id: 'bX', label: 'B SHIFT X', min: -80, max: 80, value: -15, step: 1 },
+      { id: 'bY', label: 'B SHIFT Y', min: -40, max: 40, value: 0, step: 1 },
+    ]
+  },
+  {
+    id: 'channelSwap',
+    name: 'CHANNEL SWAP',
+    enabled: false,
+    params: [
+      { id: 'mode', label: 'MODE', type: 'select', options: ['RGB→GBR','RGB→BRG','RGB→RBG','RGB→GRB','RGB→BGR'], value: 0 }
+    ]
+  },
+  {
+    id: 'pixelSort',
+    name: 'PIXEL SORTING',
+    enabled: false,
+    params: [
+      { id: 'threshold', label: 'THRESHOLD', min: 0, max: 255, value: 128, step: 1 },
+      { id: 'amount', label: 'AMOUNT', min: 0, max: 100, value: 60, step: 1 },
+      { id: 'dir', label: 'DIRECTION', type: 'select', options: ['HORIZONTAL','VERTICAL'], value: 0 },
+      { id: 'channel', label: 'SORT BY', type: 'select', options: ['BRIGHTNESS','RED','GREEN','BLUE'], value: 0 },
+    ]
+  },
+  {
+    id: 'dataBend',
+    name: 'DATABENDING',
+    enabled: false,
+    params: [
+      { id: 'intensity', label: 'INTENSITY', min: 0, max: 100, value: 30, step: 1 },
+      { id: 'chunkSize', label: 'CHUNK SIZE', min: 1, max: 100, value: 20, step: 1 },
+      { id: 'shift', label: 'BYTE SHIFT', min: 0, max: 50, value: 10, step: 1 },
+    ]
+  },
+  {
+    id: 'streak',
+    name: 'STREAK',
+    enabled: false,
+    params: [
+      { id: 'count', label: 'COUNT', min: 1, max: 80, value: 12, step: 1 },
+      { id: 'length', label: 'LENGTH', min: 1, max: 100, value: 40, step: 1 },
+      { id: 'width', label: 'WIDTH', min: 1, max: 30, value: 4, step: 1 },
+    ]
+  },
+  {
+    id: 'interpolate',
+    name: 'INTERPOLATE',
+    enabled: false,
+    params: [
+      { id: 'strength', label: 'STRENGTH', min: 0, max: 100, value: 50, step: 1 },
+      { id: 'bands', label: 'BANDS', min: 2, max: 60, value: 12, step: 1 },
+    ]
+  },
+  {
+    id: 'pixelShift',
+    name: 'PIXEL SHIFT',
+    enabled: false,
+    params: [
+      { id: 'amount', label: 'AMOUNT', min: 0, max: 100, value: 30, step: 1 },
+      { id: 'rows', label: 'ROWS', min: 1, max: 100, value: 20, step: 1 },
+    ]
+  },
+  {
+    id: 'pixelDisplace',
+    name: 'PIXEL DISPLACE',
+    enabled: false,
+    params: [
+      { id: 'scaleX', label: 'SCALE X', min: 0, max: 100, value: 30, step: 1 },
+      { id: 'scaleY', label: 'SCALE Y', min: 0, max: 100, value: 10, step: 1 },
+      { id: 'freq', label: 'FREQUENCY', min: 1, max: 50, value: 8, step: 1 },
+    ]
+  },
+  {
+    id: 'stripeShift',
+    name: 'STRIPE SHIFT',
+    enabled: false,
+    params: [
+      { id: 'stripes', label: 'STRIPES', min: 2, max: 80, value: 20, step: 1 },
+      { id: 'shift', label: 'SHIFT', min: 0, max: 100, value: 30, step: 1 },
+      { id: 'dir', label: 'DIRECTION', type: 'select', options: ['HORIZONTAL','VERTICAL'], value: 0 },
+    ]
+  },
+  {
+    id: 'colourCorrupt',
+    name: 'COLOUR CORRUPT',
+    enabled: false,
+    params: [
+      { id: 'amount', label: 'AMOUNT', min: 0, max: 100, value: 40, step: 1 },
+      { id: 'posterize', label: 'POSTERIZE', min: 0, max: 100, value: 0, step: 1 },
+      { id: 'hue', label: 'HUE ROTATE', min: 0, max: 360, value: 0, step: 1 },
+    ]
+  },
+  {
+    id: 'lowFreqBanding',
+    name: 'LOW FREQ BANDING',
+    enabled: false,
+    params: [
+      { id: 'bands', label: 'BANDS', min: 2, max: 40, value: 8, step: 1 },
+      { id: 'strength', label: 'STRENGTH', min: 0, max: 100, value: 50, step: 1 },
+      { id: 'offset', label: 'OFFSET', min: 0, max: 100, value: 0, step: 1 },
+    ]
+  },
+];
+
+// ============================
+// BUILD EFFECT UI
+// ============================
+function buildEffectUI() {
+  const container = document.getElementById('effectList');
+  container.innerHTML = '';
+  
+  effects.forEach((effect, ei) => {
+    const item = document.createElement('div');
+    item.className = 'effect-item';
+    
+    const header = document.createElement('div');
+    header.className = 'effect-header';
+    header.dataset.idx = ei;
+    
+    const toggle = document.createElement('div');
+    toggle.className = 'effect-toggle' + (effect.enabled ? ' on' : '');
+    toggle.onclick = (e) => { e.stopPropagation(); toggleEffect(ei); };
+    
+    const name = document.createElement('div');
+    name.className = 'effect-name';
+    name.textContent = effect.name;
+    
+    const expand = document.createElement('div');
+    expand.className = 'effect-expand';
+    expand.textContent = '▾';
+    
+    header.appendChild(toggle);
+    header.appendChild(name);
+    header.appendChild(expand);
+    
+    const controls = document.createElement('div');
+    controls.className = 'effect-controls';
+    
+    effect.params.forEach((p, pi) => {
+      const row = document.createElement('div');
+      row.className = 'ctrl-row';
+      
+      const label = document.createElement('div');
+      label.className = 'ctrl-label';
+      label.textContent = p.label;
+      row.appendChild(label);
+      
+      if (p.type === 'select') {
+        const sel = document.createElement('select');
+        p.options.forEach((opt, oi) => {
+          const o = document.createElement('option');
+          o.value = oi;
+          o.textContent = opt;
+          sel.appendChild(o);
+        });
+        sel.value = p.value;
+        sel.onchange = (e) => {
+          effects[ei].params[pi].value = parseInt(e.target.value);
+          schedulePreview();
+        };
+        row.appendChild(sel);
+      } else {
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = p.min;
+        slider.max = p.max;
+        slider.step = p.step || 1;
+        slider.value = p.value;
+        
+        const valDisplay = document.createElement('div');
+        valDisplay.className = 'ctrl-val';
+        valDisplay.textContent = p.value;
+        
+        slider.oninput = (e) => {
+          effects[ei].params[pi].value = parseFloat(e.target.value);
+          valDisplay.textContent = e.target.value;
+          schedulePreview();
+        };
+        
+        row.appendChild(slider);
+        row.appendChild(valDisplay);
+      }
+      
+      controls.appendChild(row);
+    });
+    
+    header.onclick = () => {
+      const isOpen = controls.classList.contains('open');
+      controls.classList.toggle('open', !isOpen);
+      header.classList.toggle('open', !isOpen);
+      if (effect.enabled) header.classList.add('active');
+    };
+    
+    item.appendChild(header);
+    item.appendChild(controls);
+    container.appendChild(item);
+  });
+}
+
+function toggleEffect(idx) {
+  effects[idx].enabled = !effects[idx].enabled;
+  buildEffectUI();
+  schedulePreview();
+}
+
+function getParam(effect, id) {
+  return effect.params.find(p => p.id === id)?.value ?? 0;
+}
+
+// ============================
+// IMAGE LOADING
+// ============================
+function loadImage(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  loadFile(file);
+}
+
+function loadFile(file) {
+  if (!file.type.startsWith('image/')) {
+    setStatus('ERROR: NOT AN IMAGE FILE');
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      sourceImage = img;
+      
+      // Set up source canvas
+      const srcCanvas = document.getElementById('sourceCanvas');
+      srcCanvas.width = img.width;
+      srcCanvas.height = img.height;
+      const ctx = srcCanvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      
+      // Show UI
+      document.getElementById('dropZone').classList.add('hidden');
+      document.getElementById('canvasWrapper').classList.add('visible');
+      
+      // Set output canvas size
+      const out = document.getElementById('outputCanvas');
+      out.width = img.width;
+      out.height = img.height;
+      const octx = out.getContext('2d');
+      octx.drawImage(img, 0, 0);
+      
+      document.getElementById('imgInfo').innerHTML = 
+        `FILE: <span>${file.name}</span><br>` +
+        `SIZE: <span>${img.width}×${img.height}</span><br>` +
+        `BYTES: <span>${formatBytes(file.size)}</span>`;
+      
+      document.getElementById('headerStatus').textContent = 'IMAGE LOADED';
+      setStatus(`LOADED: ${file.name}`);
+      historyStack = [];
+      updateHistory();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function formatBytes(b) {
+  if (b > 1024*1024) return (b/1024/1024).toFixed(1)+'MB';
+  return (b/1024).toFixed(0)+'KB';
+}
+
+// ============================
+// DRAG AND DROP
+// ============================
+function handleDragOver(e) {
+  e.preventDefault();
+  document.body.classList.add('drag-over');
+}
+function handleDragLeave(e) {
+  document.body.classList.remove('drag-over');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.body.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+}
+
+// ============================
+// EFFECT ENGINE
+// ============================
+function getSourceImageData() {
+  const srcCanvas = document.getElementById('sourceCanvas');
+  const ctx = srcCanvas.getContext('2d');
+  return ctx.getImageData(0, 0, srcCanvas.width, srcCanvas.height);
+}
+
+function applyAllEffects() {
+  if (!sourceImage) { setStatus('NO IMAGE LOADED'); return; }
+  
+  document.getElementById('processingOverlay').classList.add('visible');
+  setStatus('PROCESSING...');
+  document.getElementById('headerStatus').textContent = 'RENDERING';
+  
+  setTimeout(() => {
+    try {
+      let imageData = getSourceImageData();
+      
+      for (const effect of effects) {
+        if (!effect.enabled) continue;
+        imageData = applyEffect(effect, imageData);
+      }
+      
+      const out = document.getElementById('outputCanvas');
+      const ctx = out.getContext('2d');
+      ctx.putImageData(imageData, 0, 0);
+      
+      addToHistory();
+      document.getElementById('processingOverlay').classList.remove('visible');
+      setStatus('RENDER COMPLETE');
+      document.getElementById('headerStatus').textContent = 'CORRUPTED';
+    } catch(err) {
+      document.getElementById('processingOverlay').classList.remove('visible');
+      setStatus('ERROR: ' + err.message);
+    }
+  }, 50);
+}
+
+let previewTimer = null;
+function schedulePreview() {
+  if (!sourceImage) return;
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(applyAllEffects, 200);
+}
+
+function applyEffect(effect, imageData) {
+  const data = new Uint8ClampedArray(imageData.data);
+  const w = imageData.width, h = imageData.height;
+  
+  switch(effect.id) {
+    case 'rgbOffset': return applyRGBOffset(imageData, effect);
+    case 'channelSwap': return applyChannelSwap(imageData, effect);
+    case 'pixelSort': return applyPixelSort(imageData, effect);
+    case 'dataBend': return applyDataBend(imageData, effect);
+    case 'streak': return applyStreak(imageData, effect);
+    case 'interpolate': return applyInterpolate(imageData, effect);
+    case 'pixelShift': return applyPixelShift(imageData, effect);
+    case 'pixelDisplace': return applyPixelDisplace(imageData, effect);
+    case 'stripeShift': return applyStripeShift(imageData, effect);
+    case 'colourCorrupt': return applyColourCorrupt(imageData, effect);
+    case 'lowFreqBanding': return applyLowFreqBanding(imageData, effect);
+    default: return imageData;
+  }
+}
+
+// ---------- RGB OFFSET ----------
+function applyRGBOffset(imageData, effect) {
+  const w = imageData.width, h = imageData.height;
+  const src = imageData.data;
+  const out = new ImageData(w, h);
+  const dst = out.data;
+  const rX = getParam(effect, 'rX') | 0;
+  const rY = getParam(effect, 'rY') | 0;
+  const bX = getParam(effect, 'bX') | 0;
+  const bY = getParam(effect, 'bY') | 0;
+  
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      
+      // R channel
+      const rx2 = Math.min(w-1, Math.max(0, x + rX));
+      const ry2 = Math.min(h-1, Math.max(0, y + rY));
+      const ri = (ry2 * w + rx2) * 4;
+      
+      // B channel
+      const bx2 = Math.min(w-1, Math.max(0, x + bX));
+      const by2 = Math.min(h-1, Math.max(0, y + bY));
+      const bi = (by2 * w + bx2) * 4;
+      
+      dst[i]   = src[ri];       // R from shifted pos
+      dst[i+1] = src[i+1];     // G from original
+      dst[i+2] = src[bi+2];    // B from shifted pos
+      dst[i+3] = 255;
+    }
+  }
+  return out;
+}
+
+// ---------- CHANNEL SWAP ----------
+function applyChannelSwap(imageData, effect) {
+  const w = imageData.width, h = imageData.height;
+  const out = new ImageData(new Uint8ClampedArray(imageData.data), w, h);
+  const d = out.data;
+  const mode = getParam(effect, 'mode');
+  const swaps = [
+    [0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1] // RGB src indices for each output channel
+  ];
+  // mode 0: GBR, mode 1: BRG, mode 2: RBG, mode 3: GRB, mode 4: BGR
+  const maps = [
+    [1,2,0],[2,0,1],[0,2,1],[1,0,2],[2,1,0]
+  ];
+  const m = maps[mode] || [0,1,2];
+  
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i+1], b = d[i+2];
+    const channels = [r,g,b];
+    d[i]   = channels[m[0]];
+    d[i+1] = channels[m[1]];
+    d[i+2] = channels[m[2]];
+  }
+  return out;
+}
+
+// ---------- PIXEL SORTING ----------
+function applyPixelSort(imageData, effect) {
+  const w = imageData.width, h = imageData.height;
+  const out = new ImageData(new Uint8ClampedArray(imageData.data), w, h);
+  const d = out.data;
+  const threshold = getParam(effect, 'threshold');
+  const amount = getParam(effect, 'amount') / 100;
+  const dir = getParam(effect, 'dir');
+  const channel = getParam(effect, 'channel');
+  
+  function getLuma(i) {
+    switch(channel) {
+      case 0: return 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+      case 1: return d[i];
+      case 2: return d[i+1];
+      case 3: return d[i+2];
+    }
+  }
+  
+  if (dir === 0) { // Horizontal
+    const rowCount = Math.floor(h * amount);
+    const rowIndices = [];
+    for (let i = 0; i < h; i++) rowIndices.push(i);
+    // shuffle and pick
+    for (let i = rowIndices.length-1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i+1));
+      [rowIndices[i], rowIndices[j]] = [rowIndices[j], rowIndices[i]];
+    }
+    const selectedRows = rowIndices.slice(0, rowCount);
+    
+    for (const y of selectedRows) {
+      let spanStart = -1;
+      for (let x = 0; x <= w; x++) {
+        const i = (y * w + x) * 4;
+        const bright = x < w ? getLuma(i) : -1;
+        if (bright > threshold && spanStart === -1) {
+          spanStart = x;
+        } else if ((bright <= threshold || x === w) && spanStart !== -1) {
+          // sort span
+          const span = [];
+          for (let sx = spanStart; sx < x; sx++) {
+            const si = (y * w + sx) * 4;
+            span.push([getLuma(si), d[si], d[si+1], d[si+2], d[si+3]]);
+          }
+          span.sort((a,b) => a[0]-b[0]);
+          for (let sx = spanStart; sx < x; sx++) {
+            const si = (y * w + sx) * 4;
+            const s = span[sx - spanStart];
+            d[si]=s[1]; d[si+1]=s[2]; d[si+2]=s[3]; d[si+3]=s[4];
+          }
+          spanStart = -1;
+        }
+      }
+    }
+  } else { // Vertical
+    const colCount = Math.floor(w * amount);
+    const colIndices = [];
+    for (let i = 0; i < w; i++) colIndices.push(i);
+    for (let i = colIndices.length-1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i+1));
+      [colIndices[i], colIndices[j]] = [colIndices[j], colIndices[i]];
+    }
+    const selectedCols = colIndices.slice(0, colCount);
+    
+    for (const x of selectedCols) {
+      let spanStart = -1;
+      for (let y = 0; y <= h; y++) {
+        const i = (y * w + x) * 4;
+        const bright = y < h ? getLuma(i) : -1;
+        if (bright > threshold && spanStart === -1) {
+          spanStart = y;
+        } else if ((bright <= threshold || y === h) && spanStart !== -1) {
+          const span = [];
+          for (let sy = spanStart; sy < y; sy++) {
+            const si = (sy * w + x) * 4;
+            span.push([getLuma(si), d[si], d[si+1], d[si+2], d[si+3]]);
+          }
+          span.sort((a,b) => a[0]-b[0]);
+          for (let sy = spanStart; sy < y; sy++) {
+            const si = (sy * w + x) * 4;
+            const s = span[sy - spanStart];
+            d[si]=s[1]; d[si+1]=s[2]; d[si+2]=s[3]; d[si+3]=s[4];
+          }
+          spanStart = -1;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+// ---------- DATABENDING ----------
+function applyDataBend(imageData, effect) {
+  const w = imageData.width, h = imageData.height;
+  const out = new ImageData(new Uint8ClampedArray(imageData.data), w, h);
+  const d = out.data;
+  const intensity = getParam(effect, 'intensity') / 100;
+  const chunkSize = Math.max(1, getParam(effect, 'chunkSize') | 0);
+  const shift = getParam(effect, 'shift') | 0;
+  const len = d.length;
+  
+  const numChunks = Math.floor(intensity * len / (chunkSize * 4));
+  for (let i = 0; i < numChunks; i++) {
+    const pos = (Math.floor(Math.random() * (len / 4 - chunkSize)) * 4);
+    const op = Math.random();
+    for (let j = 0; j < chunkSize * 4; j += 4) {
+      if (pos + j + 3 >= len) continue;
+      if (op < 0.3) {
+        // byte shift
+        d[pos+j]   = (d[pos+j] + shift) % 256;
+        d[pos+j+1] = (d[pos+j+1] + shift) % 256;
+        d[pos+j+2] = (d[pos+j+2] + shift) % 256;
+      } else if (op < 0.6) {
+        // xor
+        const xv = Math.floor(Math.random() * 255);
+        d[pos+j]   ^= xv;
+        d[pos+j+2] ^= xv;
+      } else if (op < 0.8) {
+        // copy block from elsewhere
+        const src2 = (Math.floor(Math.random() * (len/4 - chunkSize)) * 4);
+        if (src2 + j + 3 < len) {
+          d[pos+j]   = d[src2+j];
+          d[pos+j+1] = d[src2+j+1];
+          d[pos+j+2] = d[src2+j+2];
+        }
+      } else {
+        // zero out
+        const ch = Math.floor(Math.random() * 3);
+        d[pos+j+ch] = 0;
+      }
+    }
+  }
+  return out;
+}
+
+// ---------- STREAK ----------
+function applyStreak(imageData, effect) {
+  const w = imageData.width, h = imageData.height;
+  const out = new ImageData(new Uint8ClampedArray(imageData.data), w, h);
+  const d = out.data;
+  const count = getParam(effect, 'count') | 0;
+  const lengthPct = getParam(effect, 'length') / 100;
+  const streakW = Math.max(1, getParam(effect, 'width') | 0);
+  
+  for (let s = 0; s < count; s++) {
+    const y = Math.floor(Math.random() * h);
+    const startX = Math.floor(Math.random() * w);
+    const endX = Math.min(w, startX + Math.floor(w * lengthPct));
+    const srcI = (y * w + startX) * 4;
+    
+    for (let x = startX; x < endX; x++) {
+      for (let dy = 0; dy < streakW; dy++) {
+        const ty = Math.min(h-1, y + dy);
+        const ti = (ty * w + x) * 4;
+        d[ti]   = d[srcI];
+        d[ti+1] = d[srcI+1];
+        d[ti+2] = d[srcI+2];
+      }
+    }
+  }
+  return out;
+}
+
+// ---------- INTERPOLATE ----------
+function applyInterpolate(imageData, effect) {
+  const w = imageData.width, h = imageData.height;
+  const out = new ImageData(new Uint8ClampedArray(imageData.data), w, h);
+  const d = out.data;
+  const strength = getParam(effect, 'strength') / 100;
+  const bands = Math.max(2, getParam(effect, 'bands') | 0);
+  const bandH = Math.ceil(h / bands);
+  
+  for (let b = 0; b < bands; b++) {
+    if (Math.random() > strength) continue;
+    const y0 = b * bandH;
+    const y1 = Math.min(h, y0 + bandH);
+    // interpolate from start row to end row
+    const startRow = y0;
+    const endRow = y1 - 1;
+    for (let y = y0; y < y1; y++) {
+      const t = (y - y0) / Math.max(1, y1 - y0 - 1);
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const si = (startRow * w + x) * 4;
+        const ei = (endRow * w + x) * 4;
+        d[i]   = d[si] + (d[ei] - d[si]) * t;
+        d[i+1] = d[si+1] + (d[ei+1] - d[si+1]) * t;
+        d[i+2] = d[si+2] + (d[ei+2] - d[si+2]) * t;
+      }
+    }
+  }
+  return out;
+}
+
+// ---------- PIXEL SHIFT ----------
+function applyPixelShift(imageData, effect) {
+  const w = imageData.width, h = imageData.height;
+  const out = new ImageData(new Uint8ClampedArray(imageData.data), w, h);
+  const d = out.data;
+  const amount = getParam(effect, 'amount');
+  const rows = Math.max(1, getParam(effect, 'rows') | 0);
+  const rowSet = new Set();
+  
+  while (rowSet.size < Math.min(rows, h)) {
+    rowSet.add(Math.floor(Math.random() * h));
+  }
+  
+  for (const y of rowSet) {
+    const shift = Math.floor((Math.random() * 2 - 1) * amount);
+    const absShift = Math.abs(shift);
+    const dir = shift >= 0 ? 1 : -1;
+    
+    if (dir > 0) {
+      for (let x = w-1; x >= 0; x--) {
+        const sx = Math.max(0, x - absShift);
+        const i = (y*w+x)*4, si = (y*w+sx)*4;
+        d[i]=d[si]; d[i+1]=d[si+1]; d[i+2]=d[si+2];
+      }
+    } else {
+      for (let x = 0; x < w; x++) {
+        const sx = Math.min(w-1, x + absShift);
+        const i = (y*w+x)*4, si = (y*w+sx)*4;
+        d[i]=d[si]; d[i+1]=d[si+1]; d[i+2]=d[si+2];
+      }
+    }
+  }
+  return out;
+}
+
+// ---------- PIXEL DISPLACE ----------
+function applyPixelDisplace(imageData, effect) {
+  const w = imageData.width, h = imageData.height;
+  const src = imageData.data;
+  const out = new ImageData(w, h);
+  const dst = out.data;
+  const scaleX = getParam(effect, 'scaleX');
+  const scaleY = getParam(effect, 'scaleY');
+  const freq = getParam(effect, 'freq');
+  
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const dx = Math.sin(y / h * Math.PI * freq) * scaleX;
+      const dy = Math.cos(x / w * Math.PI * freq) * scaleY;
+      const sx = Math.min(w-1, Math.max(0, Math.round(x + dx)));
+      const sy = Math.min(h-1, Math.max(0, Math.round(y + dy)));
+      const i = (y*w+x)*4, si = (sy*w+sx)*4;
+      dst[i]=src[si]; dst[i+1]=src[si+1]; dst[i+2]=src[si+2]; dst[i+3]=255;
+    }
+  }
+  return out;
+}
+
+// ---------- STRIPE SHIFT ----------
+function applyStripeShift(imageData, effect) {
+  const w = imageData.width, h = imageData.height;
+  const out = new ImageData(new Uint8ClampedArray(imageData.data), w, h);
+  const d = out.data;
+  const src = imageData.data;
+  const stripes = Math.max(2, getParam(effect, 'stripes') | 0);
+  const shiftAmt = getParam(effect, 'shift');
+  const dir = getParam(effect, 'dir');
+  
+  if (dir === 0) { // horizontal stripes
+    const stripeH = Math.ceil(h / stripes);
+    for (let s = 0; s < stripes; s++) {
+      if (s % 2 === 0) continue;
+      const shift = Math.floor((Math.random() * 2 - 1) * shiftAmt);
+      const y0 = s * stripeH;
+      const y1 = Math.min(h, y0 + stripeH);
+      for (let y = y0; y < y1; y++) {
+        for (let x = 0; x < w; x++) {
+          const sx = ((x + shift) % w + w) % w;
+          const i = (y*w+x)*4, si = (y*w+sx)*4;
+          d[i]=src[si]; d[i+1]=src[si+1]; d[i+2]=src[si+2];
+        }
+      }
+    }
+  } else { // vertical stripes
+    const stripeW = Math.ceil(w / stripes);
+    for (let s = 0; s < stripes; s++) {
+      if (s % 2 === 0) continue;
+      const shift = Math.floor((Math.random() * 2 - 1) * shiftAmt);
+      const x0 = s * stripeW;
+      const x1 = Math.min(w, x0 + stripeW);
+      for (let y = 0; y < h; y++) {
+        for (let x = x0; x < x1; x++) {
+          const sy = ((y + shift) % h + h) % h;
+          const i = (y*w+x)*4, si = (sy*w+x)*4;
+          d[i]=src[si]; d[i+1]=src[si+1]; d[i+2]=src[si+2];
+        }
+      }
+    }
+  }
+  return out;
+}
+
+// ---------- COLOUR CORRUPT ----------
+function applyColourCorrupt(imageData, effect) {
+  const w = imageData.width, h = imageData.height;
+  const out = new ImageData(new Uint8ClampedArray(imageData.data), w, h);
+  const d = out.data;
+  const amount = getParam(effect, 'amount') / 100;
+  const posterize = getParam(effect, 'posterize') / 100;
+  const hue = getParam(effect, 'hue');
+  
+  for (let i = 0; i < d.length; i += 4) {
+    // Random colour corruption
+    if (Math.random() < amount * 0.3) {
+      const ch = Math.floor(Math.random() * 3);
+      d[i + ch] = Math.floor(Math.random() * 256);
+    }
+    
+    // Posterize
+    if (posterize > 0) {
+      const levels = Math.max(2, Math.round((1 - posterize) * 16 + 2));
+      const step = 255 / (levels - 1);
+      d[i]   = Math.round(d[i] / step) * step;
+      d[i+1] = Math.round(d[i+1] / step) * step;
+      d[i+2] = Math.round(d[i+2] / step) * step;
+    }
+    
+    // Hue rotate (approximate)
+    if (hue !== 0) {
+      const r = d[i]/255, g = d[i+1]/255, b = d[i+2]/255;
+      const [h2,s,l] = rgbToHsl(r,g,b);
+      const [r2,g2,b2] = hslToRgb((h2 + hue/360) % 1, s, l);
+      d[i]   = r2 * 255;
+      d[i+1] = g2 * 255;
+      d[i+2] = b2 * 255;
+    }
+  }
+  return out;
+}
+
+function rgbToHsl(r, g, b) {
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  const l = (max+min)/2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+  let h;
+  if (max===r) h=((g-b)/d+(g<b?6:0))/6;
+  else if (max===g) h=((b-r)/d+2)/6;
+  else h=((r-g)/d+4)/6;
+  return [h, s, l];
+}
+
+function hslToRgb(h, s, l) {
+  if (s===0) return [l,l,l];
+  const q = l<0.5 ? l*(1+s) : l+s-l*s;
+  const p = 2*l-q;
+  function hue2rgb(t) {
+    if(t<0)t+=1; if(t>1)t-=1;
+    if(t<1/6) return p+(q-p)*6*t;
+    if(t<1/2) return q;
+    if(t<2/3) return p+(q-p)*(2/3-t)*6;
+    return p;
+  }
+  return [hue2rgb(h+1/3), hue2rgb(h), hue2rgb(h-1/3)];
+}
+
+// ---------- LOW FREQ BANDING ----------
+function applyLowFreqBanding(imageData, effect) {
+  const w = imageData.width, h = imageData.height;
+  const out = new ImageData(new Uint8ClampedArray(imageData.data), w, h);
+  const d = out.data;
+  const bands = Math.max(2, getParam(effect, 'bands') | 0);
+  const strength = getParam(effect, 'strength') / 100;
+  const offset = getParam(effect, 'offset') / 100;
+  
+  const bandH = h / bands;
+  
+  for (let y = 0; y < h; y++) {
+    const bandIdx = Math.floor((y / h + offset) * bands) % bands;
+    const bandT = ((y / h + offset) * bands) % 1;
+    const brightMod = (Math.sin(bandT * Math.PI) * 2 - 1) * strength * 80;
+    const hueShift = (bandIdx % 3 === 0) ? strength * 40 : 0;
+    
+    for (let x = 0; x < w; x++) {
+      const i = (y*w+x)*4;
+      d[i]   = Math.min(255, Math.max(0, d[i] + brightMod + hueShift));
+      d[i+1] = Math.min(255, Math.max(0, d[i+1] + brightMod));
+      d[i+2] = Math.min(255, Math.max(0, d[i+2] + brightMod - hueShift * 0.5));
+    }
+  }
+  return out;
+}
+
+// ============================
+// PRESETS
+// ============================
+const presets = {
+  mild: {
+    rgbOffset: { enabled: true, rX: 8, rY: 0, bX: -8, bY: 2 },
+    streak: { enabled: true, count: 6, length: 25, width: 2 },
+    pixelShift: { enabled: true, amount: 15, rows: 8 },
+  },
+  heavy: {
+    rgbOffset: { enabled: true, rX: 30, rY: 5, bX: -25, bY: -3 },
+    dataBend: { enabled: true, intensity: 60, chunkSize: 40, shift: 20 },
+    pixelSort: { enabled: true, threshold: 100, amount: 70, dir: 0, channel: 0 },
+    streak: { enabled: true, count: 25, length: 60, width: 6 },
+    stripeShift: { enabled: true, stripes: 30, shift: 60, dir: 0 },
+  },
+  retro: {
+    lowFreqBanding: { enabled: true, bands: 12, strength: 60, offset: 0 },
+    colourCorrupt: { enabled: true, amount: 20, posterize: 60, hue: 0 },
+    streak: { enabled: true, count: 8, length: 20, width: 3 },
+    rgbOffset: { enabled: true, rX: 5, rY: 0, bX: -5, bY: 0 },
+  },
+  databend: {
+    dataBend: { enabled: true, intensity: 50, chunkSize: 60, shift: 30 },
+    channelSwap: { enabled: true, mode: 1 },
+    interpolate: { enabled: true, strength: 70, bands: 20 },
+  },
+  vhs: {
+    rgbOffset: { enabled: true, rX: 4, rY: 0, bX: -4, bY: 0 },
+    stripeShift: { enabled: true, stripes: 60, shift: 20, dir: 0 },
+    streak: { enabled: true, count: 15, length: 40, width: 2 },
+    lowFreqBanding: { enabled: true, bands: 6, strength: 30, offset: 10 },
+    colourCorrupt: { enabled: true, amount: 10, posterize: 0, hue: 5 },
+  },
+  chaos: {
+    rgbOffset: { enabled: true, rX: 50, rY: 10, bX: -40, bY: -8 },
+    channelSwap: { enabled: true, mode: 2 },
+    pixelSort: { enabled: true, threshold: 80, amount: 80, dir: 0, channel: 0 },
+    dataBend: { enabled: true, intensity: 70, chunkSize: 80, shift: 40 },
+    streak: { enabled: true, count: 40, length: 70, width: 8 },
+    interpolate: { enabled: true, strength: 80, bands: 30 },
+    pixelShift: { enabled: true, amount: 60, rows: 40 },
+    pixelDisplace: { enabled: true, scaleX: 50, scaleY: 30, freq: 15 },
+    stripeShift: { enabled: true, stripes: 40, shift: 80, dir: 0 },
+    colourCorrupt: { enabled: true, amount: 60, posterize: 30, hue: 90 },
+    lowFreqBanding: { enabled: true, bands: 20, strength: 70, offset: 0 },
+  }
+};
+
+function applyPreset(name) {
+  const preset = presets[name];
+  if (!preset) return;
+  
+  // Reset all
+  effects.forEach(e => { e.enabled = false; });
+  
+  // Apply preset values
+  for (const [eid, vals] of Object.entries(preset)) {
+    const eff = effects.find(e => e.id === eid);
+    if (!eff) continue;
+    eff.enabled = vals.enabled;
+    for (const [key, val] of Object.entries(vals)) {
+      if (key === 'enabled') continue;
+      const param = eff.params.find(p => p.id === key);
+      if (param) param.value = val;
+    }
+  }
+  
+  buildEffectUI();
+  setStatus(`PRESET LOADED: ${name.toUpperCase()}`);
+  applyAllEffects();
+}
+
+// ============================
+// HISTORY
+// ============================
+function addToHistory() {
+  const canvas = document.getElementById('outputCanvas');
+  const thumb = canvas.toDataURL('image/jpeg', 0.3);
+  const now = new Date();
+  const label = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+  const activeEffects = effects.filter(e => e.enabled).map(e => e.name.substring(0,4)).join('+');
+  
+  historyStack.unshift({ thumb, label, activeEffects, dataUrl: canvas.toDataURL('image/jpeg', 0.9) });
+  if (historyStack.length > 6) historyStack.pop();
+  updateHistory();
+}
+
+function updateHistory() {
+  const list = document.getElementById('historyList');
+  if (historyStack.length === 0) {
+    list.innerHTML = '<div style="font-size:10px;color:#333344;letter-spacing:1px;">NO HISTORY YET</div>';
+    return;
+  }
+  list.innerHTML = '';
+  historyStack.forEach((h, idx) => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `<span>${h.label}</span><span style="color:#556070;">${h.activeEffects || 'ORIGINAL'}</span>`;
+    item.onclick = () => restoreHistory(idx);
+    list.appendChild(item);
+  });
+}
+
+function restoreHistory(idx) {
+  const h = historyStack[idx];
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.getElementById('outputCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    setStatus(`RESTORED: ${h.label}`);
+  };
+  img.src = h.dataUrl;
+}
+
+// ============================
+// SAVE
+// ============================
+function selectFormat(btn, fmt) {
+  document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  currentFormat = fmt;
+}
+
+function saveImage() {
+  if (!sourceImage) { setStatus('NO IMAGE TO SAVE'); return; }
+  const canvas = document.getElementById('outputCanvas');
+  const quality = parseInt(document.getElementById('saveQuality').value) / 100;
+  const ext = currentFormat === 'image/png' ? 'png' : currentFormat === 'image/webp' ? 'webp' : 'jpg';
+  
+  const link = document.createElement('a');
+  link.download = `glitchforge_${Date.now()}.${ext}`;
+  link.href = canvas.toDataURL(currentFormat, quality);
+  link.click();
+  
+  setStatus(`SAVED: glitchforge_${Date.now()}.${ext}`);
+}
+
+function resetToOriginal() {
+  if (!sourceImage) return;
+  const out = document.getElementById('outputCanvas');
+  const ctx = out.getContext('2d');
+  ctx.drawImage(sourceImage, 0, 0);
+  setStatus('RESET TO ORIGINAL');
+}
+
+// ============================
+// STATUS
+// ============================
+function setStatus(msg) {
+  document.getElementById('statusText').textContent = msg;
+  document.getElementById('headerStatus').textContent = msg.split(':')[0];
+}
+
+// ============================
+// INIT
+// ============================
+buildEffectUI();
+setStatus('READY — IMPORT AN IMAGE TO BEGIN');
+</script>
+</body>
+</html>

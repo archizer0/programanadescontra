@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Glitch Art</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados e ecrã CRT */
+        body {
+            background-color: #0f0f13;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Efeito de Scanlines CRT por cima do canvas (apenas visual, não afeta a exportação) */
+        .crt-overlay::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 10;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+
+        .crt-overlay::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            z-index: 10;
+            pointer-events: none;
+            animation: flicker 0.15s infinite;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.02; }
+            50% { opacity: 0.05; }
+            100% { opacity: 0.02; }
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 0 20px rgba(0, 255, 170, 0.1);
+        }
+
+        .btn-glitch {
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-glitch:hover {
+            transform: translateX(2px);
+            background-color: #1f2937;
+            color: #10b981;
+            border-left: 2px solid #10b981;
+        }
+
+        .btn-glitch:active {
+            transform: translateX(0px);
+            filter: brightness(0.8);
+        }
+
+        /* Esconder o input de ficheiro */
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Cabeçalho -->
+    <header class="bg-gray-900 border-b border-gray-800 p-4 flex justify-between items-center z-20">
+        <div class="flex items-center gap-2">
+            <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+            <h1 class="text-xl font-bold tracking-wider uppercase text-emerald-500" style="text-shadow: 2px 0px red, -2px 0px cyan;">Editor Glitch Art</h1>
+        </div>
+        <div id="top-actions" class="hidden flex gap-3">
+            <button onclick="resetImage()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-sm font-medium transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Restaurar Original
+            </button>
+            <button onclick="saveImage()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-sm font-medium transition flex items-center gap-2 shadow-[0_0_10px_rgba(16,185,129,0.4)]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Gravar JPG
+            </button>
+        </div>
+    </header>
+
+    <!-- Área de Carregamento Inicial -->
+    <main id="upload-ui" class="flex-1 flex items-center justify-center p-6">
+        <label for="imageUpload" class="w-full max-w-2xl h-64 border-2 border-dashed border-gray-600 hover:border-emerald-500 rounded-lg flex flex-col items-center justify-center cursor-pointer bg-gray-900/50 hover:bg-gray-800/50 transition-colors">
+            <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            <span class="text-lg font-medium text-gray-300">Clique ou arraste uma imagem JPG/PNG</span>
+            <span class="text-sm text-gray-500 mt-2">A imagem não será enviada para a internet</span>
+            <input type="file" id="imageUpload" accept="image/jpeg, image/png, image/webp" />
+        </label>
+    </main>
+
+    <!-- Área do Editor -->
+    <main id="editor-ui" class="hidden flex-1 flex flex-col md:flex-row overflow-hidden bg-black relative">
+        
+        <!-- Barra Lateral de Ferramentas -->
+        <aside class="w-full md:w-64 bg-gray-900 border-r border-gray-800 flex flex-col overflow-y-auto z-20">
+            <div class="p-4 border-b border-gray-800">
+                <h2 class="text-xs uppercase text-gray-500 font-bold tracking-widest">Efeitos (Cumulativos)</h2>
+            </div>
+            
+            <div class="flex-1 p-2 flex flex-col gap-1">
+                <button onclick="applyEffect('databending')" class="btn-glitch text-left px-4 py-3 rounded text-sm text-gray-300">⚙️ Databending (Simulado)</button>
+                <button onclick="applyEffect('pixelSort')" class="btn-glitch text-left px-4 py-3 rounded text-sm text-gray-300">📊 Pixel Sorting</button>
+                <button onclick="applyEffect('rgbOffset')" class="btn-glitch text-left px-4 py-3 rounded text-sm text-gray-300">🌈 Offset RGB</button>
+                <button onclick="applyEffect('channelSwap')" class="btn-glitch text-left px-4 py-3 rounded text-sm text-gray-300">🔄 Troca de Canais</button>
+                <button onclick="applyEffect('streak')" class="btn-glitch text-left px-4 py-3 rounded text-sm text-gray-300">☄️ Rastro (Streak)</button>
+                <button onclick="applyEffect('interpolate')" class="btn-glitch text-left px-4 py-3 rounded text-sm text-gray-300">🌫️ Interpolar / Fantasma</button>
+                <button onclick="applyEffect('pixelShift')" class="btn-glitch text-left px-4 py-3 rounded text-sm text-gray-300">✂️ Deslocamento de Pixel</button>
+                <button onclick="applyEffect('pixelDisplace')" class="btn-glitch text-left px-4 py-3 rounded text-sm text-gray-300">🧩 Deslocar Bloco</button>
+                <button onclick="applyEffect('stripeShift')" class="btn-glitch text-left px-4 py-3 rounded text-sm text-gray-300">🪟 Deslocar Faixas</button>
+                <button onclick="applyEffect('colourCorrupt')" class="btn-glitch text-left px-4 py-3 rounded text-sm text-gray-300">☢️ Corromper Cores</button>
+                <button onclick="applyEffect('lowFreqBanding')" class="btn-glitch text-left px-4 py-3 rounded text-sm text-gray-300">🌊 Banding de Baixa Freq.</button>
+            </div>
+        </aside>
+
+        <!-- Área do Canvas -->
+        <section class="flex-1 p-4 flex items-center justify-center overflow-auto relative crt-overlay" id="canvas-container">
+            <canvas id="mainCanvas"></canvas>
+            <!-- Canvas escondido para manter a imagem original pura -->
+            <canvas id="originalCanvas" class="hidden"></canvas>
+        </section>
+
+    </main>
+
+    <script>
+        const imageUpload = document.getElementById('imageUpload');
+        const mainCanvas = document.getElementById('mainCanvas');
+        const originalCanvas = document.getElementById('originalCanvas');
+        const ctx = mainCanvas.getContext('2d', { willReadFrequently: true });
+        const oCtx = originalCanvas.getContext('2d', { willReadFrequently: true });
+        
+        const uploadUI = document.getElementById('upload-ui');
+        const editorUI = document.getElementById('editor-ui');
+        const topActions = document.getElementById('top-actions');
+
+        let isProcessing = false;
+
+        // Limite máximo para evitar quebra de memória (1920px)
+        const MAX_DIMENSION = 1920; 
+
+        // 1. Carregamento de Imagem
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    let w = img.width;
+                    let h = img.height;
+
+                    // Redimensionar mantendo proporção se for muito grande
+                    if (w > MAX_DIMENSION || h > MAX_DIMENSION) {
+                        const ratio = Math.min(MAX_DIMENSION / w, MAX_DIMENSION / h);
+                        w = Math.round(w * ratio);
+                        h = Math.round(h * ratio);
+                    }
+
+                    mainCanvas.width = w;
+                    mainCanvas.height = h;
+                    originalCanvas.width = w;
+                    originalCanvas.height = h;
+
+                    // Desenhar imagem
+                    ctx.drawImage(img, 0, 0, w, h);
+                    oCtx.drawImage(img, 0, 0, w, h);
+
+                    // Alterar interface
+                    uploadUI.classList.add('hidden');
+                    editorUI.classList.remove('hidden');
+                    topActions.classList.remove('hidden');
+                    topActions.classList.add('flex');
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Permitir arrastar e largar (Drag & Drop)
+        const dropZone = document.querySelector('label[for="imageUpload"]');
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-emerald-500', 'bg-gray-800/80');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-emerald-500', 'bg-gray-800/80');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-emerald-500', 'bg-gray-800/80');
+            if (e.dataTransfer.files.length) {
+                imageUpload.files = e.dataTransfer.files;
+                imageUpload.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // 2. Ações Gerais
+        function resetImage() {
+            ctx.drawImage(originalCanvas, 0, 0);
+        }
+
+        function saveImage() {
+            const link = document.createElement('a');
+            link.download = `glitched_${new Date().getTime()}.jpg`;
+            link.href = mainCanvas.toDataURL('image/jpeg', 0.9);
+            link.click();
+        }
+
+        // 3. Sistema de Efeitos
+        function applyEffect(effectName) {
+            if (isProcessing) return;
+            isProcessing = true;
+            
+            // Usar timeout para permitir que a interface respire (ex: feedback visual no botão)
+            setTimeout(() => {
+                const w = mainCanvas.width;
+                const h = mainCanvas.height;
+                let imgData;
+
+                try {
+                    switch(effectName) {
+                        case 'databending':
+                            effectDatabending(w, h);
+                            break;
+                        case 'pixelSort':
+                            effectPixelSort(w, h);
+                            break;
+                        case 'rgbOffset':
+                            effectRGBOffset(w, h);
+                            break;
+                        case 'channelSwap':
+                            effectChannelSwap(w, h);
+                            break;
+                        case 'streak':
+                            effectStreak(w, h);
+                            break;
+                        case 'interpolate':
+                            effectInterpolate(w, h);
+                            break;
+                        case 'pixelShift':
+                            effectPixelShift(w, h);
+                            break;
+                        case 'pixelDisplace':
+                            effectPixelDisplace(w, h);
+                            break;
+                        case 'stripeShift':
+                            effectStripeShift(w, h);
+                            break;
+                        case 'colourCorrupt':
+                            effectColourCorrupt(w, h);
+                            break;
+                        case 'lowFreqBanding':
+                            effectLowFreqBanding(w, h);
+                            break;
+                    }
+                } catch (err) {
+                    console.error("Erro ao aplicar efeito:", err);
+                } finally {
+                    isProcessing = false;
+                }
+            }, 10);
+        }
+
+        // --- FUNÇÕES DOS EFEITOS GLITCH ---
+
+        // 1. Databending Simulado (Misturas de blocos com blend modes)
+        function effectDatabending(w, h) {
+            ctx.save();
+            const modes = ['difference', 'color-dodge', 'exclusion', 'hue', 'hard-light'];
+            const iterations = Math.floor(Math.random() * 15) + 5;
+            
+            for(let i=0; i<iterations; i++) {
+                let sx = Math.random() * w;
+                let sy = Math.random() * h;
+                let sw = Math.random() * (w/2);
+                let sh = Math.random() * (h/4);
+                let dx = sx + (Math.random() * 60 - 30);
+                let dy = sy + (Math.random() * 20 - 10);
+                
+                ctx.globalCompositeOperation = modes[Math.floor(Math.random() * modes.length)];
+                ctx.globalAlpha = Math.random() * 0.8 + 0.2;
+                ctx.drawImage(mainCanvas, sx, sy, sw, sh, dx, dy, sw, sh);
+            }
+            ctx.restore();
+        }
+
+        // 2. Pixel Sorting (Ordena píxeis por luminosidade em faixas)
+        function effectPixelSort(w, h) {
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            const bands = Math.floor(Math.random() * 50) + 20;
+
+            for(let b = 0; b < bands; b++) {
+                let y = Math.floor(Math.random() * h);
+                let xStart = Math.floor(Math.random() * (w - 100));
+                let length = Math.floor(Math.random() * Math.min(800, w - xStart)) + 50;
+
+                let chunk = [];
+                for(let x = xStart; x < xStart + length; x++) {
+                    let idx = (y * w + x) * 4;
+                    let lum = 0.299 * data[idx] + 0.587 * data[idx+1] + 0.114 * data[idx+2];
+                    chunk.push({
+                        r: data[idx], g: data[idx+1], b: data[idx+2], a: data[idx+3], lum: lum
+                    });
+                }
+
+                // Ordena a faixa de píxeis
+                chunk.sort((a, b) => a.lum - b.lum);
+
+                for(let i = 0; i < chunk.length; i++) {
+                    let x = xStart + i;
+                    let idx = (y * w + x) * 4;
+                    data[idx] = chunk[i].r;
+                    data[idx+1] = chunk[i].g;
+                    data[idx+2] = chunk[i].b;
+                    data[idx+3] = chunk[i].a;
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        // 3. Offset RGB (Aberração Cromática)
+        function effectRGBOffset(w, h) {
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            const res = new Uint8ClampedArray(data);
+            
+            // Offset variável baseado na largura da imagem (ex: 1% a 4%)
+            const offsetR = Math.floor(w * (Math.random() * 0.03 + 0.01));
+            const offsetB = -Math.floor(w * (Math.random() * 0.03 + 0.01));
+
+            for(let y = 0; y < h; y++) {
+                for(let x = 0; x < w; x++) {
+                    let i = (y * w + x) * 4;
+                    
+                    // Calculando posições de x para R e B (faz wrap around básico ou limite)
+                    let xR = Math.max(0, Math.min(w - 1, x - offsetR));
+                    let xB = Math.max(0, Math.min(w - 1, x - offsetB));
+                    
+                    let iR = (y * w + xR) * 4;
+                    let iB = (y * w + xB) * 4;
+
+                    res[i] = data[iR];         // Red deslocado
+                    res[i+1] = data[i+1];      // Green fica igual
+                    res[i+2] = data[iB + 2];   // Blue deslocado
+                    res[i+3] = data[i+3];      // Alpha
+                }
+            }
+            ctx.putImageData(new ImageData(res, w, h), 0, 0);
+        }
+
+        // 4. Troca de Canais
+        function effectChannelSwap(w, h) {
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            // Alternativas: RGB -> GBR, BRG, etc
+            const mode = Math.random() > 0.5 ? 1 : 2;
+
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i], g = data[i+1], b = data[i+2];
+                if (mode === 1) {
+                    data[i] = g; data[i+1] = b; data[i+2] = r;
+                } else {
+                    data[i] = b; data[i+1] = r; data[i+2] = g;
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        // 5. Rastro (Streak)
+        function effectStreak(w, h) {
+            const iterations = Math.floor(Math.random() * 30) + 15;
+            for(let i=0; i<iterations; i++) {
+                let y = Math.floor(Math.random() * h);
+                let height = Math.floor(Math.random() * 15) + 1; // 1 a 15px de altura
+                let x = Math.floor(Math.random() * w);
+                
+                // Direção do streak (esquerda ou direita)
+                let stretchW = Math.floor(Math.random() * (w/2)) + 50;
+                let dir = Math.random() > 0.5 ? 1 : -1;
+                
+                // Copia 1 pixel de largura e estica
+                ctx.drawImage(mainCanvas, x, y, 1, height, (dir === 1 ? x : x - stretchW), y, stretchW, height);
+            }
+        }
+
+        // 6. Interpolar / Motion Blur Simples
+        function effectInterpolate(w, h) {
+            ctx.save();
+            ctx.globalAlpha = 0.4;
+            const shiftX = Math.floor(Math.random() * 20) - 10;
+            const shiftY = Math.floor(Math.random() * 20) - 10;
+            ctx.drawImage(mainCanvas, shiftX, shiftY);
+            ctx.drawImage(mainCanvas, -shiftX, -shiftY);
+            ctx.restore();
+        }
+
+        // 7. Deslocamento de Pixel (Linhas horizontais)
+        function effectPixelShift(w, h) {
+            const lines = Math.floor(Math.random() * 40) + 10;
+            for(let i=0; i<lines; i++) {
+                let y = Math.floor(Math.random() * h);
+                let blockH = Math.floor(Math.random() * 20) + 2;
+                let shift = Math.floor(Math.random() * 150) - 75;
+                
+                // Desenha a linha deslocada
+                ctx.drawImage(mainCanvas, 0, y, w, blockH, shift, y, w, blockH);
+                // Preenche o "buraco" do outro lado (wrap-around)
+                if (shift > 0) {
+                    ctx.drawImage(mainCanvas, w - shift, y, shift, blockH, 0, y, shift, blockH);
+                } else {
+                    ctx.drawImage(mainCanvas, 0, y, -shift, blockH, w + shift, y, -shift, blockH);
+                }
+            }
+        }
+
+        // 8. Deslocar Bloco (Displace 2D em blocos)
+        function effectPixelDisplace(w, h) {
+            const blocks = Math.floor(Math.random() * 15) + 5;
+            for(let i=0; i<blocks; i++) {
+                let sx = Math.random() * w;
+                let sy = Math.random() * h;
+                let bw = Math.random() * 150 + 20;
+                let bh = Math.random() * 150 + 20;
+                let shiftX = (Math.random() * 100) - 50;
+                let shiftY = (Math.random() * 100) - 50;
+                
+                // Adicionar ocasionalmente efeito espelhado ao bloco
+                ctx.save();
+                if (Math.random() > 0.7) {
+                    ctx.translate(sx + shiftX + bw, sy + shiftY);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(mainCanvas, sx, sy, bw, bh, 0, 0, bw, bh);
+                } else {
+                    ctx.drawImage(mainCanvas, sx, sy, bw, bh, sx + shiftX, sy + shiftY, bw, bh);
+                }
+                ctx.restore();
+            }
+        }
+
+        // 9. Deslocar Faixas (Stripe Shift uniforme)
+        function effectStripeShift(w, h) {
+            let stripeHeight = Math.floor(Math.random() * 15) + 5;
+            let offsetPattern = Math.floor(Math.random() * 3) + 2; // de N em N faixas
+            let shiftAmount = Math.floor(Math.random() * 40) + 10;
+            if(Math.random() > 0.5) shiftAmount *= -1;
+
+            for(let y = 0; y < h; y += stripeHeight) {
+                if (Math.floor(y / stripeHeight) % offsetPattern === 0) {
+                    ctx.drawImage(mainCanvas, 0, y, w, stripeHeight, shiftAmount, y, w, stripeHeight);
+                }
+            }
+        }
+
+        // 10. Corromper Cores (Ruído de inversão de canais em blocos)
+        function effectColourCorrupt(w, h) {
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            const corruptions = Math.floor(Math.random() * 5) + 2;
+
+            for (let c=0; c<corruptions; c++) {
+                let startY = Math.floor(Math.random() * h);
+                let height = Math.floor(Math.random() * (h/4)) + 20;
+                let channel = Math.floor(Math.random() * 3); // 0, 1 ou 2
+
+                for(let y = startY; y < Math.min(h, startY + height); y++) {
+                    for(let x = 0; x < w; x++) {
+                        let i = (y * w + x) * 4;
+                        // Inverte o canal específico e quebra um pouco os outros
+                        data[i + channel] = 255 - data[i + channel];
+                        if(Math.random() > 0.98) {
+                           data[i] = 255;
+                           data[i+1] = 0;
+                        }
+                    }
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        // 11. Banding de Baixa Frequência (Modulação e Posterização em Onda)
+        function effectLowFreqBanding(w, h) {
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            const frequency = Math.random() * 0.05 + 0.01;
+            const amplitude = Math.random() * 15 + 5;
+
+            for(let y = 0; y < h; y++) {
+                // Modulação via função Seno
+                let wave = Math.sin(y * frequency) * amplitude;
+                let bands = Math.max(2, 6 + wave); 
+                let step = 256 / bands;
+
+                for(let x = 0; x < w; x++) {
+                    let i = (y * w + x) * 4;
+                    // Quantização dos canais (Posterização)
+                    data[i]   = Math.floor(data[i] / step) * step;
+                    data[i+1] = Math.floor(data[i+1] / step) * step;
+                    data[i+2] = Math.floor(data[i+2] / step) * step;
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+    </script>
+</body>
+</html>
