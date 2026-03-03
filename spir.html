@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spirograph Geometry Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f4f1ea; /* Vintage paper color */
+            color: #2d3436;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .canvas-container {
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.05), 0 10px 30px rgba(0,0,0,0.1);
+            background: white;
+            border: 1px solid #d1ccc0;
+        }
+        input[type="range"] {
+            accent-color: #d63031;
+        }
+        .control-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-8 text-center border-b-2 border-black pb-4">
+            <h1 class="text-3xl font-bold uppercase tracking-widest">Geometric Pattern Generator</h1>
+            <p class="text-sm italic mt-2">Inspired by vintage wheel-inside-ring designs</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Controls Sidebar -->
+            <div class="lg:col-span-1 space-y-6 control-panel p-6 rounded-lg border border-gray-300 shadow-sm">
+                <div>
+                    <label class="block text-xs font-bold uppercase mb-2">Pattern Type</label>
+                    <div class="flex gap-2">
+                        <button id="typeHypo" class="flex-1 py-2 px-3 bg-red-600 text-white text-xs rounded font-bold transition hover:bg-red-700">INSIDE</button>
+                        <button id="typeEpi" class="flex-1 py-2 px-3 bg-gray-200 text-gray-700 text-xs rounded font-bold transition hover:bg-gray-300">OUTSIDE</button>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-bold uppercase">Ring Size (R)</label>
+                            <span id="valR" class="text-xs font-mono">150</span>
+                        </div>
+                        <input type="range" id="inputR" min="50" max="250" value="150" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-bold uppercase">Wheel Size (r)</label>
+                            <span id="valr" class="text-xs font-mono">52</span>
+                        </div>
+                        <input type="range" id="inputr" min="5" max="150" value="52" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-bold uppercase">Pen Distance (d)</label>
+                            <span id="vald" class="text-xs font-mono">40</span>
+                        </div>
+                        <input type="range" id="inputd" min="0" max="150" value="40" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-gray-200">
+                    <label class="block text-xs font-bold uppercase mb-2">Pen Color</label>
+                    <div class="grid grid-cols-5 gap-2">
+                        <button class="color-btn w-full aspect-square rounded-full bg-red-600 border-2 border-transparent active" data-color="#d63031"></button>
+                        <button class="color-btn w-full aspect-square rounded-full bg-blue-600 border-2 border-transparent" data-color="#0984e3"></button>
+                        <button class="color-btn w-full aspect-square rounded-full bg-green-700 border-2 border-transparent" data-color="#27ae60"></button>
+                        <button class="color-btn w-full aspect-square rounded-full bg-black border-2 border-transparent" data-color="#2d3436"></button>
+                        <input type="color" id="customColor" class="w-full aspect-square rounded-full bg-transparent p-0 border-none cursor-pointer">
+                    </div>
+                </div>
+
+                <div class="space-y-2 pt-4">
+                    <button id="clearBtn" class="w-full py-2 bg-white border border-black text-xs font-bold hover:bg-black hover:text-white transition uppercase">Clear Canvas</button>
+                    <button id="downloadBtn" class="w-full py-2 bg-black text-white text-xs font-bold hover:bg-gray-800 transition uppercase">Save Image</button>
+                </div>
+                
+                <div class="p-3 bg-yellow-50 border border-yellow-200 rounded text-[10px] leading-tight italic text-gray-600">
+                    * Adjust sliders to change the geometry. Patterns close automatically based on the Least Common Multiple of the Ring and Wheel.
+                </div>
+            </div>
+
+            <!-- Canvas Area -->
+            <div class="lg:col-span-3 flex flex-col">
+                <div class="canvas-container relative flex-grow rounded-lg overflow-hidden flex items-center justify-center min-h-[500px]">
+                    <canvas id="spiroCanvas"></canvas>
+                </div>
+                <div class="mt-4 flex justify-between text-[10px] uppercase font-bold tracking-tighter text-gray-500">
+                    <span>Model: Math-V1</span>
+                    <span>Status: Drawing Mathematical Perfection</span>
+                    <span>Coordinates: Dynamic</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('spiroCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = canvas.parentElement;
+
+        // State
+        let R = 150;
+        let r = 52;
+        let d = 40;
+        let color = '#d63031';
+        let isHypo = true;
+        let resolution = 0.05; // Step size for t
+
+        function resize() {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            draw();
+        }
+
+        function gcd(a, b) {
+            return b === 0 ? a : gcd(b, a % b);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Calculate rotations needed to close the loop
+            // For a spirograph to close, t must go to 2 * PI * (r / gcd(R, r))
+            // We use simple integers for math accuracy
+            const rInt = Math.round(r * 10);
+            const RInt = Math.round(R * 10);
+            const common = gcd(RInt, rInt);
+            const loops = rInt / common;
+            const maxT = Math.PI * 2 * loops;
+
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.2;
+            ctx.lineJoin = 'round';
+
+            for (let t = 0; t <= maxT + resolution; t += resolution) {
+                let x, y;
+
+                if (isHypo) {
+                    // Hypotrochoid (Inside)
+                    x = (R - r) * Math.cos(t) + d * Math.cos(((R - r) / r) * t);
+                    y = (R - r) * Math.sin(t) - d * Math.sin(((R - r) / r) * t);
+                } else {
+                    // Epitrochoid (Outside)
+                    x = (R + r) * Math.cos(t) - d * Math.cos(((R + r) / r) * t);
+                    y = (R + r) * Math.sin(t) - d * Math.sin(((R + r) / r) * t);
+                }
+
+                if (t === 0) {
+                    ctx.moveTo(centerX + x, centerY + y);
+                } else {
+                    ctx.lineTo(centerX + x, centerY + y);
+                }
+            }
+            ctx.stroke();
+
+            // Decorative background grid (subtle)
+            ctx.globalCompositeOperation = 'destination-over';
+            ctx.strokeStyle = '#f0f0f0';
+            ctx.lineWidth = 0.5;
+            for(let i=0; i<canvas.width; i+=40) {
+                ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for(let i=0; i<canvas.height; i+=40) {
+                ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // Listeners
+        const inputs = ['inputR', 'inputr', 'inputd'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            el.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                if (id === 'inputR') R = val;
+                if (id === 'inputr') r = val;
+                if (id === 'inputd') d = val;
+                document.getElementById('val' + id.slice(-1)).textContent = val;
+                draw();
+            });
+        });
+
+        document.getElementById('typeHypo').addEventListener('click', (e) => {
+            isHypo = true;
+            e.target.classList.replace('bg-gray-200', 'bg-red-600');
+            e.target.classList.replace('text-gray-700', 'text-white');
+            document.getElementById('typeEpi').classList.replace('bg-red-600', 'bg-gray-200');
+            document.getElementById('typeEpi').classList.replace('text-white', 'text-gray-700');
+            draw();
+        });
+
+        document.getElementById('typeEpi').addEventListener('click', (e) => {
+            isHypo = false;
+            e.target.classList.replace('bg-gray-200', 'bg-red-600');
+            e.target.classList.replace('text-gray-700', 'text-white');
+            document.getElementById('typeHypo').classList.replace('bg-red-600', 'bg-gray-200');
+            document.getElementById('typeHypo').classList.replace('text-white', 'text-gray-700');
+            draw();
+        });
+
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.color-btn').forEach(b => b.style.borderColor = 'transparent');
+                btn.style.borderColor = '#000';
+                color = btn.dataset.color;
+                draw();
+            });
+        });
+
+        document.getElementById('customColor').addEventListener('input', (e) => {
+            color = e.target.value;
+            draw();
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = `geometric-pattern-${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+        window.addEventListener('resize', resize);
+        window.onload = resize;
+
+    </script>
+</body>
+</html>
