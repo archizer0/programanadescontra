@@ -1,1 +1,424 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratório de Harmonógrafo - Visualização de Ondas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; color: #e0e0e0; font-family: 'Inter', sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        
+        /* Custom scrollbar for controls */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #1a1a1a; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #00bcd4; }
 
+        /* Range slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: #00bcd4;
+            cursor: pointer;
+            margin-top: -5px;
+            box-shadow: 0 0 10px rgba(0, 188, 212, 0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #333;
+            border-radius: 2px;
+        }
+        input[type=range]:focus { outline: none; }
+        
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="flex h-screen w-screen">
+
+    <!-- Controls Sidebar -->
+    <div class="glass-panel w-80 h-full absolute left-0 top-0 z-10 transform transition-transform duration-300 flex flex-col" id="sidebar">
+        <div class="p-5 border-b border-gray-700 flex justify-between items-center">
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500">Harmonógrafo</h1>
+            <button id="toggleParams" class="text-xs text-gray-400 hover:text-white">Ocultar</button>
+        </div>
+
+        <div class="p-5 overflow-y-auto custom-scroll flex-1 space-y-6">
+            
+            <!-- Main Actions -->
+            <div class="grid grid-cols-2 gap-2">
+                <button id="btnRandom" class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded text-sm transition font-medium">Aleatório</button>
+                <button id="btnAnimate" class="bg-cyan-700 hover:bg-cyan-600 text-white py-2 px-4 rounded text-sm transition font-medium flex items-center justify-center gap-2">
+                    <span id="animIcon">▶</span> Animar
+                </button>
+            </div>
+
+            <!-- Global Settings -->
+            <div class="space-y-3">
+                <h3 class="text-xs uppercase tracking-wider text-gray-500 font-bold">Configuração Global</h3>
+                <div>
+                    <div class="flex justify-between text-xs mb-1 text-gray-300">
+                        <label>Comprimento da Linha</label>
+                        <span id="val-iter">3000</span>
+                    </div>
+                    <input type="range" id="iter" min="500" max="10000" step="100" value="3000">
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs mb-1 text-gray-300">
+                        <label>Espessura</label>
+                        <span id="val-width">0.5</span>
+                    </div>
+                    <input type="range" id="lineWidth" min="0.1" max="3" step="0.1" value="0.5">
+                </div>
+                 <div>
+                    <div class="flex justify-between text-xs mb-1 text-gray-300">
+                        <label>Amortecimento (Decay)</label>
+                        <span id="val-decay">0.005</span>
+                    </div>
+                    <input type="range" id="decay" min="0" max="0.02" step="0.0001" value="0.005">
+                </div>
+            </div>
+
+            <!-- Pendulums X -->
+            <div class="space-y-3 pt-4 border-t border-gray-800">
+                <h3 class="text-xs uppercase tracking-wider text-cyan-400 font-bold">Eixo Horizontal (X)</h3>
+                
+                <div class="bg-gray-900/50 p-3 rounded border border-gray-800">
+                    <div class="text-xs font-semibold mb-2 text-cyan-200">Pêndulo 1</div>
+                    <div class="flex justify-between text-xs text-gray-400"><label>Freq</label><span id="val-fx1"></span></div>
+                    <input type="range" id="fx1" min="1" max="20" step="0.1" class="mb-2">
+                    <div class="flex justify-between text-xs text-gray-400"><label>Fase</label><span id="val-px1"></span></div>
+                    <input type="range" id="px1" min="0" max="6.28" step="0.01">
+                </div>
+
+                <div class="bg-gray-900/50 p-3 rounded border border-gray-800">
+                    <div class="text-xs font-semibold mb-2 text-cyan-200">Pêndulo 2</div>
+                    <div class="flex justify-between text-xs text-gray-400"><label>Freq</label><span id="val-fx2"></span></div>
+                    <input type="range" id="fx2" min="1" max="20" step="0.1" class="mb-2">
+                    <div class="flex justify-between text-xs text-gray-400"><label>Fase</label><span id="val-px2"></span></div>
+                    <input type="range" id="px2" min="0" max="6.28" step="0.01">
+                </div>
+            </div>
+
+            <!-- Pendulums Y -->
+            <div class="space-y-3 pt-4 border-t border-gray-800">
+                <h3 class="text-xs uppercase tracking-wider text-purple-400 font-bold">Eixo Vertical (Y)</h3>
+                
+                <div class="bg-gray-900/50 p-3 rounded border border-gray-800">
+                    <div class="text-xs font-semibold mb-2 text-purple-200">Pêndulo 3</div>
+                    <div class="flex justify-between text-xs text-gray-400"><label>Freq</label><span id="val-fy1"></span></div>
+                    <input type="range" id="fy1" min="1" max="20" step="0.1" class="mb-2">
+                    <div class="flex justify-between text-xs text-gray-400"><label>Fase</label><span id="val-py1"></span></div>
+                    <input type="range" id="py1" min="0" max="6.28" step="0.01">
+                </div>
+
+                <div class="bg-gray-900/50 p-3 rounded border border-gray-800">
+                    <div class="text-xs font-semibold mb-2 text-purple-200">Pêndulo 4</div>
+                    <div class="flex justify-between text-xs text-gray-400"><label>Freq</label><span id="val-fy2"></span></div>
+                    <input type="range" id="fy2" min="1" max="20" step="0.1" class="mb-2">
+                    <div class="flex justify-between text-xs text-gray-400"><label>Fase</label><span id="val-py2"></span></div>
+                    <input type="range" id="py2" min="0" max="6.28" step="0.01">
+                </div>
+            </div>
+
+             <!-- Color -->
+             <div class="space-y-3 pt-4 border-t border-gray-800 pb-10">
+                <h3 class="text-xs uppercase tracking-wider text-gray-500 font-bold">Estilo</h3>
+                <div class="flex gap-2">
+                     <button onclick="setPalette('cyan')" class="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 border border-white/20 hover:scale-110 transition"></button>
+                     <button onclick="setPalette('purple')" class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-600 border border-white/20 hover:scale-110 transition"></button>
+                     <button onclick="setPalette('fire')" class="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-red-600 border border-white/20 hover:scale-110 transition"></button>
+                     <button onclick="setPalette('matrix')" class="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-green-800 border border-white/20 hover:scale-110 transition"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canvas Container -->
+    <div class="flex-1 relative bg-black">
+        <canvas id="canvas"></canvas>
+        <div class="absolute bottom-5 right-5 text-gray-500 text-xs select-none pointer-events-none text-right">
+            <div>Harmonógrafo Interativo</div>
+            <div class="opacity-50">Baseado em Física de Pêndulos</div>
+        </div>
+        
+        <!-- Toggle Menu Button (Visible when sidebar hidden) -->
+        <button id="showMenuBtn" class="absolute top-5 left-5 bg-gray-800/80 p-2 rounded text-white hidden z-0 hover:bg-gray-700 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+        </button>
+    </div>
+
+    <script>
+        /**
+         * Harmonograph Simulation
+         * Simulates 4 independent oscillating pendulums with damping to draw complex Lissajous figures.
+         */
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // State
+        let width, height;
+        let isAnimating = false;
+        let animationId;
+        let timeOffset = 0; // For automatic animation
+        
+        // Colors
+        let palette = 'cyan'; // 'cyan', 'purple', 'fire', 'matrix'
+
+        // Parameters object
+        const params = {
+            iter: 6000,
+            stepSize: 0.05,
+            width: 0.6,
+            decay: 0.001, // Damping factor
+            zoom: 150, // Scale
+            
+            // X Axis Pendulums
+            f1: 3.01, p1: 1.7, amp1: 1,
+            f2: 2.0, p2: 0, amp2: 1,
+            
+            // Y Axis Pendulums
+            f3: 3.0, p3: 0, amp3: 1,
+            f4: 7.02, p4: 2.4, amp4: 1
+        };
+
+        // UI References map
+        const uiMap = {
+            iter: { el: document.getElementById('iter'), display: document.getElementById('val-iter') },
+            lineWidth: { el: document.getElementById('lineWidth'), display: document.getElementById('val-width') },
+            decay: { el: document.getElementById('decay'), display: document.getElementById('val-decay') },
+            fx1: { el: document.getElementById('fx1'), param: 'f1', display: document.getElementById('val-fx1') },
+            px1: { el: document.getElementById('px1'), param: 'p1', display: document.getElementById('val-px1') },
+            fx2: { el: document.getElementById('fx2'), param: 'f2', display: document.getElementById('val-fx2') },
+            px2: { el: document.getElementById('px2'), param: 'p2', display: document.getElementById('val-px2') },
+            fy1: { el: document.getElementById('fy1'), param: 'f3', display: document.getElementById('val-fy1') },
+            py1: { el: document.getElementById('py1'), param: 'p3', display: document.getElementById('val-py1') },
+            fy2: { el: document.getElementById('fy2'), param: 'f4', display: document.getElementById('val-fy2') },
+            py2: { el: document.getElementById('py2'), param: 'p4', display: document.getElementById('val-py2') },
+        };
+
+        // --- Core Drawing Logic ---
+
+        function resize() {
+            width = canvas.width = canvas.parentElement.clientWidth;
+            height = canvas.height = canvas.parentElement.clientHeight;
+            draw();
+        }
+
+        function getGradient() {
+            // Create gradients based on palette selection
+            // We use a long gradient that spans the drawing path
+            const grad = ctx.createLinearGradient(0, 0, width, height);
+            
+            if (palette === 'cyan') {
+                grad.addColorStop(0, '#001a2c');
+                grad.addColorStop(0.3, '#005577');
+                grad.addColorStop(0.5, '#00bcd4');
+                grad.addColorStop(1, '#81d4fa');
+                ctx.strokeStyle = '#00bcd4'; // Fallback
+            } else if (palette === 'purple') {
+                grad.addColorStop(0, '#1a0033');
+                grad.addColorStop(0.4, '#7c3aed');
+                grad.addColorStop(1, '#2dd4bf'); // Teal accent
+                ctx.strokeStyle = '#a855f7';
+            } else if (palette === 'fire') {
+                grad.addColorStop(0, '#330000');
+                grad.addColorStop(0.4, '#dc2626');
+                grad.addColorStop(0.8, '#facc15');
+                grad.addColorStop(1, '#ffffcc');
+                ctx.strokeStyle = '#ef4444';
+            } else if (palette === 'matrix') {
+                grad.addColorStop(0, '#002200');
+                grad.addColorStop(0.5, '#00ff00');
+                grad.addColorStop(1, '#ccffcc');
+                ctx.strokeStyle = '#22c55e';
+            }
+            
+            return grad;
+        }
+
+        function draw() {
+            // Clear screen
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, width, height);
+
+            // Center origin
+            ctx.save();
+            ctx.translate(width / 2, height / 2);
+
+            // Visual Settings
+            ctx.lineWidth = params.width;
+            ctx.globalCompositeOperation = 'lighter'; // Key for the glowing neon effect
+
+            ctx.beginPath();
+            
+            let x, y;
+            const tMax = params.iter; 
+            const dt = params.stepSize;
+            
+            // Generate the path
+            for (let t = 0; t < tMax; t += dt) {
+                // Decay factor: e^(-d * t)
+                const d = Math.exp(-params.decay * t); 
+                
+                // Effective phases (adding timeOffset for animation)
+                const p1 = params.p1 + (isAnimating ? timeOffset * 0.5 : 0);
+                const p2 = params.p2 + (isAnimating ? timeOffset * 0.7 : 0);
+                const p3 = params.p3 + (isAnimating ? timeOffset * 0.3 : 0);
+                const p4 = params.p4 + (isAnimating ? timeOffset * 0.9 : 0);
+
+                // Harmonograph Equations (4 pendulums)
+                // x = A1 * sin(f1*t + p1)*d + A2 * sin(f2*t + p2)*d
+                x = params.zoom * d * (Math.sin(t * params.f1 + p1) + Math.sin(t * params.f2 + p2));
+                y = params.zoom * d * (Math.sin(t * params.f3 + p3) + Math.sin(t * params.f4 + p4));
+
+                if (t === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+
+            // Apply gradient based on path position? 
+            // Canvas path gradient is global, but we can fake complexity by using the previously defined linear gradient
+            ctx.strokeStyle = getGradient();
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function loop() {
+            if (isAnimating) {
+                timeOffset += 0.02;
+                draw();
+                animationId = requestAnimationFrame(loop);
+            }
+        }
+
+        // --- UI Interactions ---
+
+        function updateDisplay(key, value) {
+            if (uiMap[key] && uiMap[key].display) {
+                uiMap[key].display.innerText = Number(value).toFixed(3).replace(/\.?0+$/, '');
+            }
+        }
+
+        function syncUI() {
+            // Update sliders to match internal params
+            uiMap.iter.el.value = params.iter;
+            updateDisplay('iter', params.iter);
+
+            uiMap.lineWidth.el.value = params.width;
+            updateDisplay('lineWidth', params.width);
+            
+            uiMap.decay.el.value = params.decay;
+            updateDisplay('decay', params.decay);
+
+            // Pendulum params
+            ['fx1', 'px1', 'fx2', 'px2', 'fy1', 'py1', 'fy2', 'py2'].forEach(id => {
+                const map = uiMap[id];
+                map.el.value = params[map.param];
+                updateDisplay(id, params[map.param]);
+            });
+        }
+
+        // Add Listeners
+        Object.keys(uiMap).forEach(key => {
+            const map = uiMap[key];
+            const el = map.el;
+            
+            el.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                
+                if (key === 'iter') params.iter = val;
+                else if (key === 'lineWidth') params.width = val;
+                else if (key === 'decay') params.decay = val;
+                else params[map.param] = val; // General params
+
+                updateDisplay(key, val);
+                if (!isAnimating) draw();
+            });
+        });
+
+        // Toggle Animation
+        document.getElementById('btnAnimate').addEventListener('click', () => {
+            isAnimating = !isAnimating;
+            const btn = document.getElementById('btnAnimate');
+            const icon = document.getElementById('animIcon');
+            
+            if (isAnimating) {
+                btn.classList.replace('bg-cyan-700', 'bg-red-600');
+                btn.classList.replace('hover:bg-cyan-600', 'hover:bg-red-500');
+                btn.innerHTML = '<span>⏹</span> Parar';
+                loop();
+            } else {
+                btn.classList.replace('bg-red-600', 'bg-cyan-700');
+                btn.classList.replace('hover:bg-red-500', 'hover:bg-cyan-600');
+                btn.innerHTML = '<span>▶</span> Animar';
+                cancelAnimationFrame(animationId);
+            }
+        });
+
+        // Randomize
+        document.getElementById('btnRandom').addEventListener('click', () => {
+            // Generate nice random ratios
+            params.f1 = Math.floor(Math.random() * 6) + 1 + (Math.random() * 0.1);
+            params.f2 = Math.floor(Math.random() * 6) + 1 + (Math.random() * 0.1);
+            params.f3 = Math.floor(Math.random() * 6) + 1 + (Math.random() * 0.1);
+            params.f4 = Math.floor(Math.random() * 6) + 1 + (Math.random() * 0.1);
+            
+            params.p1 = Math.random() * Math.PI * 2;
+            params.p2 = Math.random() * Math.PI * 2;
+            params.p3 = Math.random() * Math.PI * 2;
+            params.p4 = Math.random() * Math.PI * 2;
+            
+            params.decay = 0.001 + Math.random() * 0.008;
+
+            syncUI();
+            draw();
+        });
+
+        // Global Palette Setter
+        window.setPalette = (p) => {
+            palette = p;
+            draw();
+        };
+
+        // Sidebar Toggle
+        const sidebar = document.getElementById('sidebar');
+        const showBtn = document.getElementById('showMenuBtn');
+        
+        document.getElementById('toggleParams').addEventListener('click', () => {
+            sidebar.classList.add('-translate-x-full');
+            showBtn.classList.remove('hidden');
+        });
+
+        showBtn.addEventListener('click', () => {
+            sidebar.classList.remove('-translate-x-full');
+            showBtn.classList.add('hidden');
+        });
+
+        // Init
+        window.addEventListener('resize', resize);
+        syncUI();
+        resize(); // Initial draw
+
+    </script>
+</body>
+</html>
