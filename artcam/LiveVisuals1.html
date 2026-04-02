@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symmetry Visuals - Live Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent: #00f2ff;
+            --bg: #050505;
+        }
+        body {
+            background-color: var(--bg);
+            color: #afafaf;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: crosshair;
+        }
+        canvas {
+            image-rendering: pixelated;
+            transition: transform 0.3s ease;
+        }
+        .glass {
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .control-label {
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 2px;
+            background: #222;
+            border-radius: 5px;
+            accent-color: var(--accent);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+            cursor: pointer;
+        }
+        .checkerboard {
+            background-image: linear-gradient(45deg, #0a0a0a 25%, transparent 25%), 
+                              linear-gradient(-45deg, #0a0a0a 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #0a0a0a 75%), 
+                              linear-gradient(-45deg, transparent 75%, #0a0a0a 75%);
+            background-size: 30px 30px;
+        }
+        .active-glow {
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.15);
+            border-color: var(--accent) !important;
+        }
+        #video-hidden { display: none; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden">
+
+    <!-- Painel Lateral -->
+    <aside class="glass w-72 h-full p-6 flex flex-col z-20">
+        <div class="mb-10">
+            <h1 class="text-white text-sm font-medium tracking-[0.3em] mb-1">LIVE_VISUALS</h1>
+            <div class="h-[1px] w-full bg-gradient-to-r from-cyan-500/50 to-transparent"></div>
+            <p class="text-[10px] mt-2 text-zinc-500">OPERATOR: THRESH1_DELETED</p>
+        </div>
+        
+        <div class="space-y-8 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+            
+            <!-- Entrada de Media -->
+            <div class="space-y-2">
+                <p class="control-label">Media Source</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btn-webcam" class="text-[10px] py-2 border border-zinc-800 rounded hover:bg-zinc-800 transition">WEBCAM</button>
+                    <button onclick="document.getElementById('upload').click()" class="text-[10px] py-2 border border-zinc-800 rounded hover:bg-zinc-800 transition">FILE</button>
+                </div>
+                <input type="file" id="upload" accept="image/*" class="hidden">
+            </div>
+
+            <!-- Parâmetros de Instância -->
+            <div class="space-y-6">
+                <div>
+                    <label class="control-label"><span>Resolution / Step</span><span id="val-density">40</span></label>
+                    <input type="range" id="density" min="10" max="120" value="40">
+                </div>
+
+                <div>
+                    <label class="control-label"><span>Alpha Threshold</span><span id="val-alpha">0.3</span></label>
+                    <input type="range" id="alpha" min="0" max="0.9" step="0.01" value="0.3">
+                </div>
+
+                <div>
+                    <label class="control-label"><span>Point Scale</span><span id="val-scale">1.5</span></label>
+                    <input type="range" id="scale" min="0.5" max="3" step="0.1" value="1.5">
+                </div>
+
+                <div>
+                    <label class="control-label"><span>Color Ramp</span></label>
+                    <select id="palette" class="w-full bg-black border border-zinc-800 rounded p-2 text-[10px] text-zinc-300 outline-none focus:border-cyan-500">
+                        <option value="neon">Spectral Neon</option>
+                        <option value="toxic">Toxic Diffusion</option>
+                        <option value="deepSea">Deep Sea Alpha</option>
+                        <option value="thermal">Heat Map</option>
+                        <option value="mono">Binary Void</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="control-label"><span>Gamma / Contrast</span><span id="val-gamma">1.2</span></label>
+                    <input type="range" id="gamma" min="0.5" max="4" step="0.1" value="1.2">
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-auto pt-6 border-t border-zinc-900">
+            <button id="download" class="w-full py-2 bg-white text-black text-[10px] font-bold tracking-widest hover:bg-cyan-400 transition">
+                SAVE_FRAME
+            </button>
+        </div>
+    </aside>
+
+    <!-- Visualizer Window -->
+    <main class="flex-1 relative flex items-center justify-center checkerboard overflow-hidden">
+        <div id="status-tag" class="absolute top-6 right-6 flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
+            <span class="text-[10px] tracking-widest">LIVE_SIGNAL</span>
+        </div>
+
+        <video id="video-hidden" autoplay playsinline></video>
+        <canvas id="canvas" class="max-h-[85vh] max-w-[85vw]"></canvas>
+
+        <!-- Overlay de Dados (Estética TD) -->
+        <div class="absolute bottom-6 left-10 pointer-events-none opacity-40 text-[9px] font-light space-y-1">
+            <p>FPS: <span id="fps">60</span></p>
+            <p>X: <span id="mouse-x">0</span> Y: <span id="mouse-y">0</span></p>
+            <p>BUFFER: 1024KB</p>
+        </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: true });
+        const video = document.getElementById('video-hidden');
+        const upload = document.getElementById('upload');
+        const btnWebcam = document.getElementById('btn-webcam');
+        
+        let sourceMedia = null;
+        let isWebcam = false;
+        let animationFrame;
+
+        // Paletas Avançadas
+        const palettes = {
+            neon: (b) => {
+                if (b < 0.2) return [10, 0, 40];
+                if (b < 0.5) return [0, 242, 255]; // Cyan
+                if (b < 0.8) return [255, 0, 150]; // Pink/Magenta
+                return [255, 255, 50]; // Yellow
+            },
+            toxic: (b) => [b * 100, 255, b * 50],
+            deepSea: (b) => [0, b * 100, b * 255],
+            thermal: (b) => {
+                const h = (1 - b) * 240;
+                return hsvToRgb(h, 0.8, 1);
+            },
+            mono: (b) => [b * 255, b * 255, b * 255]
+        };
+
+        function hsvToRgb(h, s, v) {
+            let r, g, b;
+            let i = Math.floor(h / 60);
+            let f = h / 60 - i;
+            let p = v * (1 - s);
+            let q = v * (1 - f * s);
+            let t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0: r = v, g = t, b = p; break;
+                case 1: r = q, g = v, b = p; break;
+                case 2: r = p, g = v, b = t; break;
+                case 3: r = p, g = q, b = v; break;
+                case 4: r = t, g = p, b = v; break;
+                case 5: r = v, g = p, b = q; break;
+            }
+            return [r * 255, g * 255, b * 255];
+        }
+
+        function draw() {
+            if (!sourceMedia) return;
+
+            // Sincronizar tamanho do canvas com o rácio do media
+            const mediaWidth = isWebcam ? video.videoWidth : sourceMedia.width;
+            const mediaHeight = isWebcam ? video.videoHeight : sourceMedia.height;
+            
+            if (canvas.width !== mediaWidth) {
+                canvas.width = mediaWidth || 800;
+                canvas.height = mediaHeight || 600;
+            }
+
+            // Canvas auxiliar para ler pixéis
+            const off = new OffscreenCanvas(canvas.width, canvas.height);
+            const oCtx = off.getContext('2d');
+            oCtx.drawImage(isWebcam ? video : sourceMedia, 0, 0, canvas.width, canvas.height);
+            const data = oCtx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+            // Limpar com transparência
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const density = parseInt(document.getElementById('density').value);
+            const step = Math.max(4, Math.floor(canvas.width / density));
+            const alphaThreshold = parseFloat(document.getElementById('alpha').value);
+            const gamma = parseFloat(document.getElementById('gamma').value);
+            const scale = parseFloat(document.getElementById('scale').value);
+            const paletteKey = document.getElementById('palette').value;
+
+            for (let y = 0; y < canvas.height; y += step) {
+                for (let x = 0; x < canvas.width; x += step) {
+                    const i = (y * canvas.width + x) * 4;
+                    const r = data[i];
+                    const g = data[i+1];
+                    const b = data[i+2];
+
+                    let brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                    brightness = Math.pow(brightness, gamma);
+
+                    if (brightness < alphaThreshold) continue;
+
+                    const color = palettes[paletteKey](brightness);
+                    const size = (step / 2) * brightness * scale;
+
+                    ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                    
+                    // Desenho técnico: Círculo com brilho se for muito claro
+                    ctx.beginPath();
+                    if (brightness > 0.8) {
+                        ctx.arc(x, y, size * 1.1, 0, Math.PI * 2);
+                    } else {
+                        ctx.arc(x, y, size, 0, Math.PI * 2);
+                    }
+                    ctx.fill();
+                }
+            }
+
+            if (isWebcam) {
+                animationFrame = requestAnimationFrame(draw);
+            }
+        }
+
+        // Webcam Setup
+        btnWebcam.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                isWebcam = true;
+                sourceMedia = video;
+                btnWebcam.classList.add('active-glow');
+                video.onloadedmetadata = () => {
+                    draw();
+                };
+            } catch (err) {
+                console.error("Erro na webcam:", err);
+            }
+        });
+
+        // File Upload
+        upload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            isWebcam = false;
+            cancelAnimationFrame(animationFrame);
+            btnWebcam.classList.remove('active-glow');
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    sourceMedia = img;
+                    draw();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // UI Listeners
+        const controls = ['density', 'alpha', 'gamma', 'scale', 'palette'];
+        controls.forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                const disp = document.getElementById('val-' + id);
+                if (disp) disp.innerText = e.target.value;
+                if (!isWebcam) draw();
+            });
+        });
+
+        // Mouse Tracker para estética
+        window.addEventListener('mousemove', (e) => {
+            document.getElementById('mouse-x').innerText = Math.round(e.clientX);
+            document.getElementById('mouse-y').innerText = Math.round(e.clientY);
+        });
+
+        document.getElementById('download').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = `render_${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    </script>
+</body>
+</html>

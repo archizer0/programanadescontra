@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symmetry Visuals - Efeito TouchDesigner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+        }
+        canvas {
+            image-rendering: pixelated;
+            max-width: 100%;
+            height: auto;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.1);
+        }
+        .control-panel {
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid #333;
+        }
+        input[type="range"] {
+            accent-color: #00f2ff;
+        }
+        .checkerboard {
+            background-image: linear-gradient(45deg, #1a1a1a 25%, transparent 25%), 
+                              linear-gradient(-45deg, #1a1a1a 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #1a1a1a 75%), 
+                              linear-gradient(-45deg, transparent 75%, #1a1a1a 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden">
+
+    <!-- Painel Lateral de Controlos -->
+    <aside class="control-panel w-80 h-full p-6 overflow-y-auto z-10">
+        <h1 class="text-xl font-bold mb-6 text-cyan-400 uppercase tracking-tighter">Visual Engine v1.0</h1>
+        
+        <div class="mb-8">
+            <label class="block text-xs font-semibold text-gray-400 uppercase mb-2">Fonte</label>
+            <input type="file" id="upload" accept="image/*" class="hidden">
+            <button onclick="document.getElementById('upload').click()" class="w-full py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 rounded text-sm transition">
+                Carregar Imagem
+            </button>
+        </div>
+
+        <div class="space-y-6">
+            <!-- Densidade de Pontilhismo -->
+            <div>
+                <label class="flex justify-between text-xs font-semibold mb-2">
+                    <span>Densidade de Pontos</span>
+                    <span id="val-density">25</span>
+                </label>
+                <input type="range" id="density" min="5" max="100" value="25" class="w-full">
+            </div>
+
+            <!-- Gamas Cromáticas -->
+            <div>
+                <label class="block text-xs font-semibold mb-2">Paleta de Cores</label>
+                <select id="palette" class="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-sm text-cyan-200">
+                    <option value="neon">Neon (TouchDesigner Default)</option>
+                    <option value="thermal">Térmica (Azul/Amarelo/Vermelho)</option>
+                    <option value="acid">Ácido (Verde/Rosa/Roxo)</option>
+                    <option value="monochrome">Células Sombrias</option>
+                    <option value="original">Fidelidade Original</option>
+                </select>
+            </div>
+
+            <!-- Transparência (Alpha Threshold) -->
+            <div>
+                <label class="flex justify-between text-xs font-semibold mb-2">
+                    <span>Transparência (Alpha)</span>
+                    <span id="val-alpha">0.4</span>
+                </label>
+                <input type="range" id="alpha" min="0" max="1" step="0.05" value="0.4" class="w-full">
+            </div>
+
+            <!-- Intensidade de Sombras -->
+            <div>
+                <label class="flex justify-between text-xs font-semibold mb-2">
+                    <span>Contraste de Sombras</span>
+                    <span id="val-shadow">1.2</span>
+                </label>
+                <input type="range" id="shadow" min="0.5" max="3" step="0.1" value="1.2" class="w-full">
+            </div>
+
+            <!-- Efeito de Pulsação (Cromático) -->
+            <div>
+                <label class="flex justify-between text-xs font-semibold mb-2">
+                    <span>Saturação Visual</span>
+                    <span id="val-sat">1.5</span>
+                </label>
+                <input type="range" id="saturation" min="0" max="3" step="0.1" value="1.5" class="w-full">
+            </div>
+        </div>
+
+        <div class="mt-10 pt-6 border-t border-zinc-800">
+            <button id="download" class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded shadow-lg shadow-cyan-900/20 transition">
+                Exportar Frame
+            </button>
+        </div>
+    </aside>
+
+    <!-- Área de Visualização -->
+    <main class="flex-1 relative flex items-center justify-center p-10 checkerboard">
+        <div class="relative">
+            <canvas id="canvas"></canvas>
+            <div id="loader" class="absolute inset-0 flex items-center justify-center bg-black/50 hidden">
+                <span class="text-cyan-400 animate-pulse font-mono tracking-widest">A PROCESSAR...</span>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const upload = document.getElementById('upload');
+        const loader = document.getElementById('loader');
+
+        let originalImg = null;
+
+        // Configuração das Paletas
+        const palettes = {
+            neon: (r, g, b, brightness) => {
+                // Simulação do efeito de "Ramp" do TouchDesigner
+                if (brightness < 0.2) return [0, 10, 30, brightness * 255];
+                if (brightness < 0.5) return [0, 255, 255, 255]; // Cyan
+                if (brightness < 0.8) return [255, 0, 255, 255]; // Magenta
+                return [255, 255, 0, 255]; // Amarelo
+            },
+            thermal: (r, g, b, brightness) => {
+                const h = (1 - brightness) * 240;
+                return [...hsvToRgb(h, 0.8, 1), 255];
+            },
+            acid: (r, g, b, brightness) => {
+                return [brightness * 50, brightness * 255, brightness * 100, 255];
+            },
+            monochrome: (r, g, b, brightness) => {
+                const val = brightness * 255;
+                return [val, val, val, brightness > 0.3 ? 255 : 0];
+            },
+            original: (r, g, b, brightness) => [r, g, b, 255]
+        };
+
+        function hsvToRgb(h, s, v) {
+            let r, g, b;
+            let i = Math.floor(h / 60);
+            let f = h / 60 - i;
+            let p = v * (1 - s);
+            let q = v * (1 - f * s);
+            let t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0: r = v, g = t, b = p; break;
+                case 1: r = q, g = v, b = p; break;
+                case 2: r = p, g = v, b = t; break;
+                case 3: r = p, g = q, b = v; break;
+                case 4: r = t, g = p, b = v; break;
+                case 5: r = v, g = p, b = q; break;
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+
+        function process() {
+            if (!originalImg) return;
+            loader.classList.remove('hidden');
+
+            const density = parseInt(document.getElementById('density').value);
+            const alphaThreshold = parseFloat(document.getElementById('alpha').value);
+            const shadowIntensity = parseFloat(document.getElementById('shadow').value);
+            const saturation = parseFloat(document.getElementById('saturation').value);
+            const paletteKey = document.getElementById('palette').value;
+
+            // Criar canvas temporário para obter dados da imagem redimensionada
+            const tempCanvas = document.createElement('canvas');
+            const tCtx = tempCanvas.getContext('2d');
+            const scale = 1;
+            tempCanvas.width = originalImg.width;
+            tempCanvas.height = originalImg.height;
+            tCtx.drawImage(originalImg, 0, 0);
+            const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
+
+            canvas.width = originalImg.width;
+            canvas.height = originalImg.height;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const step = Math.max(2, Math.floor(100 / density * 5));
+
+            for (let y = 0; y < canvas.height; y += step) {
+                for (let x = 0; x < canvas.width; x += step) {
+                    const i = (y * canvas.width + x) * 4;
+                    let r = imgData[i];
+                    let g = imgData[i+1];
+                    let b = imgData[i+2];
+
+                    // Cálculo de Brilho / Luminosidade
+                    let brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                    
+                    // Aplicar Intensidade de Sombra
+                    brightness = Math.pow(brightness, shadowIntensity);
+
+                    // Skip por transparência (Threshold similar ao operador 'Level' do TD)
+                    if (brightness < alphaThreshold) continue;
+
+                    // Aplicar Paleta
+                    const color = palettes[paletteKey](r, g, b, brightness);
+
+                    // Desenhar Célula (Pontilhismo)
+                    const radius = (step / 2) * brightness * 1.5;
+                    
+                    ctx.beginPath();
+                    ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${brightness})`;
+                    
+                    // Estilo de forma baseado no brilho (orgânico)
+                    if (brightness > 0.7) {
+                        ctx.arc(x, y, radius, 0, Math.PI * 2);
+                    } else {
+                        // Formas mais hexagonais/irregulares para brilhos médios
+                        ctx.rect(x - radius, y - radius, radius * 2, radius * 2);
+                    }
+                    ctx.fill();
+
+                    // Adicionar Brilho/Glow subtil
+                    if (brightness > 0.8) {
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+            
+            loader.classList.add('hidden');
+        }
+
+        // Event Listeners
+        upload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Redimensionar para não travar o browser se for gigante
+                    const maxDim = 1000;
+                    let w = img.width;
+                    let h = img.height;
+                    if (w > maxDim || h > maxDim) {
+                        const ratio = Math.min(maxDim / w, maxDim / h);
+                        w *= ratio;
+                        h *= ratio;
+                    }
+                    const offscreen = document.createElement('canvas');
+                    offscreen.width = w;
+                    offscreen.height = h;
+                    offscreen.getContext('2d').drawImage(img, 0, 0, w, h);
+                    
+                    originalImg = offscreen;
+                    process();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        const inputs = ['density', 'alpha', 'shadow', 'saturation', 'palette'];
+        inputs.forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                const valDisplay = document.getElementById('val-' + id);
+                if (valDisplay) valDisplay.innerText = e.target.value;
+                // Debounce simples para performance
+                clearTimeout(window.procTimeout);
+                window.procTimeout = setTimeout(process, 100);
+            });
+        });
+
+        document.getElementById('download').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'spirit-visual-export.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+        // Inicializar com uma imagem de exemplo se disponível ou convite
+        window.onload = () => {
+            ctx.fillStyle = "#333";
+            ctx.font = "14px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("ARRASTE OU CARREGUE UMA IMAGEM PARA COMEÇAR", canvas.width/2 || 150, canvas.height/2 || 75);
+        };
+    </script>
+</body>
+</html>
