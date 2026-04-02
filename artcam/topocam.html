@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Grelha Topológica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #000510;
+            color: #fff;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #ui-layer {
+            position: absolute;
+            z-index: 10;
+            padding: 20px;
+            width: 100%;
+            pointer-events: none;
+        }
+        .control-panel {
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid #333;
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 320px;
+            backdrop-filter: blur(5px);
+        }
+        #webcam-preview {
+            width: 160px;
+            height: 120px;
+            background: #222;
+            border: 1px solid #555;
+            margin-top: 10px;
+            transform: scaleX(-1);
+            object-fit: cover;
+        }
+        input[type=range] {
+            width: 100%;
+            margin: 8px 0;
+            accent-color: #fff;
+            height: 4px;
+        }
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+        .btn {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .btn:hover {
+            background: #e0e0e0;
+            transform: translateY(-1px);
+        }
+        .btn:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Interface do Utilizador -->
+    <div id="ui-layer" class="flex flex-col md:flex-row justify-between items-start">
+        <div class="control-panel mb-4">
+            <h1 class="text-xl font-bold mb-1">Grelha Topológica</h1>
+            <p class="text-xs text-gray-400 mb-4 border-b border-gray-700 pb-2">Malha distorcida pela luz.</p>
+            
+            <div class="mb-4">
+                <button id="btn-start" class="btn w-full shadow-lg">Ligar Câmara</button>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label><span>Amplitude (Distorção)</span> <span id="val-amp">30</span></label>
+                    <input type="range" id="amplitude" min="0" max="100" value="30">
+                </div>
+
+                <div>
+                    <label><span>Frequência (Detalhe)</span> <span id="val-freq">0.2</span></label>
+                    <input type="range" id="frequency" min="0.01" max="0.5" step="0.01" value="0.2">
+                </div>
+
+                <div>
+                    <label><span>Densidade da Grelha</span> <span id="val-dens">12</span></label>
+                    <input type="range" id="density" min="4" max="40" value="12" step="1">
+                </div>
+
+                <div>
+                    <label><span>Espessura da Linha</span> <span id="val-thick">1.0</span></label>
+                    <input type="range" id="linewidth" min="0.5" max="5" value="1.0" step="0.5">
+                </div>
+            </div>
+
+            <div class="mt-4 border-t border-gray-700 pt-3">
+                <p class="text-xs mb-1 text-gray-500">FEED ORIGINAL</p>
+                <video id="webcam-preview" playsinline muted></video>
+            </div>
+            
+            <div id="error-msg" class="text-red-400 text-xs mt-2 hidden bg-red-900/30 p-2 rounded"></div>
+        </div>
+    </div>
+
+    <!-- Canvas Principal -->
+    <canvas id="main-canvas"></canvas>
+
+    <!-- Canvas Oculto para processamento -->
+    <canvas id="buffer-canvas" style="display:none;"></canvas>
+
+    <script>
+        const video = document.getElementById('webcam-preview');
+        const mainCanvas = document.getElementById('main-canvas');
+        const bufferCanvas = document.getElementById('buffer-canvas');
+        const ctx = mainCanvas.getContext('2d');
+        const bufferCtx = bufferCanvas.getContext('2d');
+        const startBtn = document.getElementById('btn-start');
+        const errorMsg = document.getElementById('error-msg');
+
+        // UI Inputs
+        const uiAmplitude = document.getElementById('amplitude');
+        const uiFrequency = document.getElementById('frequency');
+        const uiDensity = document.getElementById('density');
+        const uiLineWidth = document.getElementById('linewidth');
+
+        // Labels para atualizar valores
+        const updateLabels = () => {
+            document.getElementById('val-amp').innerText = uiAmplitude.value;
+            document.getElementById('val-freq').innerText = uiFrequency.value;
+            document.getElementById('val-dens').innerText = uiDensity.value;
+            document.getElementById('val-thick').innerText = uiLineWidth.value;
+        };
+        [uiAmplitude, uiFrequency, uiDensity, uiLineWidth].forEach(el => el.addEventListener('input', updateLabels));
+
+
+        let isStreaming = false;
+        
+        // Resolução de processamento
+        const PROCESS_WIDTH = 480; 
+        const PROCESS_HEIGHT = 360;
+
+        function resizeCanvas() {
+            mainCanvas.width = window.innerWidth;
+            mainCanvas.height = window.innerHeight;
+            bufferCanvas.width = PROCESS_WIDTH;
+            bufferCanvas.height = PROCESS_HEIGHT;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: "user" 
+                    }, 
+                    audio: false 
+                });
+                video.srcObject = stream;
+                await video.play();
+                isStreaming = true;
+                startBtn.textContent = "A Capturar...";
+                startBtn.disabled = true;
+                errorMsg.classList.add('hidden');
+                renderLoop();
+            } catch (err) {
+                console.error(err);
+                errorMsg.textContent = "Erro: " + err.message;
+                errorMsg.classList.remove('hidden');
+            }
+        });
+
+        function renderLoop() {
+            if (!isStreaming) return;
+
+            // 1. Capturar frame no buffer
+            bufferCtx.save();
+            bufferCtx.scale(-1, 1);
+            bufferCtx.drawImage(video, -PROCESS_WIDTH, 0, PROCESS_WIDTH, PROCESS_HEIGHT);
+            bufferCtx.restore();
+
+            const frame = bufferCtx.getImageData(0, 0, PROCESS_WIDTH, PROCESS_HEIGHT);
+            const data = frame.data;
+
+            // 2. Limpar ecrã com o azul profundo
+            ctx.fillStyle = '#000510';
+            ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+
+            // 3. Configurações Comuns
+            ctx.lineWidth = parseFloat(uiLineWidth.value);
+            
+            const step = parseInt(uiDensity.value); 
+            const amp = parseInt(uiAmplitude.value); 
+            const freq = parseFloat(uiFrequency.value);
+
+            const scaleX = mainCanvas.width / PROCESS_WIDTH;
+            const scaleY = mainCanvas.height / PROCESS_HEIGHT;
+            
+            // Centrar a imagem no ecrã
+            const offsetX = (mainCanvas.width - PROCESS_WIDTH * scaleX) / 2;
+            const offsetY = (mainCanvas.height - PROCESS_HEIGHT * scaleY) / 2;
+
+            // --- PASSAGEM 1: LINHAS HORIZONTAIS (Azul Claro com Brilho Branco) ---
+            ctx.strokeStyle = '#4fc3f7'; // Azul claro
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = 'white';    // Brilho branco
+
+            for (let y = 0; y < PROCESS_HEIGHT; y += step) {
+                ctx.beginPath();
+                let hasStarted = false;
+
+                for (let x = 0; x < PROCESS_WIDTH; x++) {
+                    const index = (y * PROCESS_WIDTH + x) * 4;
+                    
+                    const r = data[index];
+                    const g = data[index + 1];
+                    const b = data[index + 2];
+                    const brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+                    const wave = Math.sin(x * freq);
+                    const distortion = wave * brightness * amp;
+
+                    const screenX = x * scaleX;
+                    const screenY = (y * scaleY) + distortion;
+
+                    if (!hasStarted) {
+                        ctx.moveTo(offsetX + screenX, offsetY + screenY);
+                        hasStarted = true;
+                    } else {
+                        ctx.lineTo(offsetX + screenX, offsetY + screenY);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            // --- PASSAGEM 2: LINHAS VERTICAIS (Brancas com Brilho Azul) ---
+            ctx.strokeStyle = '#ffffff';  // Branco
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = '#00f0ff';  // Brilho Ciano
+
+            for (let x = 0; x < PROCESS_WIDTH; x += step) {
+                ctx.beginPath();
+                let hasStarted = false;
+
+                for (let y = 0; y < PROCESS_HEIGHT; y++) {
+                    const index = (y * PROCESS_WIDTH + x) * 4;
+                    
+                    const r = data[index];
+                    const g = data[index + 1];
+                    const b = data[index + 2];
+                    const brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+                    // Para linhas verticais, a onda baseia-se em Y e distorce em X
+                    const wave = Math.sin(y * freq);
+                    const distortion = wave * brightness * amp;
+
+                    const screenX = (x * scaleX) + distortion;
+                    const screenY = y * scaleY;
+
+                    if (!hasStarted) {
+                        ctx.moveTo(offsetX + screenX, offsetY + screenY);
+                        hasStarted = true;
+                    } else {
+                        ctx.lineTo(offsetX + screenX, offsetY + screenY);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            // Resetar sombra para não afetar outras coisas se houver
+            ctx.shadowBlur = 0;
+
+            requestAnimationFrame(renderLoop);
+        }
+    </script>
+</body>
+</html>
