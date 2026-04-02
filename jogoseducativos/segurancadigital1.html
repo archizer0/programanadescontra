@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Missão: Segurança Digital - Edição Synthwave</title>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome para os ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #FF00FF; /* Magenta Neon */
+            --secondary: #00FFFF; /* Cyan Neon */
+            --tertiary: #FF8C00; /* Laranja Neon */
+            --danger: #EF4444;
+            --dark: #0a0015; /* Roxo muito escuro */
+            --light: #F8FAFC;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark);
+            color: var(--light);
+            user-select: none;
+        }
+
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .panel {
+            background: rgba(10, 0, 21, 0.7);
+            backdrop-filter: blur(8px);
+            padding: 15px 25px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 0, 255, 0.3);
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.2);
+            pointer-events: auto;
+        }
+
+        #top-bar {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px;
+        }
+
+        .stat-box {
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--secondary);
+            text-shadow: 0 0 5px var(--secondary);
+        }
+
+        .stat-value {
+            color: #fff;
+            font-size: 1.5rem;
+            text-shadow: none;
+        }
+
+        #bottom-bar {
+            margin: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 20px;
+        }
+
+        #controls-panel {
+            text-align: center;
+            min-width: 300px;
+        }
+
+        button {
+            background: transparent;
+            color: var(--secondary);
+            border: 2px solid var(--secondary);
+            padding: 12px 24px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3), inset 0 0 10px rgba(0, 255, 255, 0.1);
+        }
+
+        button:hover {
+            background: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.6), inset 0 0 15px rgba(0, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(2px);
+        }
+
+        button:disabled {
+            border-color: #444;
+            color: #666;
+            box-shadow: none;
+            background: transparent;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #dice-display {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+            color: var(--tertiary);
+            text-shadow: 0 0 20px var(--tertiary);
+        }
+
+        #instruction {
+            font-size: 1.1rem;
+            color: #ccc;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: rgba(10, 0, 21, 0.95);
+            border: 3px solid var(--primary);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(255, 0, 255, 0.4), inset 0 0 20px rgba(255, 0, 255, 0.2);
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-title {
+            font-size: 2rem;
+            color: var(--secondary);
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px var(--secondary);
+        }
+
+        .question-text {
+            font-size: 1.3rem;
+            line-height: 1.5;
+            margin-bottom: 30px;
+        }
+
+        .options-grid {
+            display: grid;
+            gap: 15px;
+            text-align: left;
+        }
+
+        .option-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            color: var(--light);
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: none;
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: none;
+            letter-spacing: normal;
+        }
+
+        .option-btn i {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .option-btn:hover {
+            background: rgba(255, 0, 255, 0.1);
+            border-color: var(--primary);
+            transform: translateX(5px);
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
+        }
+
+        .option-btn.correct {
+            background: rgba(0, 255, 255, 0.15);
+            border-color: var(--secondary);
+            color: var(--secondary);
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+        }
+
+        .option-btn.correct i.fa-check {
+            opacity: 1;
+            color: var(--secondary);
+        }
+
+        .option-btn.wrong {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: var(--danger);
+            color: var(--danger);
+            text-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+        }
+        
+        .option-btn.wrong i.fa-xmark {
+            opacity: 1;
+            color: var(--danger);
+        }
+
+        #feedback-msg {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            min-height: 30px;
+        }
+
+        .topic-badge {
+            background: linear-gradient(45deg, var(--primary), #8A2BE2);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .topic-badge i {
+            font-size: 1.2rem;
+        }
+
+        /* Start / End Screens */
+        #start-screen, #end-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark);
+            background: radial-gradient(circle at center, #1a0b2e 0%, #0a0015 100%);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 4.5rem;
+            color: var(--tertiary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            font-style: italic;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px var(--tertiary), 0 0 20px var(--tertiary), 0 0 40px var(--danger);
+            -webkit-text-stroke: 1px #FFF;
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            color: var(--secondary);
+            max-width: 700px;
+            margin-bottom: 40px;
+            line-height: 1.6;
+            text-shadow: 0 0 5px var(--secondary);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1>Segurança Digital</h1>
+        <p class="subtitle">Desliza pela autoestrada néon! Lança o dado, usa a <b>SETA DIREITA</b> para avançar e supera os desafios de segurança na Internet. Se acertares ficas, se errares recuas duas casas.</p>
+        <button id="btn-start" style="font-size: 1.5rem; padding: 15px 40px; border-color: var(--primary); color: var(--primary); box-shadow: 0 0 15px rgba(255,0,255,0.4), inset 0 0 10px rgba(255,0,255,0.2);">
+            <i class="fa-solid fa-play"></i> INICIAR CONEXÃO
+        </button>
+    </div>
+
+    <!-- End Screen -->
+    <div id="end-screen" class="hidden">
+        <h1>Download Concluído</h1>
+        <p class="subtitle" id="final-stats"></p>
+        <button id="btn-restart" style="font-size: 1.5rem; padding: 15px 40px;">
+            <i class="fa-solid fa-rotate-right"></i> REINICIAR SISTEMA
+        </button>
+    </div>
+
+    <!-- 3D Container -->
+    <div id="game-container"></div>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer" class="hidden">
+        <div id="top-bar">
+            <div class="panel stat-box">
+                <i class="fa-solid fa-stopwatch" style="color: var(--primary);"></i> Tempo <span id="timer" class="stat-value">00:00</span>
+            </div>
+            <div class="panel stat-box">
+                <i class="fa-solid fa-bolt" style="color: var(--tertiary);"></i> Pontos <span id="score" class="stat-value">0</span>
+            </div>
+        </div>
+
+        <div id="bottom-bar">
+            <div class="panel" id="controls-panel">
+                <div id="dice-display">🎲</div>
+                <button id="btn-roll"><i class="fa-solid fa-dice"></i> Lançar Dado</button>
+                <div id="instruction">Clica para lançar o dado</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Question Modal -->
+    <div id="question-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="topic-badge">
+                <i id="q-icon" class="fa-solid fa-question-circle"></i> 
+                <span id="q-topic">Tema</span>
+            </div>
+            <h2 class="modal-title">Alerta de Sistema!</h2>
+            <p class="question-text" id="q-text">Pergunta aqui?</p>
+            <div class="options-grid" id="q-options">
+                <!-- Buttons injected via JS -->
+            </div>
+            <div id="feedback-msg"></div>
+            <button id="btn-continue" class="hidden" style="margin-top: 20px; width: 100%; border-color: var(--primary); color: var(--primary);">
+                Continuar Processo <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA: Perguntas Ampliadas e Ícones ---
+        const topicIcons = {
+            "Cuidados com os Dispositivos": "fa-mobile-screen-button",
+            "Partilha de Dados Pessoais": "fa-id-card-clip",
+            "Pegada Digital": "fa-shoe-prints",
+            "Intrusão na Privacidade": "fa-user-lock",
+            "Scams e Phishing": "fa-fish-fins",
+            "Comportamentos Inadequados": "fa-triangle-exclamation",
+            "Desinformação e AI Slop": "fa-robot"
+        };
+
+        const allQuestions = [
+            // Cuidados com os Dispositivos
+            { topic: "Cuidados com os Dispositivos", question: "Acabaste de jogar no tablet e vais lanchar. O que deves fazer?", options: ["Deixar o ecrã ligado em cima da mesa.", "Bloquear o ecrã com o teu PIN ou palavra-passe.", "Esconder debaixo da almofada a carregar."], correct: 1, explanation: "Nunca deixes o ecrã desbloqueado. Qualquer pessoa pode usá-lo e fingir que és tu!" },
+            { topic: "Cuidados com os Dispositivos", question: "A bateria está fraca. Como deves desligar o carregador da tomada?", options: ["Puxo pelo fio com força.", "Puxo pela peça de plástico (a ficha).", "Deixo sempre ligado para não estragar."], correct: 1, explanation: "Puxar pelo fio rebenta os cabos por dentro. Puxa sempre pela ficha de plástico." },
+            { topic: "Cuidados com os Dispositivos", question: "O teu ecrã está sujo com dedadas. Como o limpas?", options: ["Com a t-shirt suja que trago vestida.", "Com um pano suave próprio ou microfibra.", "Com toalhetes molhados e muito sabão."], correct: 1, explanation: "Panos suaves não riscam o ecrã. Líquidos ou tecidos ásperos podem estragar o aparelho." },
+            { topic: "Cuidados com os Dispositivos", question: "O telemóvel pede para fazer uma 'Atualização de Sistema'. O que fazes?", options: ["Ignoro sempre, demora muito tempo.", "Peço aos meus pais para ajudar a atualizar.", "Apago a mensagem."], correct: 1, explanation: "As atualizações são as vitaminas e escudos novos do teu aparelho contra vírus!" },
+
+            // Partilha de Dados Pessoais
+            { topic: "Partilha de Dados Pessoais", question: "Vais criar uma conta num jogo novo. Que nome (nickname) deves escolher?", options: ["O meu nome e a minha idade (ex: JoaoSilva10).", "O nome da minha escola.", "Um nome divertido inventado (ex: NinjaEspacial)."], correct: 2, explanation: "O teu nome verdadeiro é um tesouro! Usa sempre um nickname que não revele quem és." },
+            { topic: "Partilha de Dados Pessoais", question: "A tua família vai de férias amanhã! O que partilhas online?", options: ["Nada. Só publico fotos quando já tiver regressado.", "Escrevo a dizer que a casa vai ficar vazia.", "Mando mensagem a todos os jogadores a avisar."], correct: 0, explanation: "Avisar que vais de férias diz aos estranhos que a tua casa está vazia. Segurança primeiro!" },
+            { topic: "Partilha de Dados Pessoais", question: "Fizeste um teste online que te pede a morada e data de nascimento para ver o resultado. O que fazes?", options: ["Preencho tudo para ver qual animal sou.", "Invento dados falsos e meto lá.", "Fecho o teste. Estão a tentar roubar os meus dados."], correct: 2, explanation: "Estes testes são muitas vezes armadilhas disfarçadas para recolher informações pessoais." },
+            { topic: "Partilha de Dados Pessoais", question: "Por que deves desligar a 'Localização' na câmara do telemóvel?", options: ["Para poupar a bateria apenas.", "Para que as fotos não revelem o local exato onde estou.", "Para as fotos ficarem mais bonitas."], correct: 1, explanation: "O GPS guarda as coordenadas nas fotos. Desligar protege a tua localização de estranhos." },
+
+            // Pegada Digital
+            { topic: "Pegada Digital", question: "Estás muito zangado porque perdeste um jogo e queres escrever um comentário mau. O que fazes?", options: ["Escrevo logo o que me vier à cabeça.", "Aplico a regra dos 5 segundos, respiro fundo e não envio.", "Escrevo e depois apago passado 10 segundos."], correct: 1, explanation: "Tudo o que pões na internet deixa marca na tua Pegada Digital. A regra dos 5 segundos ajuda a não fazer asneiras!" },
+            { topic: "Pegada Digital", question: "Tiraste uma foto engraçada de um amigo que caiu no recreio. O que deves fazer antes de a publicar?", options: ["Publicar logo para todos nos rirmos.", "Perguntar primeiro se ele deixa publicar.", "Pôr um filtro e depois publicar."], correct: 1, explanation: "Respeitar os amigos faz parte de uma boa Pegada Digital. Nunca publiques imagens de outros sem permissão." },
+            { topic: "Pegada Digital", question: "Se apagares uma foto 10 segundos depois de a publicares, ela desaparece para sempre?", options: ["Sim, a internet apaga tudo instantaneamente.", "Não, alguém pode já ter tirado um print screen (captura de ecrã).", "Só se apagares também o teu perfil."], correct: 1, explanation: "Na internet, o que publicas pode ficar lá para sempre. Pensa antes de publicar!" },
+
+            // Intrusão na Privacidade
+            { topic: "Intrusão na Privacidade", question: "Alguém no jogo diz que te dá 10.000 moedas de ouro se lhe deres a tua palavra-passe. O que fazes?", options: ["Dou a palavra-passe, quero muito as moedas!", "Dou, mas mudo a palavra-passe no dia seguinte.", "Não dou! A palavra-passe é como a chave de casa, não se partilha."], correct: 2, explanation: "É uma armadilha para te roubarem a conta. Nunca partilhes a tua palavra-passe com ninguém (exceto com os teus pais)." },
+            { topic: "Intrusão na Privacidade", question: "Como deve ser uma boa palavra-passe?", options: ["A data do meu aniversário.", "'batata123' ou '123456'.", "Uma frase divertida só minha, como 'OMeuCaoGostaDeSopas!'."], correct: 2, explanation: "Usar frases longas torna quase impossível para os piratas adivinharem a tua password." },
+            { topic: "Intrusão na Privacidade", question: "Vais usar o computador da escola ou da biblioteca. O que deves fazer no final?", options: ["Desligar o ecrã apenas.", "Clicar sempre em 'Terminar Sessão' (Log out) nas tuas contas.", "Deixar a página aberta para o próximo colega."], correct: 1, explanation: "Se não terminares a sessão, a próxima pessoa que usar o computador terá acesso à tua conta!" },
+            { topic: "Intrusão na Privacidade", question: "Tens de escrever a tua password à frente dos teus amigos. O que fazes?", options: ["Digo-a em voz alta para eles ajudarem.", "Escrevo devagar para não me enganar.", "Tapo o teclado com uma mão enquanto escrevo."], correct: 2, explanation: "A password é secreta! Usar a 'mão escudo' previne que outros vejam a tua chave secreta." },
+
+            // Scams e Phishing
+            { topic: "Scams e Phishing", question: "Recebes um email a dizer: 'O teu Roblox vai ser apagado se não clicares aqui agora!'. O que é isto?", options: ["Um aviso oficial da empresa.", "Um vírus automático.", "Phishing (um isco assustador para te roubar dados)."], correct: 2, explanation: "O truque da urgência é usado pelos piratas para entrares em pânico e clicares sem pensar." },
+            { topic: "Scams e Phishing", question: "Recebes um email de um desconhecido com um anexo chamado 'JogoGratis.exe'. O que fazes?", options: ["Faço download para ver se o jogo é bom.", "Apago imediatamente sem abrir.", "Reencaminho para os meus amigos."], correct: 1, explanation: "Ficheiros de desconhecidos são a forma mais comum de apanhar vírus no computador. Lixo com ele!" },
+            { topic: "Scams e Phishing", question: "Estás a navegar na net e salta uma janela a piscar: 'Parabéns, ganhaste um iPhone novo!'. O que fazes?", options: ["Preencho os meus dados para o receber em casa.", "Clico na janela para ver as cores disponíveis.", "Fecho logo no 'X'. É uma armadilha!"], correct: 2, explanation: "Se parece bom demais para ser verdade, é mentira! Estas janelas (pop-ups) são scams (esquemas)." },
+            { topic: "Scams e Phishing", question: "Um amigo envia-te mensagem no jogo a pedir dinheiro e a falar de forma estranha. O que se passa?", options: ["Ele está só a brincar.", "A conta dele foi roubada por um pirata.", "Ele precisa mesmo da tua ajuda financeira."], correct: 1, explanation: "Os piratas usam contas roubadas para enganar os amigos da pessoa. Fala com ele na escola para confirmar!" },
+
+            // Comportamentos Inadequados
+            { topic: "Comportamentos Inadequados", question: "Um 'jogador da tua idade' pede para ligares a câmara enquanto vestes o pijama. O que fazes?", options: ["Ligo, pois somos amigos no jogo.", "Desligo o jogo, bloqueio a pessoa e conto logo aos meus pais.", "Digo que a minha câmara está estragada."], correct: 1, explanation: "Isso é um Alarme Vermelho e é crime! O teu corpo é teu, e deves sempre avisar um adulto se algo assim acontecer." },
+            { topic: "Comportamentos Inadequados", question: "Alguém online diz-te: 'Isto é um segredo só nosso, não contes aos teus pais'. O que isto significa?", options: ["É um Alarme Vermelho gigante! Adultos não pedem segredos a crianças.", "Significa que confiam muito em mim.", "É uma missão secreta do jogo."], correct: 0, explanation: "A regra do 'Não há segredos' é vital. Se alguém pedir para esconder algo dos pais, corta a conversa e avisa-os." },
+            { topic: "Comportamentos Inadequados", question: "Alguém insultou-te e enviou-te uma mensagem horrível num chat. Qual é a melhor atitude?", options: ["Apagar logo a mensagem para não a ver mais.", "Insultar de volta com mais força.", "Não apagar (serve de prova), bloquear a pessoa e mostrar aos pais."], correct: 2, explanation: "Nunca apagues as provas de comportamentos errados online. Bloqueia e mostra aos adultos para te poderem defender." },
+
+            // Desinformação e AI Slop
+            { topic: "Desinformação e AI Slop", question: "Vês um vídeo bizarro de pessoas com 6 dedos e gatos a voar. O que será?", options: ["Um documentário científico.", "Magia verdadeira.", "AI Slop (Lixo criado por Inteligência Artificial para ganhar views)."], correct: 2, explanation: "Sê um detetive! Muitas imagens estranhas na internet são falsas e feitas por IA só para enganar." },
+            { topic: "Desinformação e AI Slop", question: "Lês uma notícia chocante: 'As férias grandes vão ser canceladas no mundo todo!'. O que fazes?", options: ["Partilho logo com toda a turma no WhatsApp.", "Fico a chorar e desligo o computador.", "Verifico quem é o autor e pergunto aos meus pais se é verdade."], correct: 2, explanation: "A Desinformação (Fake News) serve para causar pânico. Questiona sempre a origem da informação!" },
+            { topic: "Desinformação e AI Slop", question: "Viste um vídeo criado por IA que é hilariante mas completamente falso. Deves enviá-lo a todos?", options: ["Sim, rir faz bem.", "Não. Partilhar o 'AI Slop' só ajuda os criadores a ganhar mais dinheiro com lixo.", "Guardo num ficheiro secreto."], correct: 1, explanation: "Ao não partilhares lixo digital, estás a ajudar a manter a internet um lugar com melhor qualidade e verdade!" }
+        ];
+
+        let availableQuestions = [];
+
+        function shuffleQuestions() {
+            availableQuestions = [...allQuestions];
+            for (let i = availableQuestions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [availableQuestions[i], availableQuestions[j]] = [availableQuestions[j], availableQuestions[i]];
+            }
+        }
+
+        // --- GAME VARIABLES ---
+        let scene, camera, renderer, robot, boardGroup;
+        const tiles = [];
+        
+        // Tabuleiro Expandido
+        const numCols = 8;
+        const numRows = 7;
+        const tileSize = 4;
+        
+        let currentTileIndex = 0;
+        let targetTileIndex = 0;
+        let stepsRemaining = 0;
+        let isAnimating = false;
+        
+        let score = 0;
+        let timeElapsed = 0;
+        let timerInterval;
+        let gameActive = false;
+        
+        // --- THREE.JS SETUP ---
+        function initThreeJS() {
+            const container = document.getElementById('game-container');
+            scene = new THREE.Scene();
+            
+            // Fundo Synthwave Roxo Escuro
+            scene.background = new THREE.Color(0x0a0015);
+            scene.fog = new THREE.FogExp2(0x0a0015, 0.02);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // --- Iluminação Synthwave ---
+            // Luz ambiente roxa profunda
+            const ambientLight = new THREE.AmbientLight(0x402060, 1.5);
+            scene.add(ambientLight);
+
+            // Luz direcional cor de pôr-do-sol
+            const dirLight = new THREE.DirectionalLight(0xff8866, 1.5);
+            dirLight.position.set(20, 30, -20);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+
+            // Ponto de luz Magenta
+            const magentaLight = new THREE.PointLight(0xff00ff, 2, 50);
+            magentaLight.position.set(-10, 10, 10);
+            scene.add(magentaLight);
+            
+            // Ponto de luz Ciano
+            const cyanLight = new THREE.PointLight(0x00ffff, 2, 50);
+            cyanLight.position.set(10, 5, 20);
+            scene.add(cyanLight);
+
+            // --- Cenário Synthwave ---
+            // 1. Chão com Grelha Neon
+            const gridHelper = new THREE.GridHelper(300, 150, 0xff00ff, 0x330066);
+            gridHelper.position.y = -1;
+            scene.add(gridHelper);
+
+            // 2. Sol Retro
+            const sunGeo = new THREE.CircleGeometry(50, 64);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xff2a5f, fog: false });
+            const sun = new THREE.Mesh(sunGeo, sunMat);
+            sun.position.set((numCols * tileSize) / 2, 10, -100); // Colocado longe no horizonte
+            scene.add(sun);
+
+            // 3. Estrelas / Poeira Digital
+            const starsGeo = new THREE.BufferGeometry();
+            const starsCount = 1000;
+            const posArray = new Float32Array(starsCount * 3);
+            for(let i = 0; i < starsCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 300; // X
+                posArray[i+1] = Math.random() * 100;       // Y
+                posArray[i+2] = (Math.random() - 0.5) * 300; // Z
+            }
+            starsGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const starsMat = new THREE.PointsMaterial({ size: 0.3, color: 0x00ffff, transparent: true, opacity: 0.8 });
+            const starMesh = new THREE.Points(starsGeo, starsMat);
+            scene.add(starMesh);
+
+            createBoard();
+            createRobot();
+
+            updateCameraPosition(true);
+            window.addEventListener('resize', onWindowResize, false);
+            animate();
+        }
+
+        function createBoard() {
+            boardGroup = new THREE.Group();
+            scene.add(boardGroup);
+
+            const geoTile = new THREE.BoxGeometry(tileSize * 0.85, 0.6, tileSize * 0.85);
+            
+            // Materiais do Tabuleiro: Amarelo, Branco, Laranja
+            const matYellow = new THREE.MeshStandardMaterial({ color: 0xFFD700, roughness: 0.3, metalness: 0.4, emissive: 0x332200 });
+            const matWhite = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.3, metalness: 0.4, emissive: 0x222222 });
+            const matOrange = new THREE.MeshStandardMaterial({ color: 0xFF8C00, roughness: 0.3, metalness: 0.4, emissive: 0x441100 });
+            
+            const matStart = new THREE.MeshStandardMaterial({ color: 0x10B981, roughness: 0.2, metalness: 0.6, emissive: 0x003311 });
+            const matEnd = new THREE.MeshStandardMaterial({ color: 0xEF4444, roughness: 0.2, metalness: 0.6, emissive: 0x440000 });
+
+            let index = 0;
+            for (let row = 0; row < numRows; row++) {
+                for (let col = 0; col < numCols; col++) {
+                    let actualCol = (row % 2 === 0) ? col : (numCols - 1 - col);
+                    
+                    let material;
+                    if (index === 0) {
+                        material = matStart;
+                    } else if (index === (numRows * numCols) - 1) {
+                        material = matEnd;
+                    } else {
+                        // Lógica: Amarelo(0) -> Branco(1) -> Laranja(2)
+                        const colorIndex = (index - 1) % 3;
+                        if (colorIndex === 0) material = matYellow;
+                        else if (colorIndex === 1) material = matWhite;
+                        else material = matOrange;
+                    }
+
+                    const tile = new THREE.Mesh(geoTile, material);
+                    tile.position.set(actualCol * tileSize, 0, row * tileSize);
+                    tile.receiveShadow = true;
+                    tile.castShadow = true;
+                    
+                    tiles.push({ mesh: tile, position: tile.position.clone() });
+                    boardGroup.add(tile);
+                    
+                    createFloatingText((index + 1).toString(), tile.position.clone().add(new THREE.Vector3(0, 0.7, 0)));
+                    index++;
+                }
+            }
+        }
+
+        function createFloatingText(text, pos) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            
+            // Fundo escuro para contrastar com amarelo/branco/laranja
+            ctx.fillStyle = 'rgba(10, 0, 21, 0.9)';
+            ctx.beginPath();
+            ctx.arc(64, 64, 60, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Rebordo Néon
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#00FFFF'; // Ciano
+            ctx.stroke();
+
+            ctx.font = 'Bold 55px Arial';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 64, 64);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const mat = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(mat);
+            sprite.position.copy(pos);
+            sprite.scale.set(1.5, 1.5, 1);
+            boardGroup.add(sprite);
+        }
+
+        function createRobot() {
+            robot = new THREE.Group();
+
+            // Materiais do Robot ajustados para brilhar no Synthwave
+            const metalMat = new THREE.MeshStandardMaterial({ color: 0x94A3B8, metalness: 0.9, roughness: 0.2 });
+            const primaryMat = new THREE.MeshStandardMaterial({ color: 0xFF00FF, metalness: 0.5, roughness: 0.3 }); // Magenta
+            const glowMat = new THREE.MeshBasicMaterial({ color: 0x00FFFF }); // Ciano brilhante
+            const dangerMat = new THREE.MeshBasicMaterial({ color: 0x00FFaa }); // Verde Néon
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 });
+
+            // Base
+            const geoBase = new THREE.SphereGeometry(0.85, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+            const base = new THREE.Mesh(geoBase, metalMat);
+            base.rotation.x = Math.PI;
+            base.position.y = 0.9;
+            base.castShadow = true;
+            robot.add(base);
+
+            // Anel de luz Ciano
+            const geoRing = new THREE.TorusGeometry(0.85, 0.08, 16, 32);
+            const ring = new THREE.Mesh(geoRing, glowMat);
+            ring.position.y = 0.1;
+            ring.rotation.x = Math.PI / 2;
+            robot.add(ring);
+
+            // Corpo
+            const geoBodyCyl = new THREE.CylinderGeometry(0.65, 0.65, 0.8, 32);
+            const bodyCyl = new THREE.Mesh(geoBodyCyl, primaryMat);
+            bodyCyl.position.y = 1.3;
+            bodyCyl.castShadow = true;
+            robot.add(bodyCyl);
+
+            const geoBodyBottom = new THREE.SphereGeometry(0.65, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
+            const bodyBottom = new THREE.Mesh(geoBodyBottom, primaryMat);
+            bodyBottom.position.y = 0.9;
+            robot.add(bodyBottom);
+
+            const geoBodyTop = new THREE.SphereGeometry(0.65, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+            const bodyTop = new THREE.Mesh(geoBodyTop, primaryMat);
+            bodyTop.position.y = 1.7;
+            robot.add(bodyTop);
+
+            // Pescoço
+            const geoNeck = new THREE.CylinderGeometry(0.3, 0.3, 0.3, 32);
+            const neck = new THREE.Mesh(geoNeck, metalMat);
+            neck.position.y = 1.85;
+            robot.add(neck);
+            
+            const geoNeckRing = new THREE.TorusGeometry(0.32, 0.04, 8, 32);
+            const neckRing1 = new THREE.Mesh(geoNeckRing, glowMat);
+            neckRing1.position.y = 1.8;
+            neckRing1.rotation.x = Math.PI/2;
+            robot.add(neckRing1);
+            const neckRing2 = new THREE.Mesh(geoNeckRing, glowMat);
+            neckRing2.position.y = 1.9;
+            neckRing2.rotation.x = Math.PI/2;
+            robot.add(neckRing2);
+
+            // Cabeça
+            const geoHead = new THREE.SphereGeometry(0.6, 32, 16, 0, Math.PI * 2, 0, Math.PI / 1.7);
+            const head = new THREE.Mesh(geoHead, metalMat);
+            head.position.y = 2.0;
+            head.castShadow = true;
+            robot.add(head);
+
+            // Visor
+            const geoVisor = new THREE.CylinderGeometry(0.61, 0.61, 0.3, 32, 1, false, -Math.PI/2.5, (Math.PI/2.5)*2);
+            const visor = new THREE.Mesh(geoVisor, darkMat);
+            visor.position.y = 2.25;
+            robot.add(visor);
+
+            // Olho Néon
+            const geoEye = new THREE.SphereGeometry(0.12, 16, 16);
+            const eye = new THREE.Mesh(geoEye, dangerMat);
+            eye.position.set(0, 2.25, 0.56);
+            eye.scale.set(1.8, 0.5, 1);
+            robot.add(eye);
+
+            // Antena
+            const geoAnt = new THREE.CylinderGeometry(0.02, 0.04, 0.5);
+            const ant = new THREE.Mesh(geoAnt, metalMat);
+            ant.position.set(0, 2.8, 0);
+            robot.add(ant);
+
+            const geoBulb = new THREE.SphereGeometry(0.1);
+            const bulb = new THREE.Mesh(geoBulb, glowMat);
+            bulb.position.set(0, 3.1, 0);
+            robot.add(bulb);
+
+            // Braços
+            const geoArm = new THREE.TorusGeometry(0.4, 0.1, 16, 32, Math.PI);
+            
+            const armL = new THREE.Mesh(geoArm, metalMat);
+            armL.position.set(-0.65, 1.3, 0);
+            armL.rotation.z = Math.PI / 2;
+            armL.rotation.x = Math.PI / 6;
+            robot.add(armL);
+
+            const armR = new THREE.Mesh(geoArm, metalMat);
+            armR.position.set(0.65, 1.3, 0);
+            armR.rotation.z = -Math.PI / 2;
+            armR.rotation.x = Math.PI / 6;
+            robot.add(armR);
+
+            robot.position.copy(tiles[0].position);
+            scene.add(robot);
+            
+            if (tiles.length > 1) {
+                const target = tiles[1].position.clone();
+                target.y = robot.position.y;
+                robot.lookAt(target);
+            }
+        }
+
+        function updateCameraPosition(instant = false) {
+            const targetPos = robot.position.clone();
+            // Câmara ligeiramente mais baixa para vermos melhor o sol e o horizonte
+            const camOffset = new THREE.Vector3(0, 6, 14);
+            const desiredCamPos = targetPos.clone().add(camOffset);
+            
+            if (instant) {
+                camera.position.copy(desiredCamPos);
+                camera.lookAt(targetPos);
+            } else {
+                camera.position.lerp(desiredCamPos, 0.05);
+                const currentLookAt = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+                const desiredLookAt = targetPos.clone().sub(camera.position).normalize();
+                currentLookAt.lerp(desiredLookAt, 0.1);
+                
+                const lookAtPos = camera.position.clone().add(currentLookAt);
+                camera.lookAt(lookAtPos);
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Animation logic
+        let animationQueue = [];
+        let robotHoverTime = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            robotHoverTime += 0.05;
+            
+            if (isAnimating && animationQueue.length > 0) {
+                const anim = animationQueue[0];
+                const progress = (Date.now() - anim.startTime) / anim.duration;
+
+                if (progress >= 1) {
+                    robot.position.copy(anim.endPos);
+                    robot.position.y += Math.sin(robotHoverTime) * 0.1;
+                    animationQueue.shift();
+                    
+                    if (animationQueue.length === 0) {
+                        isAnimating = false;
+                        currentTileIndex = targetTileIndex;
+                        onRobotStopped();
+                    }
+                } else {
+                    const ease = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+                    robot.position.lerpVectors(anim.startPos, anim.endPos, ease);
+                    
+                    const arc = Math.sin(progress * Math.PI) * 1.5;
+                    robot.position.y += arc + (Math.sin(robotHoverTime) * 0.1);
+                    
+                    const targetLook = anim.endPos.clone();
+                    targetLook.y = robot.position.y;
+                    
+                    const dummy = new THREE.Object3D();
+                    dummy.position.copy(robot.position);
+                    dummy.lookAt(targetLook);
+                    
+                    robot.quaternion.slerp(dummy.quaternion, 0.2);
+                }
+            } else {
+                if(tiles[currentTileIndex]) {
+                     robot.position.y = tiles[currentTileIndex].position.y + Math.sin(robotHoverTime) * 0.1;
+                }
+                updateCameraPosition(false);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // --- GAME LOGIC ---
+
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('ui-layer').classList.remove('hidden');
+            document.getElementById('end-screen').classList.add('hidden');
+            
+            shuffleQuestions();
+
+            currentTileIndex = 0;
+            targetTileIndex = 0;
+            stepsRemaining = 0;
+            score = 0;
+            timeElapsed = 0;
+            updateUI();
+            
+            robot.position.copy(tiles[0].position);
+            updateCameraPosition(true);
+            
+            gameActive = true;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeElapsed++;
+                updateUI();
+            }, 1000);
+            
+            enableRollButton();
+        }
+
+        function updateUI() {
+            const mins = Math.floor(timeElapsed / 60).toString().padStart(2, '0');
+            const secs = (timeElapsed % 60).toString().padStart(2, '0');
+            document.getElementById('timer').innerText = `${mins}:${secs}`;
+            document.getElementById('score').innerText = score;
+        }
+
+        function rollDice() {
+            if (!gameActive || isAnimating || stepsRemaining > 0) return;
+            
+            document.getElementById('btn-roll').disabled = true;
+            
+            let rolls = 0;
+            const diceEl = document.getElementById('dice-display');
+            const instEl = document.getElementById('instruction');
+            
+            const rollAnim = setInterval(() => {
+                diceEl.innerText = ['⚀','⚁','⚂','⚃','⚄','⚅'][Math.floor(Math.random()*6)];
+                rolls++;
+                if (rolls > 10) {
+                    clearInterval(rollAnim);
+                    const result = Math.floor(Math.random() * 6) + 1;
+                    const faces = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+                    diceEl.innerText = faces[result-1];
+                    
+                    stepsRemaining = result;
+                    instEl.innerHTML = `Avança <b>${stepsRemaining}</b> setores (SETA DIREITA)`;
+                }
+            }, 50);
+        }
+
+        function moveStepForward() {
+            if (!gameActive || isAnimating || stepsRemaining <= 0) return;
+            
+            if (targetTileIndex < tiles.length - 1) {
+                const startPos = tiles[targetTileIndex].position.clone();
+                targetTileIndex++;
+                const endPos = tiles[targetTileIndex].position.clone();
+                
+                animationQueue.push({
+                    startPos: startPos,
+                    endPos: endPos,
+                    startTime: Date.now(),
+                    duration: 400
+                });
+                
+                isAnimating = true;
+                stepsRemaining--;
+                
+                const instEl = document.getElementById('instruction');
+                if (stepsRemaining > 0) {
+                    instEl.innerHTML = `Faltam <b>${stepsRemaining}</b> passos. Seta Direita!`;
+                } else {
+                    instEl.innerHTML = "A processar...";
+                }
+            } else {
+                stepsRemaining = 0;
+                isAnimating = true;
+                setTimeout(onRobotStopped, 100);
+            }
+        }
+
+        function moveBackwards(spaces) {
+            const startPos = tiles[currentTileIndex].position.clone();
+            targetTileIndex = Math.max(0, currentTileIndex - spaces);
+            const endPos = tiles[targetTileIndex].position.clone();
+            
+            animationQueue.push({
+                startPos: startPos,
+                endPos: endPos,
+                startTime: Date.now(),
+                duration: 800 
+            });
+            
+            isAnimating = true;
+        }
+
+        function onRobotStopped() {
+            if (stepsRemaining > 0) {
+                isAnimating = false;
+                return; 
+            }
+
+            if (currentTileIndex >= tiles.length - 1) {
+                endGame();
+                return;
+            }
+
+            askQuestion();
+        }
+
+        let currentQuestionObj = null;
+
+        function askQuestion() {
+            if (availableQuestions.length === 0) {
+                shuffleQuestions();
+            }
+            
+            currentQuestionObj = availableQuestions.pop();
+
+            document.getElementById('q-topic').innerText = currentQuestionObj.topic;
+            
+            const iconClass = topicIcons[currentQuestionObj.topic] || "fa-question-circle";
+            document.getElementById('q-icon').className = `fa-solid ${iconClass}`;
+            
+            document.getElementById('q-text').innerText = currentQuestionObj.question;
+            
+            const optionsContainer = document.getElementById('q-options');
+            optionsContainer.innerHTML = '';
+            
+            currentQuestionObj.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerHTML = `<i class="fa-solid fa-circle"></i> ${opt}`;
+                btn.onclick = () => checkAnswer(idx, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('feedback-msg').innerText = '';
+            document.getElementById('btn-continue').classList.add('hidden');
+            document.getElementById('question-modal').classList.add('active');
+        }
+
+        function checkAnswer(selectedIndex, btnElement) {
+            const options = document.querySelectorAll('.option-btn');
+            options.forEach(b => b.style.pointerEvents = 'none'); 
+
+            const isCorrect = selectedIndex === currentQuestionObj.correct;
+            const feedbackEl = document.getElementById('feedback-msg');
+            const continueBtn = document.getElementById('btn-continue');
+
+            if (isCorrect) {
+                btnElement.classList.add('correct');
+                btnElement.querySelector('i').className = "fa-solid fa-check";
+                
+                feedbackEl.innerHTML = "<i class='fa-solid fa-shield-halved'></i> Sistema Protegido! " + currentQuestionObj.explanation;
+                feedbackEl.style.color = 'var(--secondary)';
+                score += 10;
+                updateUI();
+                
+                continueBtn.onclick = () => {
+                    closeModal();
+                    enableRollButton();
+                };
+            } else {
+                btnElement.classList.add('wrong');
+                btnElement.querySelector('i').className = "fa-solid fa-xmark";
+                
+                options[currentQuestionObj.correct].classList.add('correct');
+                options[currentQuestionObj.correct].querySelector('i').className = "fa-solid fa-check";
+                
+                feedbackEl.innerHTML = "<i class='fa-solid fa-skull-crossbones'></i> Falha Crítica! Recuas 2 casas.<br><br><span style='font-size:1rem; font-weight:normal; color:#ccc'>" + currentQuestionObj.explanation + "</span>";
+                feedbackEl.style.color = 'var(--danger)';
+                
+                continueBtn.onclick = () => {
+                    closeModal();
+                    document.getElementById('instruction').innerHTML = "<i class='fa-solid fa-backward'></i> A reverter percurso...";
+                    moveBackwards(2);
+                    setTimeout(enableRollButton, 1000); 
+                };
+            }
+
+            continueBtn.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('question-modal').classList.remove('active');
+        }
+
+        function enableRollButton() {
+            if(gameActive) {
+                document.getElementById('btn-roll').disabled = false;
+                document.getElementById('instruction').innerText = "Lança o dado para continuar";
+                document.getElementById('dice-display').innerText = "🎲";
+            }
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            
+            const mins = Math.floor(timeElapsed / 60).toString().padStart(2, '0');
+            const secs = (timeElapsed % 60).toString().padStart(2, '0');
+            
+            document.getElementById('ui-layer').classList.add('hidden');
+            document.getElementById('end-screen').classList.remove('hidden');
+            
+            document.getElementById('final-stats').innerHTML = `
+                Navegaste na autoestrada de dados com sucesso!<br><br>
+                Tempo de Conexão: <b style="color:var(--secondary)">${mins}:${secs}</b><br>
+                Pontuação Total: <b style="color:var(--tertiary)">${score} pontos</b>
+            `;
+        }
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('btn-start').addEventListener('click', startGame);
+        document.getElementById('btn-restart').addEventListener('click', startGame);
+        document.getElementById('btn-roll').addEventListener('click', rollDice);
+
+        window.addEventListener('keydown', (e) => {
+            if ((e.key === 'ArrowRight' || e.key === 'ArrowUp') && stepsRemaining > 0 && !isAnimating) {
+                moveStepForward();
+            }
+            if (e.key === ' ' && !document.getElementById('btn-roll').disabled && gameActive && !document.getElementById('question-modal').classList.contains('active')) {
+                rollDice();
+            }
+        });
+
+        // Init
+        window.onload = initThreeJS;
+
+    </script>
+</body>
+</html>
