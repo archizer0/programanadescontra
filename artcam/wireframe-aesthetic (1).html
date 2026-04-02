@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WIREFRAME — Aesthetic Engine</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap');
+
+  :root {
+    --black: #000000;
+    --orange: #c8732a;
+    --orange-bright: #e8923e;
+    --white: #f0f0f0;
+    --dim: #444;
+    --panel: #0a0a0a;
+    --border: #1a1a1a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Rajdhani', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0;
+    width: 100px; height: 1px;
+    background: var(--orange);
+  }
+  .logo { font-family: 'Share Tech Mono', monospace; font-size: 14px; letter-spacing: 6px; }
+  .logo span { color: var(--orange); }
+  .header-right { display: flex; align-items: center; gap: 20px; }
+  .fps-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 2px; color: var(--dim);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .fps-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--dim); transition: background 0.3s;
+  }
+  .fps-dot.live { background: var(--orange); box-shadow: 0 0 6px var(--orange); }
+  .header-tag { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--dim); }
+
+  main { flex: 1; display: grid; grid-template-columns: 260px 1fr; overflow: hidden; }
+
+  aside {
+    border-right: 1px solid var(--border);
+    padding: 20px 18px;
+    display: flex; flex-direction: column; gap: 20px;
+    overflow-y: auto; overflow-x: hidden;
+  }
+  aside::-webkit-scrollbar { width: 2px; }
+  aside::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .section-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; letter-spacing: 4px; color: var(--orange);
+    margin-bottom: 10px; text-transform: uppercase;
+  }
+
+  .mode-switch { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border); overflow: hidden; }
+  .mode-btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 2px; padding: 10px;
+    background: transparent; color: var(--dim);
+    border: none; cursor: pointer; transition: all 0.2s; text-align: center;
+  }
+  .mode-btn.active { background: var(--orange); color: var(--black); }
+  .mode-btn:not(.active):hover { color: var(--orange); }
+
+  .source-panel { display: none; flex-direction: column; gap: 10px; }
+  .source-panel.visible { display: flex; }
+
+  .webcam-preview {
+    aspect-ratio: 4/3; background: var(--panel);
+    border: 1px solid var(--border); position: relative;
+    overflow: hidden; display: flex; align-items: center; justify-content: center;
+  }
+  #videoEl {
+    width: 100%; height: 100%; object-fit: cover;
+    display: none; transform: scaleX(-1); opacity: 0.35;
+  }
+  .webcam-overlay { position: absolute; inset: 0; pointer-events: none; }
+  .webcam-status {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 2px;
+    color: var(--dim); white-space: nowrap;
+  }
+  .scan-line {
+    position: absolute; left: 0; right: 0; height: 1px;
+    background: rgba(200,115,42,0.4);
+    animation: scan 3s linear infinite; display: none;
+  }
+  .scan-line.active { display: block; }
+  @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+
+  .drop-zone {
+    border: 1px dashed var(--dim); aspect-ratio: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    position: relative; overflow: hidden; background: var(--panel);
+  }
+  .drop-zone:hover { border-color: var(--orange); }
+  .drop-zone.drag-over { border-color: var(--orange-bright); background: #0d0800; }
+  .drop-zone-icon { width: 32px; height: 32px; stroke: var(--dim); transition: stroke 0.2s; }
+  .drop-zone:hover .drop-zone-icon { stroke: var(--orange); }
+  .drop-zone-text {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 2px;
+    color: var(--dim); text-align: center; line-height: 1.7;
+  }
+  .drop-zone-thumb { position: absolute; inset: 0; object-fit: cover; opacity: 0.45; display: none; }
+  #fileInput { display: none; }
+
+  .control-group { display: flex; flex-direction: column; gap: 12px; }
+  .control-row { display: flex; flex-direction: column; gap: 5px; }
+  .control-header { display: flex; justify-content: space-between; align-items: baseline; }
+  .control-name { font-size: 10px; letter-spacing: 2px; color: #777; text-transform: uppercase; }
+  .control-val { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--orange); }
+
+  input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 1px;
+    background: var(--border); outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 10px; height: 10px;
+    background: var(--orange); border-radius: 50%; transition: transform 0.15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.4); }
+
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 0; border-top: 1px solid var(--border);
+  }
+  .toggle-label { font-size: 10px; letter-spacing: 2px; color: #777; text-transform: uppercase; }
+  .toggle {
+    width: 28px; height: 14px; background: var(--border); border-radius: 7px;
+    position: relative; cursor: pointer; transition: background 0.2s;
+    border: none; outline: none; flex-shrink: 0;
+  }
+  .toggle.on { background: var(--orange); }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 10px; height: 10px; background: var(--black);
+    border-radius: 50%; transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(14px); }
+
+  .btn {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 3px;
+    text-transform: uppercase; border: none; cursor: pointer; padding: 10px;
+    transition: all 0.2s; width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .btn-primary { background: var(--orange); color: var(--black); }
+  .btn-primary:hover { background: var(--orange-bright); }
+  .btn-primary:disabled { background: #1a1a1a; color: #333; cursor: not-allowed; }
+  .btn-danger { background: #200500; color: #c44; border: 1px solid #3a0800; }
+  .btn-danger:hover { background: #3a0800; color: #e55; }
+  .btn-ghost { background: transparent; color: var(--dim); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--orange); color: var(--orange); }
+  .btn-ghost:disabled { opacity: 0.25; cursor: not-allowed; }
+  .btn-area { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding-top: 10px; }
+
+  .canvas-area {
+    display: flex; align-items: center; justify-content: center;
+    background: var(--black); position: relative; overflow: hidden;
+  }
+  .canvas-area::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      linear-gradient(rgba(200,115,42,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(200,115,42,0.025) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none;
+  }
+  #outputCanvas { max-width: 100%; max-height: 100%; display: block; position: relative; z-index: 1; }
+  .canvas-placeholder {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    color: var(--dim); z-index: 1; pointer-events: none;
+  }
+  .canvas-placeholder svg { opacity: 0.15; }
+  .canvas-placeholder p { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 3px; }
+
+  .corner { position: absolute; width: 10px; height: 10px; pointer-events: none; z-index: 2; }
+  .corner-tl { top: 10px; left: 10px; border-top: 1px solid var(--orange); border-left: 1px solid var(--orange); }
+  .corner-tr { top: 10px; right: 10px; border-top: 1px solid var(--orange); border-right: 1px solid var(--orange); }
+  .corner-bl { bottom: 10px; left: 10px; border-bottom: 1px solid var(--orange); border-left: 1px solid var(--orange); }
+  .corner-br { bottom: 10px; right: 10px; border-bottom: 1px solid var(--orange); border-right: 1px solid var(--orange); }
+
+  @media (max-width: 700px) {
+    main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    aside { border-right: none; border-bottom: 1px solid var(--border); max-height: 45vh; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">WIRE<span>FRAME</span></div>
+  <div class="header-right">
+    <div class="fps-badge">
+      <div class="fps-dot" id="fpsDot"></div>
+      <span id="fpsLabel">OFFLINE</span>
+    </div>
+    <div class="header-tag">AESTHETIC ENGINE v2.0</div>
+  </div>
+</header>
+
+<main>
+  <aside>
+    <!-- MODE SWITCH -->
+    <div>
+      <div class="section-label">Fonte</div>
+      <div class="mode-switch">
+        <button class="mode-btn active" id="modeWebcam">⬤ WEBCAM</button>
+        <button class="mode-btn" id="modeFile">↑ FICHEIRO</button>
+      </div>
+    </div>
+
+    <!-- WEBCAM PANEL -->
+    <div class="source-panel visible" id="webcamPanel">
+      <div class="webcam-preview">
+        <video id="videoEl" autoplay muted playsinline></video>
+        <div class="scan-line" id="scanLine"></div>
+        <svg class="webcam-overlay" viewBox="0 0 160 120" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="20" height="1.5" fill="none" stroke="#c8732a" stroke-width="0.5" opacity="0.7"/>
+          <rect x="8" y="8" width="1.5" height="20" fill="none" stroke="#c8732a" stroke-width="0.5" opacity="0.7"/>
+          <rect x="132" y="8" width="20" height="1.5" fill="none" stroke="#c8732a" stroke-width="0.5" opacity="0.7"/>
+          <rect x="150.5" y="8" width="1.5" height="20" fill="none" stroke="#c8732a" stroke-width="0.5" opacity="0.7"/>
+          <rect x="8" y="110.5" width="20" height="1.5" fill="none" stroke="#c8732a" stroke-width="0.5" opacity="0.7"/>
+          <rect x="8" y="92" width="1.5" height="20" fill="none" stroke="#c8732a" stroke-width="0.5" opacity="0.7"/>
+          <rect x="132" y="110.5" width="20" height="1.5" fill="none" stroke="#c8732a" stroke-width="0.5" opacity="0.7"/>
+          <rect x="150.5" y="92" width="1.5" height="20" fill="none" stroke="#c8732a" stroke-width="0.5" opacity="0.7"/>
+        </svg>
+        <div class="webcam-status" id="webcamStatus">SEM SINAL</div>
+      </div>
+      <button class="btn btn-primary" id="startCamBtn">▸ LIGAR CÂMARA</button>
+      <button class="btn btn-danger" id="stopCamBtn" style="display:none">■ DESLIGAR</button>
+    </div>
+
+    <!-- FILE PANEL -->
+    <div class="source-panel" id="filePanel">
+      <div class="drop-zone" id="dropZone">
+        <svg class="drop-zone-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.2" stroke-linecap="round">
+          <rect x="3" y="3" width="18" height="18" rx="1"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <div class="drop-zone-text">ARRASTAR IMAGEM<br>ou clicar</div>
+        <img class="drop-zone-thumb" id="thumbImg"/>
+      </div>
+      <input type="file" id="fileInput" accept="image/*">
+      <button class="btn btn-primary" id="renderBtn" disabled>▸ RENDERIZAR</button>
+    </div>
+
+    <!-- PARAMS -->
+    <div>
+      <div class="section-label">Parâmetros</div>
+      <div class="control-group">
+        <div class="control-row">
+          <div class="control-header"><span class="control-name">Threshold Borda</span><span class="control-val" id="edgeVal">45</span></div>
+          <input type="range" id="edgeThreshold" min="10" max="120" value="45">
+        </div>
+        <div class="control-row">
+          <div class="control-header"><span class="control-name">Linhas / Frame</span><span class="control-val" id="whiteVal">300</span></div>
+          <input type="range" id="whiteLines" min="50" max="1200" value="300" step="10">
+        </div>
+        <div class="control-row">
+          <div class="control-header"><span class="control-name">Comprimento</span><span class="control-val" id="lenVal">60</span></div>
+          <input type="range" id="lineLength" min="10" max="200" value="60">
+        </div>
+        <div class="control-row">
+          <div class="control-header"><span class="control-name">Triângulos / Frame</span><span class="control-val" id="triVal">40</span></div>
+          <input type="range" id="triCount" min="5" max="200" value="40" step="5">
+        </div>
+        <div class="control-row">
+          <div class="control-header"><span class="control-name">Raio Triângulo</span><span class="control-val" id="triRadVal">80</span></div>
+          <input type="range" id="triRadius" min="20" max="250" value="80">
+        </div>
+        <div class="control-row">
+          <div class="control-header"><span class="control-name">Persistência Trail</span><span class="control-val" id="fadeVal">0.08</span></div>
+          <input type="range" id="fadeAmount" min="2" max="40" value="8">
+        </div>
+        <div class="control-row">
+          <div class="control-header"><span class="control-name">Opacidade</span><span class="control-val" id="alphaVal">0.35</span></div>
+          <input type="range" id="lineAlpha" min="5" max="80" value="35">
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Espelhar</span>
+          <button class="toggle on" id="mirrorToggle"></button>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Pontos de Nó</span>
+          <button class="toggle on" id="nodesToggle"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-area">
+      <button class="btn btn-ghost" id="downloadBtn" disabled>↓ CAPTURAR PNG</button>
+    </div>
+  </aside>
+
+  <!-- OUTPUT -->
+  <div class="canvas-area" id="canvasArea">
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+    <div class="canvas-placeholder" id="placeholder">
+      <svg width="70" height="70" viewBox="0 0 80 80" fill="none" stroke="#666" stroke-width="0.5">
+        <polygon points="40,5 75,25 75,55 40,75 5,55 5,25"/>
+        <polygon points="40,15 65,30 65,50 40,65 15,50 15,30"/>
+        <line x1="40" y1="5" x2="65" y2="50"/><line x1="75" y1="25" x2="15" y2="50"/>
+        <line x1="5" y1="25" x2="65" y2="50"/><line x1="40" y1="75" x2="75" y2="25"/>
+        <circle cx="40" cy="5" r="2" fill="#c8732a" opacity="0.6"/>
+        <circle cx="65" cy="50" r="1.5" fill="#c8732a" opacity="0.6"/>
+      </svg>
+      <p>SELECIONE UMA FONTE</p>
+    </div>
+    <canvas id="outputCanvas" style="display:none;"></canvas>
+  </div>
+</main>
+
+<canvas id="srcCanvas" style="display:none;"></canvas>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────
+let mode = 'webcam';
+let sourceImage = null;
+let stream = null;
+let animFrame = null;
+let nodesMode = true;
+let mirrorMode = true;
+let frameCount = 0;
+let lastFpsTime = performance.now();
+
+// ─── DOM ──────────────────────────────────────────────────
+const videoEl      = document.getElementById('videoEl');
+const outputCanvas = document.getElementById('outputCanvas');
+const srcCanvas    = document.getElementById('srcCanvas');
+const placeholder  = document.getElementById('placeholder');
+const dropZone     = document.getElementById('dropZone');
+const fileInput    = document.getElementById('fileInput');
+const thumbImg     = document.getElementById('thumbImg');
+const renderBtn    = document.getElementById('renderBtn');
+const downloadBtn  = document.getElementById('downloadBtn');
+const startCamBtn  = document.getElementById('startCamBtn');
+const stopCamBtn   = document.getElementById('stopCamBtn');
+const webcamStatus = document.getElementById('webcamStatus');
+const scanLine     = document.getElementById('scanLine');
+const fpsDot       = document.getElementById('fpsDot');
+const fpsLabel     = document.getElementById('fpsLabel');
+
+// ─── SLIDERS ──────────────────────────────────────────────
+[
+  ['edgeThreshold','edgeVal',  v => v],
+  ['whiteLines',   'whiteVal', v => v],
+  ['lineLength',   'lenVal',   v => v],
+  ['triCount',     'triVal',   v => v],
+  ['triRadius',    'triRadVal',v => v],
+  ['fadeAmount',   'fadeVal',  v => (v/100).toFixed(2)],
+  ['lineAlpha',    'alphaVal', v => (v/100).toFixed(2)],
+].forEach(([id, disp, fmt]) => {
+  const el = document.getElementById(id);
+  document.getElementById(disp).textContent = fmt(el.value);
+  el.addEventListener('input', () => { document.getElementById(disp).textContent = fmt(el.value); });
+});
+
+// ─── TOGGLES ──────────────────────────────────────────────
+document.getElementById('nodesToggle').addEventListener('click', function() {
+  nodesMode = !nodesMode; this.classList.toggle('on', nodesMode);
+});
+document.getElementById('mirrorToggle').addEventListener('click', function() {
+  mirrorMode = !mirrorMode; this.classList.toggle('on', mirrorMode);
+  videoEl.style.transform = mirrorMode ? 'scaleX(-1)' : 'scaleX(1)';
+});
+
+// ─── MODE SWITCH ──────────────────────────────────────────
+document.getElementById('modeWebcam').addEventListener('click', () => {
+  if (mode === 'webcam') return;
+  mode = 'webcam';
+  document.getElementById('modeWebcam').classList.add('active');
+  document.getElementById('modeFile').classList.remove('active');
+  document.getElementById('webcamPanel').classList.add('visible');
+  document.getElementById('filePanel').classList.remove('visible');
+  stopRendering(); resetCanvas();
+});
+document.getElementById('modeFile').addEventListener('click', () => {
+  if (mode === 'file') return;
+  mode = 'file';
+  document.getElementById('modeFile').classList.add('active');
+  document.getElementById('modeWebcam').classList.remove('active');
+  document.getElementById('filePanel').classList.add('visible');
+  document.getElementById('webcamPanel').classList.remove('visible');
+  stopCamera(); stopRendering(); resetCanvas();
+});
+
+// ─── WEBCAM ───────────────────────────────────────────────
+startCamBtn.addEventListener('click', startCamera);
+stopCamBtn.addEventListener('click', () => { stopCamera(); stopRendering(); resetCanvas(); });
+
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+      audio: false
+    });
+    videoEl.srcObject = stream;
+    videoEl.style.display = 'block';
+    await videoEl.play();
+
+    webcamStatus.textContent = 'SINAL ATIVO';
+    scanLine.classList.add('active');
+    startCamBtn.style.display = 'none';
+    stopCamBtn.style.display = 'flex';
+    downloadBtn.disabled = false;
+
+    await new Promise(r => {
+      if (videoEl.videoWidth) return r();
+      videoEl.addEventListener('loadedmetadata', r, { once: true });
+    });
+
+    initOutputCanvas(videoEl.videoWidth, videoEl.videoHeight);
+    placeholder.style.display = 'none';
+    outputCanvas.style.display = 'block';
+    startLiveRender();
+
+  } catch (err) {
+    const msg = err.name === 'NotAllowedError' ? 'PERMISSÃO NEGADA' :
+                err.name === 'NotFoundError'   ? 'CÂMARA NÃO ENCONTRADA' :
+                err.message.toUpperCase().slice(0, 24);
+    webcamStatus.textContent = 'ERRO: ' + msg;
+    console.error(err);
+  }
+}
+
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  videoEl.style.display = 'none';
+  videoEl.srcObject = null;
+  scanLine.classList.remove('active');
+  startCamBtn.style.display = 'flex';
+  stopCamBtn.style.display = 'none';
+  webcamStatus.textContent = 'SEM SINAL';
+  setLiveStatus(false);
+}
+
+// ─── FILE HANDLING ────────────────────────────────────────
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      sourceImage = img;
+      thumbImg.src = e.target.result;
+      thumbImg.style.display = 'block';
+      renderBtn.disabled = false;
+      downloadBtn.disabled = false;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+renderBtn.addEventListener('click', () => { if (sourceImage) { stopRendering(); renderStaticImage(); } });
+downloadBtn.addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = 'wireframe_' + Date.now() + '.png';
+  link.href = outputCanvas.toDataURL('image/png');
+  link.click();
+});
+
+// ─── CANVAS INIT ──────────────────────────────────────────
+function initOutputCanvas(w, h) {
+  const area = document.getElementById('canvasArea');
+  const maxW = area.clientWidth - 2;
+  const maxH = area.clientHeight - 2;
+  const ratio = Math.min(maxW / w, maxH / h, 1);
+  outputCanvas.width  = Math.round(w * ratio);
+  outputCanvas.height = Math.round(h * ratio);
+  const ctx = outputCanvas.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+}
+
+function resetCanvas() {
+  placeholder.style.display = 'flex';
+  outputCanvas.style.display = 'none';
+  setLiveStatus(false);
+  if (mode === 'webcam') downloadBtn.disabled = true;
+}
+
+// ─── FPS ──────────────────────────────────────────────────
+function setLiveStatus(live) {
+  fpsDot.classList.toggle('live', live);
+  if (!live) fpsLabel.textContent = 'OFFLINE';
+}
+
+function updateFps() {
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsTime >= 1000) {
+    fpsLabel.textContent = frameCount + ' FPS';
+    frameCount = 0;
+    lastFpsTime = now;
+  }
+}
+
+// ─── EDGE DETECTION (Sobel) ───────────────────────────────
+function detectEdges(pixels, W, H, threshold) {
+  const gray = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    gray[i] = 0.299*pixels[i*4] + 0.587*pixels[i*4+1] + 0.114*pixels[i*4+2];
+  }
+
+  const pts = [];
+  const Kx = [-1,0,1,-2,0,2,-1,0,1];
+  const Ky = [-1,-2,-1,0,0,0,1,2,1];
+
+  for (let y = 1; y < H - 1; y++) {
+    for (let x = 1; x < W - 1; x++) {
+      let gx = 0, gy = 0;
+      for (let ky = -1; ky <= 1; ky++) for (let kx = -1; kx <= 1; kx++) {
+        const p = gray[(y+ky)*W + (x+kx)];
+        const ki = (ky+1)*3 + (kx+1);
+        gx += Kx[ki] * p; gy += Ky[ki] * p;
+      }
+      if (Math.sqrt(gx*gx + gy*gy) > threshold) pts.push([x, y]);
+    }
+  }
+
+  // Partial shuffle for variety each frame
+  const n = Math.min(pts.length, 5000);
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = pts[i]; pts[i] = pts[j]; pts[j] = t;
+  }
+  return pts;
+}
+
+// ─── DRAW WIREFRAME LAYER ─────────────────────────────────
+function drawWireframeLayer(ctx, pts, scaleX, scaleY) {
+  if (pts.length < 2) return;
+
+  const linesN  = parseInt(document.getElementById('whiteLines').value);
+  const maxLen  = parseInt(document.getElementById('lineLength').value);
+  const triN    = parseInt(document.getElementById('triCount').value);
+  const triR    = parseInt(document.getElementById('triRadius').value);
+  const alpha   = parseInt(document.getElementById('lineAlpha').value) / 100;
+  const pool    = Math.min(pts.length, 4000);
+
+  // Orange triangles
+  for (let i = 0; i < triN; i++) {
+    const [ax, ay] = pts[Math.floor(Math.random() * pool)];
+    const sx = ax*scaleX, sy = ay*scaleY;
+    let bx, by, cx, cy, ok1 = false, ok2 = false;
+
+    for (let a = 0; a < 10 && !ok1; a++) {
+      const [px, py] = pts[Math.floor(Math.random() * pool)];
+      const d = Math.hypot((px-ax)*scaleX, (py-ay)*scaleY);
+      if (d > 8 && d < triR) { bx=px*scaleX; by=py*scaleY; ok1=true; }
+    }
+    if (!ok1) continue;
+
+    for (let a = 0; a < 10 && !ok2; a++) {
+      const [px, py] = pts[Math.floor(Math.random() * pool)];
+      const d1 = Math.hypot((px-ax)*scaleX, (py-ay)*scaleY);
+      const d2 = Math.hypot(px*scaleX-bx, py*scaleY-by);
+      if (d1 > 8 && d1 < triR*1.5 && d2 > 8 && d2 < triR*1.5) { cx=px*scaleX; cy=py*scaleY; ok2=true; }
+    }
+    if (!ok2) continue;
+
+    const a = (0.3 + Math.random() * 0.5) * alpha * 2;
+    ctx.strokeStyle = Math.random() < 0.65 ? `rgba(205,105,30,${a})` : `rgba(240,155,55,${a})`;
+    ctx.lineWidth = 0.6 + Math.random() * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy); ctx.lineTo(bx, by); ctx.lineTo(cx, cy);
+    if (Math.random() < 0.55) ctx.closePath();
+    ctx.stroke();
+  }
+
+  // White lines
+  for (let i = 0; i < linesN; i++) {
+    const [ax, ay] = pts[Math.floor(Math.random() * pool)];
+    const sx = ax*scaleX, sy = ay*scaleY;
+    let bx, by;
+
+    if (Math.random() < 0.65) {
+      let found = false;
+      for (let a = 0; a < 6 && !found; a++) {
+        const [px, py] = pts[Math.floor(Math.random() * pool)];
+        const d = Math.hypot((px-ax)*scaleX, (py-ay)*scaleY);
+        if (d > 2 && d < maxLen) { bx=px*scaleX; by=py*scaleY; found=true; }
+      }
+      if (!bx) {
+        const ang = Math.random()*Math.PI*2, len = 3 + Math.random()*maxLen*0.5;
+        bx = sx + Math.cos(ang)*len; by = sy + Math.sin(ang)*len;
+      }
+    } else {
+      const ang = Math.random()*Math.PI*2, len = 2 + Math.random()*maxLen;
+      bx = sx + Math.cos(ang)*len; by = sy + Math.sin(ang)*len;
+    }
+
+    const a = (0.08 + Math.random() * 0.4) * alpha;
+    ctx.strokeStyle = `rgba(232,232,240,${a})`;
+    ctx.lineWidth = 0.25 + Math.random() * 0.65;
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(bx, by); ctx.stroke();
+  }
+
+  // Node dots
+  if (nodesMode) {
+    const nNodes = Math.min(pool, Math.max(20, Math.floor(linesN * 0.06)));
+    for (let i = 0; i < nNodes; i++) {
+      const [x, y] = pts[Math.floor(Math.random() * pool)];
+      const isOrg = Math.random() < 0.28;
+      const r = 0.7 + Math.random() * 1.4;
+      const a = 0.4 + Math.random() * 0.6;
+      ctx.beginPath(); ctx.arc(x*scaleX, y*scaleY, r, 0, Math.PI*2);
+      ctx.fillStyle = isOrg ? `rgba(215,125,45,${a})` : `rgba(240,240,245,${a*0.65})`;
+      ctx.fill();
+    }
+  }
+}
+
+// ─── LIVE RENDER LOOP ─────────────────────────────────────
+function startLiveRender() {
+  setLiveStatus(true);
+  const W_SRC = 320;
+  srcCanvas.width = W_SRC;
+
+  function frame() {
+    if (!stream || !videoEl.videoWidth) { animFrame = requestAnimationFrame(frame); return; }
+
+    const vW = videoEl.videoWidth, vH = videoEl.videoHeight;
+    const H_SRC = Math.round(W_SRC * vH / vW);
+    if (srcCanvas.height !== H_SRC) srcCanvas.height = H_SRC;
+
+    const sCtx = srcCanvas.getContext('2d');
+    if (mirrorMode) {
+      sCtx.save(); sCtx.translate(W_SRC, 0); sCtx.scale(-1, 1);
+      sCtx.drawImage(videoEl, 0, 0, W_SRC, H_SRC);
+      sCtx.restore();
+    } else {
+      sCtx.drawImage(videoEl, 0, 0, W_SRC, H_SRC);
+    }
+
+    const imgData = sCtx.getImageData(0, 0, W_SRC, H_SRC);
+    const threshold = parseInt(document.getElementById('edgeThreshold').value);
+    const pts = detectEdges(imgData.data, W_SRC, H_SRC, threshold);
+
+    const oW = outputCanvas.width, oH = outputCanvas.height;
+    const ctx = outputCanvas.getContext('2d');
+
+    // Trail fade
+    const fade = parseInt(document.getElementById('fadeAmount').value) / 100;
+    ctx.fillStyle = `rgba(0,0,0,${fade})`;
+    ctx.fillRect(0, 0, oW, oH);
+
+    drawWireframeLayer(ctx, pts, oW/W_SRC, oH/H_SRC);
+
+    updateFps();
+    animFrame = requestAnimationFrame(frame);
+  }
+
+  animFrame = requestAnimationFrame(frame);
+}
+
+function stopRendering() {
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  setLiveStatus(false);
+}
+
+// ─── STATIC RENDER ────────────────────────────────────────
+async function renderStaticImage() {
+  if (!sourceImage) return;
+  renderBtn.disabled = true;
+
+  const maxD = 900;
+  let W = sourceImage.width, H = sourceImage.height;
+  const r = Math.min(maxD/W, maxD/H, 1);
+  W = Math.round(W*r); H = Math.round(H*r);
+
+  srcCanvas.width = W; srcCanvas.height = H;
+  const sCtx = srcCanvas.getContext('2d');
+  sCtx.drawImage(sourceImage, 0, 0, W, H);
+  const imgData = sCtx.getImageData(0, 0, W, H);
+
+  const threshold = parseInt(document.getElementById('edgeThreshold').value);
+  const pts = detectEdges(imgData.data, W, H, threshold);
+
+  const area = document.getElementById('canvasArea');
+  const maxOut = Math.min(area.clientWidth - 4, area.clientHeight - 4);
+  const sr = Math.min(maxOut/W, maxOut/H, 1);
+  outputCanvas.width  = Math.round(W*sr);
+  outputCanvas.height = Math.round(H*sr);
+
+  const ctx = outputCanvas.getContext('2d');
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+
+  for (let p = 0; p < 10; p++) {
+    drawWireframeLayer(ctx, pts, outputCanvas.width/W, outputCanvas.height/H);
+    await new Promise(res => setTimeout(res, 0));
+  }
+
+  placeholder.style.display = 'none';
+  outputCanvas.style.display = 'block';
+  renderBtn.disabled = false;
+}
+</script>
+</body>
+</html>
