@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Superfórmula Espiral</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505; /* Fundo quase preto */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ffffff;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.1);
+        }
+
+        /* Painel de Controlo Flutuante */
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 280px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
+        }
+
+        #controls h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            color: #ff4d4d;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            background: transparent;
+            -webkit-appearance: none;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: #444;
+            border-radius: 3px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #ff4d4d;
+            margin-top: -5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            background: #ff8080;
+        }
+
+        .value-display {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #444;
+            border-color: #ff4d4d;
+        }
+
+        button.active {
+            background: #ff4d4d;
+            border-color: #ff4d4d;
+            color: white;
+        }
+
+        /* Responsividade para telemóveis */
+        @media (max-width: 600px) {
+            #controls {
+                width: calc(100% - 40px);
+                top: auto;
+                bottom: 20px;
+                max-height: 40vh;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <canvas id="visualizer"></canvas>
+    </div>
+
+    <div id="controls">
+        <h2>Parâmetros</h2>
+        
+        <div class="control-group">
+            <label>Anéis (Rings) <span id="val-rings" class="value-display">60</span></label>
+            <input type="range" id="rings" min="10" max="150" value="60">
+        </div>
+
+        <div class="control-group">
+            <label>Simetria (m) <span id="val-m" class="value-display">6</span></label>
+            <input type="range" id="m" min="0" max="20" step="1" value="6">
+        </div>
+
+        <div class="control-group">
+            <label>Forma (n1) <span id="val-n1" class="value-display">0.2</span></label>
+            <input type="range" id="n1" min="0.1" max="10" step="0.1" value="0.2">
+        </div>
+
+        <div class="control-group">
+            <label>Forma (n2) <span id="val-n2" class="value-display">1.7</span></label>
+            <input type="range" id="n2" min="0.1" max="10" step="0.1" value="1.7">
+        </div>
+
+        <div class="control-group">
+            <label>Forma (n3) <span id="val-n3" class="value-display">1.7</span></label>
+            <input type="range" id="n3" min="0.1" max="10" step="0.1" value="1.7">
+        </div>
+        
+        <div class="control-group">
+            <label>Velocidade (t) <span id="val-speed" class="value-display">1.0</span></label>
+            <input type="range" id="speed" min="0" max="5" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group">
+            <label>Espessura Linha <span id="val-width" class="value-display">1.5</span></label>
+            <input type="range" id="lineWidth" min="0.5" max="5" step="0.5" value="1.5">
+        </div>
+
+        <button id="toggle-anim">Pausar Animação</button>
+        <button id="reset-params" style="margin-top: 5px; background: transparent; border: 1px solid #444; font-size: 0.8em;">Reiniciar Padrão</button>
+    </div>
+
+    <script>
+        // IIFE (Immediately Invoked Function Expression) para isolar o escopo
+        (function() {
+            const canvas = document.getElementById('visualizer');
+            const ctx = canvas.getContext('2d');
+            
+            // Estado da Aplicação
+            let config = {
+                rings: 60,
+                m: 6,
+                n1: 0.2,
+                n2: 1.7,
+                n3: 1.7,
+                a: 1,
+                b: 1,
+                speed: 1.0,
+                lineWidth: 1.5,
+                color: '#ff0000'
+            };
+
+            let t = 0; // Variável de tempo
+            let isAnimating = true;
+            let animationFrameId;
+
+            // Elementos da UI
+            const inputs = {
+                rings: document.getElementById('rings'),
+                m: document.getElementById('m'),
+                n1: document.getElementById('n1'),
+                n2: document.getElementById('n2'),
+                n3: document.getElementById('n3'),
+                speed: document.getElementById('speed'),
+                lineWidth: document.getElementById('lineWidth')
+            };
+
+            const displays = {
+                rings: document.getElementById('val-rings'),
+                m: document.getElementById('val-m'),
+                n1: document.getElementById('val-n1'),
+                n2: document.getElementById('val-n2'),
+                n3: document.getElementById('val-n3'),
+                speed: document.getElementById('val-speed'),
+                lineWidth: document.getElementById('val-width')
+            };
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            window.addEventListener('resize', resize);
+            resize();
+
+            // A lógica principal de desenho baseada nas fórmulas da imagem
+            function draw() {
+                // Limpar com um ligeiro rasto para suavidade ou total para nitidez
+                // ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; // Para rasto
+                // ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+                
+                // Estilos
+                ctx.strokeStyle = config.color;
+                ctx.lineWidth = config.lineWidth;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = config.color;
+
+                // Fatores de escala para ajustar ao ecrã
+                // O valor 12 e 50 na fórmula original são pixels "hardcoded".
+                // Vamos escalar ligeiramente baseado na altura do ecrã para telemóveis.
+                const scaleFactor = Math.min(canvas.width, canvas.height) / 1000; 
+
+                // Loop pelos anéis
+                // Na imagem: i = floor(u * rings). Vamos iterar i diretamente.
+                for (let i = 0; i < config.rings; i++) {
+                    
+                    ctx.beginPath();
+                    
+                    // Resolução do anel (pontos por volta)
+                    const resolution = 120; 
+                    
+                    for (let j = 0; j <= resolution; j++) {
+                        // Phi varia de 0 a 2*PI para fechar o anel
+                        const phi = (j / resolution) * 2 * Math.PI;
+
+                        // Superformula para o formato base (r_shape)
+                        // term1 = abs(cos(m * phi / 4) / a)^n2
+                        // term2 = abs(sin(m * phi / 4) / b)^n3
+                        // r_shape = (term1 + term2)^(-1 / n1)
+                        
+                        const term1 = Math.pow(Math.abs(Math.cos(config.m * phi / 4) / config.a), config.n2);
+                        const term2 = Math.pow(Math.abs(Math.sin(config.m * phi / 4) / config.b), config.n3);
+                        
+                        // Evitar divisão por zero ou infinitos
+                        let r_shape = 0;
+                        if (term1 + term2 !== 0) {
+                            r_shape = Math.pow(term1 + term2, -1 / config.n1);
+                        }
+
+                        // Raio baseado no índice do anel e tempo
+                        // radius = (i + 1) * 12 + 50 * sin(i / 5 - t)
+                        // Multiplicamos por scaleFactor para manter responsivo
+                        const baseRadius = (i + 1) * (12 * scaleFactor);
+                        const waveRadius = (50 * scaleFactor) * Math.sin(i / 5 - t);
+                        const radius = baseRadius + waveRadius;
+
+                        // Rotação
+                        // rot = t * (1 - i / rings) + i
+                        // Adicionei um fator de abrandamento (0.05) ao t aqui para ser mais agradável visualmente
+                        // se o t for usado diretamente como rotação radiana pode ser muito rápido.
+                        // Na fórmula original 't' parece ser o tempo global.
+                        const rot = t * (1 - i / config.rings) + i * 0.1; // Ajustei 'i' para 'i * 0.1' para rodar suavemente
+
+                        // Raio Final
+                        const r_final = r_shape * radius;
+
+                        // Conversão Polar -> Cartesiano
+                        const x = cx + r_final * Math.cos(phi + rot);
+                        const y = cy + r_final * Math.sin(phi + rot);
+
+                        if (j === 0) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    }
+                    
+                    ctx.stroke();
+                }
+
+                // Atualizar tempo
+                if (isAnimating) {
+                    t += 0.01 * config.speed;
+                }
+                
+                animationFrameId = requestAnimationFrame(draw);
+            }
+
+            // Ligar Event Listeners aos Inputs
+            function updateConfig(e) {
+                const id = e.target.id;
+                const val = parseFloat(e.target.value);
+                config[id] = val;
+                
+                // Atualizar texto do display
+                if(displays[id]) {
+                    displays[id].textContent = val.toFixed(id === 'rings' || id === 'm' ? 0 : 1);
+                }
+            }
+
+            Object.keys(inputs).forEach(key => {
+                inputs[key].addEventListener('input', updateConfig);
+            });
+
+            // Botão Play/Pause
+            const btnToggle = document.getElementById('toggle-anim');
+            btnToggle.addEventListener('click', () => {
+                isAnimating = !isAnimating;
+                btnToggle.textContent = isAnimating ? "Pausar Animação" : "Resumir Animação";
+                btnToggle.classList.toggle('active', !isAnimating);
+            });
+
+            // Botão Reset
+            document.getElementById('reset-params').addEventListener('click', () => {
+                // Valores padrão da imagem
+                config.rings = 60;
+                config.m = 6;
+                config.n1 = 0.2;
+                config.n2 = 1.7;
+                config.n3 = 1.7;
+                config.speed = 1.0;
+                t = 0;
+
+                // Atualizar UI
+                inputs.rings.value = 60;
+                inputs.m.value = 6;
+                inputs.n1.value = 0.2;
+                inputs.n2.value = 1.7;
+                inputs.n3.value = 1.7;
+                inputs.speed.value = 1.0;
+                
+                Object.keys(displays).forEach(k => {
+                    const el = inputs[k];
+                    if(el) displays[k].textContent = el.value;
+                });
+            });
+
+            // Iniciar loop
+            draw();
+        })(); // Fim da IIFE
+    </script>
+</body>
+</html>
