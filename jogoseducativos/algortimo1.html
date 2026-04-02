@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academia de Robótica</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
+        
+        @keyframes slide-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-up { animation: slide-up 0.4s ease-out forwards; }
+        
+        @keyframes pulse-fast {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .animate-pulse-fast { animation: pulse-fast 1.5s infinite; }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(-10deg); }
+            50% { transform: rotate(10deg); }
+        }
+        .animate-wiggle { animation: wiggle 1.5s ease-in-out infinite; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-float { animation: float 2s ease-in-out infinite; }
+        
+        @keyframes drip {
+            0% { transform: translateY(-15px); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(15px); opacity: 0; }
+        }
+        .animate-drip { animation: drip 1.5s infinite linear; }
+    </style>
+</head>
+<body class="min-h-screen bg-orange-100 flex items-center justify-center p-4 font-sans text-stone-800">
+
+    <div class="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-orange-300 relative">
+        
+        <!-- Header -->
+        <div id="game-header" class="bg-orange-500 text-white p-4 flex justify-between items-center shadow-md hidden">
+            <div class="flex items-center gap-2 font-bold text-xl">
+                <div id="header-bot-icon" class="w-8 h-8 text-white"></div>
+                <span>Academia de Robótica</span>
+            </div>
+            <div class="flex items-center gap-2 bg-orange-600 px-4 py-1 rounded-full text-sm font-semibold">
+                <i data-lucide="user" class="w-4 h-4"></i>
+                <span>Programador(a) em Treino</span>
+            </div>
+        </div>
+
+        <!-- Área de Jogo -->
+        <div id="game-area" class="p-6 md:p-10">
+            <!-- O conteúdo será injetado aqui -->
+        </div>
+
+    </div>
+
+    <script>
+        // --- ILUSTRAÇÕES SVG DO ROBÔ RETRO ---
+        const RobotSVGs = {
+            head: `<svg viewBox="0 0 100 100" class="w-full h-full fill-current" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="30" width="60" height="50" rx="8" fill="currentColor"/><circle cx="35" cy="55" r="6" fill="#fff"/><circle cx="35" cy="55" r="2" fill="#000"/><circle cx="65" cy="55" r="6" fill="#fff"/><circle cx="65" cy="55" r="2" fill="#000"/><path d="M 40 70 Q 50 78 60 70" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none"/><line x1="50" y1="30" x2="50" y2="10" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="10" r="5" fill="#f59e0b"/></svg>`,
+            wave: `<svg viewBox="0 0 200 200" class="w-40 h-40 mx-auto" xmlns="http://www.w3.org/2000/svg"><line x1="100" y1="50" x2="100" y2="15" stroke="#94a3b8" stroke-width="6" stroke-linecap="round"/><circle cx="100" cy="15" r="8" fill="#f59e0b" class="animate-pulse"/><path d="M 65 130 Q 20 110 40 60" stroke="#94a3b8" stroke-width="10" stroke-linecap="round" fill="none"/><circle cx="40" cy="60" r="12" fill="#f97316"/><path d="M 135 130 Q 170 140 160 180" stroke="#94a3b8" stroke-width="10" stroke-linecap="round" fill="none"/><circle cx="160" cy="180" r="12" fill="#f97316"/><rect x="60" y="110" width="80" height="70" rx="12" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="4"/><rect x="75" y="130" width="50" height="30" rx="6" fill="#0f172a"/><polyline points="85,145 95,135 105,150 115,140" stroke="#f97316" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="85" y="95" width="30" height="15" fill="#94a3b8"/><rect x="50" y="30" width="100" height="65" rx="12" fill="#f97316" stroke="#ea580c" stroke-width="4"/><circle cx="75" cy="60" r="10" fill="#fff"/><circle cx="75" cy="60" r="4" fill="#0f172a"/><circle cx="125" cy="60" r="10" fill="#fff"/><circle cx="125" cy="60" r="4" fill="#0f172a"/><path d="M 85 80 Q 100 90 115 80" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/><rect x="35" y="50" width="15" height="25" rx="4" fill="#ea580c"/><rect x="150" y="50" width="15" height="25" rx="4" fill="#ea580c"/><path d="M 70 180 L 130 180 L 140 210 L 60 210 Z" fill="#64748b"/></svg>`,
+            happy: `<svg viewBox="0 0 200 200" class="w-48 h-48 mx-auto" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="40" r="6" fill="#f59e0b" class="animate-ping"/><circle cx="160" cy="30" r="5" fill="#ec4899" class="animate-ping"/><circle cx="150" cy="150" r="7" fill="#f97316" class="animate-ping"/><line x1="100" y1="50" x2="100" y2="15" stroke="#94a3b8" stroke-width="6" stroke-linecap="round"/><circle cx="100" cy="15" r="10" fill="#f59e0b" class="animate-pulse"/><path d="M 65 120 Q 30 100 40 50" stroke="#94a3b8" stroke-width="10" stroke-linecap="round" fill="none"/><circle cx="40" cy="50" r="12" fill="#f59e0b"/><path d="M 135 120 Q 170 100 160 50" stroke="#94a3b8" stroke-width="10" stroke-linecap="round" fill="none"/><circle cx="160" cy="50" r="12" fill="#f59e0b"/><rect x="60" y="100" width="80" height="70" rx="12" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="4"/><path d="M 100 145 C 100 145 90 130 80 130 C 70 130 70 145 80 155 L 100 170 L 120 155 C 130 145 130 130 120 130 C 110 130 100 145 100 145 Z" fill="#ec4899"/><rect x="85" y="85" width="30" height="15" fill="#94a3b8"/><rect x="50" y="30" width="100" height="65" rx="12" fill="#f97316" stroke="#ea580c" stroke-width="4"/><path d="M 65 60 Q 75 50 85 60" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M 115 60 Q 125 50 135 60" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M 75 70 Q 100 95 125 70" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M 85 78 Q 100 95 115 78" fill="#ef4444"/><rect x="35" y="50" width="15" height="25" rx="4" fill="#ea580c"/><rect x="150" y="50" width="15" height="25" rx="4" fill="#ea580c"/><path d="M 70 170 L 130 170 L 140 200 L 60 200 Z" fill="#64748b"/></svg>`,
+            side: `<svg viewBox="0 0 100 100" class="w-16 h-16" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="25" x2="50" y2="5" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="5" r="5" fill="#f59e0b" class="animate-pulse"/><rect x="20" y="25" width="60" height="45" rx="8" fill="#f97316" stroke="#ea580c" stroke-width="3"/><circle cx="35" cy="45" r="6" fill="#fff"/><circle cx="35" cy="45" r="2.5" fill="#0f172a"/><circle cx="65" cy="45" r="6" fill="#fff"/><circle cx="65" cy="45" r="2.5" fill="#0f172a"/><path d="M 40 60 Q 50 68 60 60" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none"/><rect x="35" y="70" width="30" height="15" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="2"/><rect x="42" y="75" width="16" height="6" rx="2" fill="#0f172a"/></svg>`
+        };
+
+        // --- BASE DE DADOS DE CENÁRIOS E ANIMAÇÕES ---
+        const Scenarios = {
+            lvl1: [
+                {
+                    title: "Lavar as Mãos",
+                    instruction: "O {robot} tem as mãos sujas de óleo. Clica nos passos na ordem correta para ele lavar as mãos!",
+                    anim: `<div class="relative w-24 h-24 flex items-center justify-center">
+                               <i data-lucide="hand" class="text-amber-400 w-16 h-16 relative z-10 animate-wiggle"></i>
+                               <i data-lucide="droplet" class="text-cyan-400 w-8 h-8 absolute top-0 animate-drip"></i>
+                               <i data-lucide="droplet" class="text-blue-400 w-6 h-6 absolute top-2 right-4 animate-drip" style="animation-delay: 0.5s"></i>
+                           </div>`,
+                    ops: [
+                        { id: 's1', label: 'Ligar a Água', color: 'bg-orange-200' },
+                        { id: 's2', label: 'Pôr Sabão', color: 'bg-rose-200' },
+                        { id: 's3', label: 'Esfregar as mãos', color: 'bg-amber-200' },
+                        { id: 's4', label: 'Passar por água', color: 'bg-red-200' }
+                    ],
+                    success: "Excelente! Criaste o algoritmo perfeito. Mãos lavadas e prontas!",
+                    error: "Ups! A ordem não faz sentido. Tenta ligar a água primeiro e só passar por água no fim."
+                },
+                {
+                    title: "Fazer a Cama",
+                    instruction: "O {robot} acabou de acordar. Qual é o algoritmo certo para ele fazer a cama?",
+                    anim: `<div class="relative w-24 h-24 flex items-center justify-center">
+                               <i data-lucide="bed-double" class="text-rose-500 w-20 h-20 animate-pulse-fast"></i>
+                               <span class="absolute -top-2 -right-2 text-xl font-bold text-stone-400 animate-float">Zzz</span>
+                           </div>`,
+                    ops: [
+                        { id: 's1', label: 'Tirar as almofadas', color: 'bg-yellow-200' },
+                        { id: 's2', label: 'Esticar o lençol', color: 'bg-orange-200' },
+                        { id: 's3', label: 'Puxar o edredão', color: 'bg-red-200' },
+                        { id: 's4', label: 'Colocar almofadas', color: 'bg-rose-200' }
+                    ],
+                    success: "Cama impecável! O algoritmo funcionou perfeitamente.",
+                    error: "Oh não! O robô colocou as almofadas debaixo do lençol. Pensa na ordem lógica!"
+                },
+                {
+                    title: "Lavar os Dentes",
+                    instruction: "É hora de dormir. Ajuda o {robot} a criar o algoritmo para lavar os dentes.",
+                    anim: `<div class="relative w-24 h-24 flex items-center justify-center">
+                               <i data-lucide="smile" class="text-orange-400 w-16 h-16"></i>
+                               <i data-lucide="sparkles" class="text-yellow-400 w-10 h-10 absolute -top-2 -right-2 animate-[spin_3s_linear_infinite]"></i>
+                           </div>`,
+                    ops: [
+                        { id: 's1', label: 'Pôr pasta na escova', color: 'bg-orange-200' },
+                        { id: 's2', label: 'Escovar os dentes', color: 'bg-yellow-200' },
+                        { id: 's3', label: 'Bochechar com água', color: 'bg-red-200' },
+                        { id: 's4', label: 'Limpar a boca', color: 'bg-amber-200' }
+                    ],
+                    success: "Dentes a brilhar! Executaste a receita passo a passo.",
+                    error: "Erro! O robô tentou bochechar com água antes de escovar os dentes. Vamos tentar de novo!"
+                }
+            ],
+            lvl2: [
+                {
+                    title: "Sumo de Laranja",
+                    instruction: "A ORDEM muda tudo. Se trocares os passos, terás um 'bug'. Ajuda o {robot} a preparar o sumo.",
+                    anim: `<div class="relative w-24 h-24 flex items-center justify-center">
+                               <i data-lucide="citrus" class="text-orange-500 w-12 h-12 absolute -top-2 animate-wiggle"></i>
+                               <i data-lucide="droplet" class="text-orange-400 w-6 h-6 absolute top-8 animate-drip"></i>
+                               <i data-lucide="glass-water" class="text-cyan-500 w-14 h-14 absolute bottom-0"></i>
+                           </div>`,
+                    ops: [
+                        { id: 's1', label: 'Cortar a Laranja', icon: 'scissors' },
+                        { id: 's2', label: 'Espremer o Sumo', icon: 'droplet' },
+                        { id: 's3', label: 'Deitar no Copo', icon: 'glass-water' }
+                    ],
+                    success: "Sumo delicioso! A ordem importava: tentar espremer antes de cortar ia correr mal.",
+                    error: "Erro! O robô tentou deitar no copo antes de espremer a laranja."
+                },
+                {
+                    title: "Calçar os Sapatos",
+                    instruction: "Ajuda o {robot} a preparar-se para sair de casa. Cuidado com a Sequência!",
+                    anim: `<div class="relative w-24 h-24 flex items-center justify-center">
+                               <i data-lucide="footprints" class="text-stone-400 w-14 h-14 animate-pulse"></i>
+                               <i data-lucide="move-up" class="text-emerald-500 w-8 h-8 absolute -right-2 top-2 animate-bounce"></i>
+                           </div>`,
+                    ops: [
+                        { id: 's1', label: 'Calçar a Meia', icon: 'footprints' },
+                        { id: 's2', label: 'Calçar o Sapato', icon: 'move-up' },
+                        { id: 's3', label: 'Atar os Atacadores', icon: 'infinity' }
+                    ],
+                    success: "Perfeito! A sequência foi seguida à risca e os sapatos estão calçados.",
+                    error: "Bug detetado! O robô tentou atar os atacadores da meia. Ordem errada!"
+                },
+                {
+                    title: "Plantar uma Flor",
+                    instruction: "A jardinagem precisa de regras estritas. Que sequência deve o {robot} usar?",
+                    anim: `<div class="relative w-24 h-24 flex items-end justify-center pb-2">
+                               <div class="w-20 h-4 bg-amber-800 rounded-full absolute bottom-0"></div>
+                               <i data-lucide="flower-2" class="text-rose-500 w-12 h-12 relative z-10 animate-float origin-bottom"></i>
+                               <i data-lucide="sun" class="text-yellow-400 w-8 h-8 absolute -top-2 -right-4 animate-[spin_6s_linear_infinite]"></i>
+                           </div>`,
+                    ops: [
+                        { id: 's1', label: 'Fazer buraco na terra', icon: 'circle-dashed' },
+                        { id: 's2', label: 'Colocar a semente', icon: 'sprout' },
+                        { id: 's3', label: 'Regar com água', icon: 'droplets' }
+                    ],
+                    success: "Lindo jardim! A sequência biológica foi respeitada.",
+                    error: "Ups! Regaste a terra antes de colocar a semente e fizeste lama."
+                }
+            ],
+            lvl3: [
+                { title: "Subir Escadas", action: "Sobe degrau", times: "10", 
+                  anim: `<div class="relative w-24 h-24 flex items-end justify-start px-2 pb-2">
+                             <div class="flex items-end">
+                                 <div class="w-5 h-5 bg-orange-400 border border-orange-500"></div>
+                                 <div class="w-5 h-10 bg-orange-400 border border-orange-500"></div>
+                                 <div class="w-5 h-14 bg-orange-400 border border-orange-500"></div>
+                                 <div class="w-5 h-20 bg-orange-400 border border-orange-500"></div>
+                             </div>
+                             <div class="w-5 h-5 bg-red-500 rounded-full absolute left-14 bottom-20 animate-bounce"></div>
+                         </div>` 
+                },
+                { title: "Bater Palmas", action: "Bate as mãos", times: "5", 
+                  anim: `<div class="relative w-24 h-24 flex items-center justify-center gap-2">
+                             <i data-lucide="hand" class="text-amber-500 w-10 h-10 animate-wiggle" style="transform: scaleX(-1);"></i>
+                             <i data-lucide="hand" class="text-amber-500 w-10 h-10 animate-wiggle" style="animation-direction: reverse;"></i>
+                         </div>` 
+                },
+                { title: "Saltar à Corda", action: "Dá um salto", times: "20", 
+                  anim: `<div class="relative w-24 h-24 flex items-center justify-center">
+                             <div class="w-16 h-16 border-t-4 border-dashed border-stone-500 rounded-full animate-spin absolute top-4"></div>
+                             <i data-lucide="person-standing" class="text-orange-600 w-12 h-12 animate-bounce relative z-10"></i>
+                         </div>` 
+                }
+            ],
+            lvl4: [
+                {
+                    title: "O Semáforo",
+                    instruction: "O {robot} quer atravessar a estrada e o semáforo está vermelho.",
+                    anim: `<div class="bg-stone-800 p-2 rounded-2xl flex flex-col gap-1 border-2 border-stone-900 w-12">
+                               <div class="w-6 h-6 rounded-full bg-red-500 animate-pulse shadow-[0_0_10px_red] mx-auto"></div>
+                               <div class="w-6 h-6 rounded-full bg-stone-700 mx-auto"></div>
+                               <div class="w-6 h-6 rounded-full bg-stone-700 mx-auto"></div>
+                           </div>`,
+                    alert: "O Semáforo está VERMELHO!",
+                    cond: "semáforo vermelho",
+                    icon: "alert-triangle", color: "text-red-500", shadow: "rgba(239,68,68,0.7)",
+                    options: [
+                        { action: 'error', label: 'Atravessar a correr', class: 'bg-orange-500 hover:bg-orange-400' },
+                        { action: 'error', label: 'Dançar na passadeira', class: 'bg-rose-500 hover:bg-rose-400' },
+                        { action: 'success', label: 'Parar e esperar', class: 'bg-red-500 hover:bg-red-400' },
+                        { action: 'error', label: 'Sentar no chão', class: 'bg-yellow-500 hover:bg-yellow-400' }
+                    ],
+                    errorMsg: "Bip Bop BOOM! Essa não é a decisão certa! Fazer isso com o semáforo vermelho é perigoso."
+                },
+                {
+                    title: "A Tempestade",
+                    instruction: "O {robot} tem de ir às compras, mas as nuvens estão escuras.",
+                    anim: `<div class="relative w-24 h-24 flex items-center justify-center">
+                               <i data-lucide="cloud-lightning" class="text-stone-500 w-20 h-20 animate-wiggle"></i>
+                               <i data-lucide="droplets" class="text-blue-400 w-8 h-8 absolute -bottom-2 animate-drip"></i>
+                           </div>`,
+                    alert: "Está a CHOVER muito!",
+                    cond: "estiver a chover",
+                    icon: "cloud-rain", color: "text-orange-400", shadow: "rgba(251,146,60,0.7)",
+                    options: [
+                        { action: 'error', label: 'Pôr óculos de sol', class: 'bg-yellow-500 hover:bg-yellow-400' },
+                        { action: 'success', label: 'Levar o guarda-chuva', class: 'bg-red-500 hover:bg-red-400' },
+                        { action: 'error', label: 'Vestir calções de banho', class: 'bg-orange-500 hover:bg-orange-400' },
+                        { action: 'error', label: 'Deitar a dormir', class: 'bg-rose-500 hover:bg-rose-400' }
+                    ],
+                    errorMsg: "Curto-circuito! Se chove e tomas essa decisão, a água estraga o robô."
+                },
+                {
+                    title: "Energia em Baixo",
+                    instruction: "O {robot} está a piscar uma luzinha amarela no peito.",
+                    anim: `<div class="relative w-24 h-24 flex items-center justify-center">
+                               <i data-lucide="battery-warning" class="text-red-500 w-20 h-20 animate-pulse"></i>
+                               <i data-lucide="zap" class="text-yellow-400 w-10 h-10 absolute -right-2 animate-ping"></i>
+                           </div>`,
+                    alert: "A BATERIA está Fraca!",
+                    cond: "bateria fraca",
+                    icon: "battery-warning", color: "text-amber-500", shadow: "rgba(245,158,11,0.7)",
+                    options: [
+                        { action: 'error', label: 'Correr uma maratona', class: 'bg-orange-500 hover:bg-orange-400' },
+                        { action: 'error', label: 'Cantar uma música', class: 'bg-rose-500 hover:bg-rose-400' },
+                        { action: 'error', label: 'Brincar às escondidas', class: 'bg-yellow-500 hover:bg-yellow-400' },
+                        { action: 'success', label: 'Ligar ao carregador', class: 'bg-red-500 hover:bg-red-400' }
+                    ],
+                    errorMsg: "O robô desligou-se! Essa decisão gastou a energia toda."
+                }
+            ],
+            lvl5: [
+                {
+                    title: "Colheita de Maçãs",
+                    instruction: "O {robot} precisa de ir à macieira e apanhar as maçãs APENAS se estiverem maduras.",
+                    anim: `<div class="relative w-24 h-24 flex items-center justify-center">
+                               <i data-lucide="tree-pine" class="text-emerald-500 w-20 h-20"></i>
+                               <i data-lucide="apple" class="text-red-500 w-6 h-6 absolute top-4 right-4 animate-bounce"></i>
+                               <div class="absolute bottom-2 left-2 w-8 h-6 bg-amber-700 rounded-b-lg border-t-4 border-amber-800"></div>
+                           </div>`,
+                    icon: "apple", iconColor: "text-red-500",
+                    ops: [
+                        { id: 'loop', label: 'Repete até à árvore:', type: 'loop', color: 'bg-rose-500', indent: 0 },
+                        { id: 'passo', label: 'Andar em frente', type: 'action', color: 'bg-orange-500', indent: 1 },
+                        { id: 'if', label: 'Se a maçã for vermelha:', type: 'if', color: 'bg-red-500', indent: 1 },
+                        { id: 'apanhar', label: 'Guardar no Cesto', type: 'action', color: 'bg-amber-500', indent: 2 }
+                    ]
+                },
+                {
+                    title: "Arrumar o Quarto",
+                    instruction: "O {robot} vai arrumar o quarto. Deve varrer o chão todo e recolher só os brinquedos.",
+                    anim: `<div class="relative w-24 h-24 flex items-center justify-center">
+                               <i data-lucide="box" class="text-amber-600 w-16 h-16 absolute bottom-0"></i>
+                               <i data-lucide="gamepad-2" class="text-blue-500 w-8 h-8 absolute top-2 animate-bounce"></i>
+                           </div>`,
+                    icon: "box", iconColor: "text-amber-500",
+                    ops: [
+                        { id: 'loop', label: 'Repete até à parede:', type: 'loop', color: 'bg-rose-500', indent: 0 },
+                        { id: 'passo', label: 'Avançar um passo', type: 'action', color: 'bg-orange-500', indent: 1 },
+                        { id: 'if', label: 'Se vires um brinquedo:', type: 'if', color: 'bg-red-500', indent: 1 },
+                        { id: 'apanhar', label: 'Pôr dentro do Baú', type: 'action', color: 'bg-amber-500', indent: 2 }
+                    ]
+                },
+                {
+                    title: "Fuga do Labirinto",
+                    instruction: "O {robot} tem de sair do labirinto sem bater contra as paredes de pedra.",
+                    anim: `<div class="relative w-24 h-24 flex items-center justify-center">
+                               <i data-lucide="map" class="text-stone-400 w-20 h-20"></i>
+                               <div class="w-4 h-4 bg-red-500 rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-ping"></div>
+                               <div class="w-4 h-4 bg-red-500 rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+                           </div>`,
+                    icon: "map", iconColor: "text-stone-400",
+                    ops: [
+                        { id: 'loop', label: 'Repete até à Saída:', type: 'loop', color: 'bg-rose-500', indent: 0 },
+                        { id: 'passo', label: 'Dar um passo em frente', type: 'action', color: 'bg-orange-500', indent: 1 },
+                        { id: 'if', label: 'Se bateres na parede:', type: 'if', color: 'bg-stone-500', indent: 1 },
+                        { id: 'apanhar', label: 'Virar à direita', type: 'action', color: 'bg-amber-500', indent: 2 }
+                    ]
+                }
+            ]
+        };
+
+        // --- ESTADO DO JOGO ---
+        const State = {
+            view: 'intro',
+            robotName: 'BipBop',
+            
+            scenarios: { lvl1: 0, lvl2: 0, lvl3: 0, lvl4: 0, lvl5: 0 },
+
+            lvl1: { seq: [], shuffledOps: [], status: '' },
+            lvl2: { seq: [], shuffledOps: [], status: '' },
+            lvl3: { status: '' },
+            lvl4: { status: '' },
+            lvl5: { seq: [], shuffledOps: [], status: '' }
+        };
+
+        // --- FUNÇÕES UTILITÁRIAS ---
+        function shuffle(array) {
+            let curId = array.length;
+            while (0 !== curId) {
+                let randId = Math.floor(Math.random() * curId);
+                curId -= 1;
+                let tmp = array[curId];
+                array[curId] = array[randId];
+                array[randId] = tmp;
+            }
+            return array;
+        }
+
+        function initGame() {
+            State.scenarios.lvl1 = Math.floor(Math.random() * Scenarios.lvl1.length);
+            State.scenarios.lvl2 = Math.floor(Math.random() * Scenarios.lvl2.length);
+            State.scenarios.lvl3 = Math.floor(Math.random() * Scenarios.lvl3.length);
+            State.scenarios.lvl4 = Math.floor(Math.random() * Scenarios.lvl4.length);
+            State.scenarios.lvl5 = Math.floor(Math.random() * Scenarios.lvl5.length);
+
+            State.lvl1.seq = []; State.lvl1.status = '';
+            State.lvl1.shuffledOps = shuffle([...Scenarios.lvl1[State.scenarios.lvl1].ops]);
+
+            State.lvl2.seq = []; State.lvl2.status = '';
+            State.lvl2.shuffledOps = shuffle([...Scenarios.lvl2[State.scenarios.lvl2].ops]);
+
+            State.lvl3.status = '';
+            State.lvl4.status = '';
+            
+            State.lvl5.seq = []; State.lvl5.status = '';
+            State.lvl5.shuffledOps = shuffle([...Scenarios.lvl5[State.scenarios.lvl5].ops]);
+
+            State.view = 'intro';
+            render();
+        }
+
+        function setView(view) {
+            State.view = view;
+            render();
+        }
+
+        function updateRobotName(val) {
+            State.robotName = val || 'BipBop';
+        }
+
+        function parseText(text) {
+            return text.replace(/{robot}/g, `<b>${State.robotName}</b>`);
+        }
+
+        // --- AÇÕES DOS NÍVEIS ---
+        function clickLvl1(id) {
+            if (State.lvl1.seq.includes(id) || State.lvl1.status === 'success') return;
+            State.lvl1.seq.push(id);
+            if (State.lvl1.seq.length === 4) {
+                if (State.lvl1.seq[0]==='s1' && State.lvl1.seq[1]==='s2' && State.lvl1.seq[2]==='s3' && State.lvl1.seq[3]==='s4') {
+                    State.lvl1.status = 'success';
+                } else {
+                    State.lvl1.status = 'error';
+                }
+            }
+            render();
+        }
+        function resetLvl1() { State.lvl1.seq = []; State.lvl1.status = ''; render(); }
+
+        function clickLvl2(id) {
+            if (State.lvl2.seq.includes(id) || State.lvl2.status === 'success') return;
+            State.lvl2.seq.push(id);
+            if (State.lvl2.seq.length === 3) {
+                if (State.lvl2.seq[0] === 's1' && State.lvl2.seq[1] === 's2' && State.lvl2.seq[2] === 's3') {
+                    State.lvl2.status = 'success';
+                } else {
+                    State.lvl2.status = 'error';
+                }
+            }
+            render();
+        }
+        function resetLvl2() { State.lvl2.seq = []; State.lvl2.status = ''; render(); }
+
+        function clickLvl3(status) { State.lvl3.status = status; render(); }
+        function clickLvl4(status) { State.lvl4.status = status; render(); }
+
+        function clickLvl5(id) {
+            if (State.lvl5.seq.find(b => b.id === id) || State.lvl5.status === 'success') return;
+            const block = Scenarios.lvl5[State.scenarios.lvl5].ops.find(b => b.id === id);
+            State.lvl5.seq.push(block);
+            if (State.lvl5.seq.length === 4) {
+                if (State.lvl5.seq[0].id === 'loop' && State.lvl5.seq[1].id === 'passo' && State.lvl5.seq[2].id === 'if' && State.lvl5.seq[3].id === 'apanhar') {
+                    State.lvl5.status = 'success';
+                } else {
+                    State.lvl5.status = 'error';
+                }
+            }
+            render();
+        }
+        function resetLvl5() { State.lvl5.seq = []; State.lvl5.status = ''; render(); }
+
+        // --- RENDERIZAÇÃO ---
+        function render() {
+            const header = document.getElementById('game-header');
+            const area = document.getElementById('game-area');
+            const headerIcon = document.getElementById('header-bot-icon');
+            if (headerIcon && !headerIcon.innerHTML) headerIcon.innerHTML = RobotSVGs.head;
+
+            if (State.view === 'intro' || State.view === 'end') {
+                header.classList.add('hidden');
+            } else {
+                header.classList.remove('hidden');
+            }
+
+            let html = '';
+            switch(State.view) {
+                case 'intro': html = renderIntro(); break;
+                case 'lvl1': html = renderLvl1(); break;
+                case 'lvl2': html = renderLvl2(); break;
+                case 'lvl3': html = renderLvl3(); break;
+                case 'lvl4': html = renderLvl4(); break;
+                case 'lvl5': html = renderLvl5(); break;
+                case 'end': html = renderEnd(); break;
+            }
+
+            area.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        // --- COMPONENTES HTML ---
+        function renderIntro() {
+            return `
+                <div class="text-center space-y-8 animate-fade-in">
+                    <div class="flex justify-center mb-6">
+                        <div class="bg-orange-100 p-6 rounded-[2rem] inline-block shadow-inner border-4 border-orange-200">
+                            ${RobotSVGs.wave}
+                        </div>
+                    </div>
+                    <h1 class="text-4xl md:text-5xl font-extrabold text-orange-600 mb-2">Missão: Programar o Robô!</h1>
+                    <p class="text-xl text-stone-600 max-w-lg mx-auto">
+                        Olá! Eu sou o Professor. Estás preparado para descobrir o que é um Algoritmo e resolver novos puzzles gerados aleatoriamente?
+                    </p>
+                    <div class="space-y-4 max-w-md mx-auto bg-stone-50 p-6 rounded-2xl border-2 border-stone-200">
+                        <div>
+                            <label class="block text-sm font-bold text-stone-500 mb-2 uppercase">Dá um nome ao teu Robô:</label>
+                            <input type="text" value="${State.robotName}" onkeyup="updateRobotName(this.value)" class="w-full text-center text-2xl font-bold text-orange-600 border-2 border-orange-200 rounded-xl p-3 focus:outline-none focus:border-orange-500" maxlength="12" />
+                        </div>
+                        <button onclick="setView('lvl1')" class="w-full bg-red-500 hover:bg-red-600 text-white text-xl font-bold py-4 rounded-xl transition-transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg">
+                            <i data-lucide="play" class="fill-current"></i> COMEÇAR TREINO
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderLevelContainer(title, subtitle, instruction, animHTML, contentHTML, feedbackHTML) {
+            return `
+                <div class="animate-fade-in flex flex-col h-full">
+                    <div class="mb-6">
+                        <h2 class="text-sm font-bold text-orange-500 uppercase tracking-widest">${title}</h2>
+                        <h3 class="text-2xl md:text-3xl font-extrabold text-stone-800">${subtitle}</h3>
+                    </div>
+                    <div class="bg-orange-50 text-orange-900 p-4 rounded-xl border border-orange-200 mb-6 flex items-center md:items-start gap-4 shadow-sm">
+                        <div class="shrink-0 drop-shadow-md bg-white rounded-full p-2 border-2 border-orange-100">
+                            ${RobotSVGs.side}
+                        </div>
+                        <p class="text-lg font-medium leading-snug pt-2">${instruction}</p>
+                    </div>
+                    
+                    <div class="mb-8 flex items-center justify-center p-6 border-4 border-dashed border-orange-300 rounded-2xl bg-orange-100/50 min-h-[140px] shadow-inner">
+                        <div class="relative flex items-center justify-center">
+                            ${animHTML}
+                        </div>
+                    </div>
+
+                    <div class="flex-grow">${contentHTML}${feedbackHTML}</div>
+                </div>
+            `;
+        }
+
+        function renderFeedback(status, successMsg, errorMsg, resetFn, nextView) {
+            if (!status) return '';
+            const isSuccess = status === 'success';
+            const colorClass = isSuccess ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800';
+            const icon = isSuccess ? '<i data-lucide="check-circle-2" class="w-10 h-10 text-green-500 shrink-0"></i>' : '<i data-lucide="x-circle" class="w-10 h-10 text-red-500 shrink-0"></i>';
+            const msg = isSuccess ? successMsg : errorMsg;
+            
+            let btnHTML = isSuccess 
+                ? `<button onclick="setView('${nextView}')" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-md hover:scale-105 transition-transform w-full md:w-auto justify-center">PRÓXIMO NÍVEL <i data-lucide="arrow-right" class="w-5 h-5"></i></button>` 
+                : (resetFn ? `<button onclick="${resetFn}()" class="bg-white text-red-600 border-2 border-red-200 hover:bg-red-100 px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-colors w-full md:w-auto justify-center"><i data-lucide="undo-2" class="w-5 h-5"></i> TENTAR DE NOVO</button>` : '');
+
+            return `
+                <div class="mt-8 p-6 rounded-2xl animate-slide-up flex flex-col md:flex-row items-center justify-between gap-4 border-2 ${colorClass}">
+                    <div class="flex items-center gap-4">${icon}<p class="font-bold text-lg">${msg}</p></div>
+                    <div class="shrink-0 w-full md:w-auto flex justify-end">${btnHTML}</div>
+                </div>
+            `;
+        }
+
+        function renderLvl1() {
+            const data = Scenarios.lvl1[State.scenarios.lvl1];
+            
+            let optionsHTML = State.lvl1.shuffledOps.map(opt => {
+                const isSelected = State.lvl1.seq.includes(opt.id);
+                const disabled = isSelected || State.lvl1.status === 'success';
+                return `<button onclick="clickLvl1('${opt.id}')" ${disabled ? 'disabled' : ''} class="${opt.color} ${isSelected ? 'opacity-40 grayscale' : 'hover:scale-105 hover:shadow-lg'} transition-all p-4 rounded-xl font-bold text-stone-800 border-b-4 border-black/20 w-full shadow-sm">${opt.label}</button>`;
+            }).join('');
+
+            let seqHTML = State.lvl1.seq.map((id, index) => {
+                const item = data.ops.find(o => o.id === id);
+                return `<div class="${item.color} px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1 text-stone-800">${index + 1}. ${item.label} ${index < State.lvl1.seq.length - 1 ? '<i data-lucide="arrow-right" class="w-4 h-4"></i>' : ''}</div>`;
+            }).join('');
+
+            if(State.lvl1.seq.length === 0) seqHTML = `<span class="text-stone-400 italic">Clica nos botões baralhados acima para organizar os passos...</span>`;
+
+            const content = `
+                <div class="grid grid-cols-2 gap-4 mb-8">${optionsHTML}</div>
+                <div class="bg-stone-100 min-h-[120px] rounded-2xl p-4 border-2 border-dashed border-stone-300 flex flex-col items-center justify-center relative">
+                    <div class="absolute top-[-12px] bg-stone-300 text-xs font-bold px-3 py-1 rounded-full text-stone-600">O Teu Algoritmo Lógico:</div>
+                    <div class="flex gap-2 flex-wrap justify-center mt-2">${seqHTML}</div>
+                </div>
+            `;
+
+            const feedback = renderFeedback(State.lvl1.status, data.success, data.error, "resetLvl1", "lvl2");
+            return renderLevelContainer(`Nível 1: ${data.title}`, "O Conceito Elementar", parseText(data.instruction), data.anim, content, feedback);
+        }
+
+        function renderLvl2() {
+            const data = Scenarios.lvl2[State.scenarios.lvl2];
+
+            let optionsHTML = State.lvl2.shuffledOps.map(opt => {
+                const isSelected = State.lvl2.seq.includes(opt.id);
+                const disabled = isSelected || State.lvl2.status === 'success';
+                return `
+                    <button onclick="clickLvl2('${opt.id}')" ${disabled ? 'disabled' : ''} class="bg-amber-100 flex items-center justify-center md:justify-start gap-4 p-4 rounded-xl font-bold text-amber-900 border-b-4 border-amber-200 transition-all ${isSelected ? 'opacity-40 grayscale' : 'hover:scale-[1.02] hover:bg-amber-200'}">
+                        <div class="bg-white p-2 rounded-full hidden md:block"><i data-lucide="${opt.icon}" class="w-6 h-6 text-amber-500"></i></div>
+                        <span class="text-lg text-center md:text-left">${opt.label}</span>
+                    </button>
+                `;
+            }).join('');
+
+            let seqHTML = State.lvl2.seq.map((id, index) => {
+                const item = data.ops.find(o => o.id === id);
+                return `<div class="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2"><i data-lucide="${item.icon}" class="w-4 h-4"></i> ${item.label}</div> ${index < 2 ? '<i data-lucide="arrow-right" class="w-5 h-5 text-stone-400"></i>' : ''}`;
+            }).join('');
+
+            const content = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">${optionsHTML}</div>
+                <div class="bg-stone-100 min-h-[100px] rounded-2xl p-4 flex flex-col gap-2">
+                    <div class="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2">A tua sequência (da esquerda para a direita):</div>
+                    <div class="flex items-center gap-3 overflow-x-auto pb-2">${seqHTML}</div>
+                </div>
+            `;
+
+            const feedback = renderFeedback(State.lvl2.status, data.success, data.error, "resetLvl2", "lvl3");
+            return renderLevelContainer(`Nível 2: ${data.title}`, "A Importância da Sequência", parseText(data.instruction), data.anim, content, feedback);
+        }
+
+        function renderLvl3() {
+            const data = Scenarios.lvl3[State.scenarios.lvl3];
+
+            let hardCode = [];
+            for(let i=1; i<=7; i++) hardCode.push(`${i}. ${data.action}`);
+
+            const content = `
+                <div class="grid md:grid-cols-2 gap-6 mb-8">
+                    <button onclick="clickLvl3('error')" ${State.lvl3.status === 'success' ? 'disabled' : ''} class="bg-stone-50 border-2 border-stone-200 p-6 rounded-2xl text-left hover:bg-red-50 hover:border-red-200 transition-colors group relative">
+                        <div class="text-sm font-bold text-stone-400 group-hover:text-red-400 mb-2">Opção A: Escrever tudo à mão</div>
+                        <div class="font-mono text-stone-500 bg-white p-3 rounded border border-stone-200 text-xs leading-relaxed max-h-[150px] overflow-hidden relative">
+                            ${hardCode.join('<br>')}...
+                            <div class="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent"></div>
+                        </div>
+                    </button>
+                    <button onclick="clickLvl3('success')" ${State.lvl3.status === 'success' ? 'disabled' : ''} class="bg-stone-50 border-2 border-stone-200 p-6 rounded-2xl text-left hover:bg-green-50 hover:border-green-200 transition-colors group relative">
+                        <div class="text-sm font-bold text-stone-400 group-hover:text-green-500 mb-2">Opção B: Usar um Atalho</div>
+                        <div class="font-mono text-stone-700 bg-white p-3 rounded border border-stone-200">
+                            <div class="text-rose-600 font-bold mb-1">Repete ${data.times} vezes:</div>
+                            <div class="pl-4 border-l-2 border-rose-300">[ ${data.action} ]</div>
+                        </div>
+                    </button>
+                </div>
+            `;
+
+            const feedback = renderFeedback(State.lvl3.status, "Mágico! Acabaste de usar um Ciclo (Loop). É muito mais rápido!", "Funciona, mas e se fossem 1000 vezes? Dava muito trabalho. Escolhe a opção Inteligente.", "", "lvl4");
+            return renderLevelContainer(`Nível 3: ${data.title}`, "A Magia dos Ciclos (Loops)", `O ${State.robotName} tem de repetir uma tarefa. Qual é o código mais inteligente que deves dar ao computador?`, data.anim, content, feedback);
+        }
+
+        function renderLvl4() {
+            const data = Scenarios.lvl4[State.scenarios.lvl4];
+
+            let buttonsHTML = data.options.map(opt => `
+                <button onclick="clickLvl4('${opt.action}')" ${State.lvl4.status === 'success' ? 'disabled' : ''} class="${opt.class} text-white px-4 py-3 rounded-lg text-sm font-bold transition-transform hover:scale-105 shadow-md w-full">
+                    ${opt.label}
+                </button>
+            `).join('');
+
+            const content = `
+                <div class="bg-stone-800 rounded-2xl p-6 mb-8 border-2 border-stone-700">
+                    <div class="flex items-center gap-4 mb-6 bg-stone-900 p-4 rounded-xl shadow-inner w-max mx-auto border border-stone-700">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center bg-stone-800">
+                            <i data-lucide="${data.icon}" class="w-8 h-8 ${data.color} animate-pulse drop-shadow-[0_0_8px_${data.shadow}]"></i>
+                        </div>
+                        <div class="font-bold text-lg text-stone-300">Atenção Sensor: <br/><span class="${data.color}">${data.alert}</span></div>
+                    </div>
+                    <div class="font-mono text-lg space-y-4 max-w-lg mx-auto bg-stone-900 text-stone-100 p-6 rounded-xl border border-stone-700">
+                        <div class="mb-2"><span class="text-yellow-400 font-bold">SE</span> (${data.cond}) <span class="text-yellow-400 font-bold">ENTÃO:</span></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">${buttonsHTML}</div>
+                    </div>
+                </div>
+            `;
+
+            const feedback = renderFeedback(State.lvl4.status, "Excelente Lógica! Usaste uma Condição (If). O robô verificou o ambiente e escolheu o caminho seguro.", data.errorMsg, "", "lvl5");
+            return renderLevelContainer(`Nível 4: ${data.title}`, "Tomar Decisões (If/Else)", parseText(data.instruction), data.anim, content, feedback);
+        }
+
+        function renderLvl5() {
+            const data = Scenarios.lvl5[State.scenarios.lvl5];
+
+            let optionsHTML = State.lvl5.shuffledOps.map(block => {
+                const isSelected = State.lvl5.seq.find(b => b.id === block.id);
+                const disabled = isSelected || State.lvl5.status === 'success';
+                return `<button onclick="clickLvl5('${block.id}')" ${disabled ? 'disabled' : ''} class="${block.color} text-white px-4 py-2 rounded-lg font-bold shadow-md transform transition-all ${isSelected ? 'opacity-30 scale-95' : 'hover:-translate-y-1 hover:shadow-lg'}">${block.label}</button>`;
+            }).join('');
+
+            let seqHTML = State.lvl5.seq.map(block => {
+                return `<div class="${block.color} inline-block px-3 py-1 rounded shadow-sm text-white font-bold" style="margin-left: ${block.indent * 24}px; display: block; width: max-content">${block.label}</div>`;
+            }).join('');
+
+            if(State.lvl5.seq.length === 0) seqHTML = `<div class="text-stone-500 italic text-center mt-8">Constrói o código aqui...</div>`;
+
+            const content = `
+                <div class="flex flex-wrap justify-center gap-2 mb-6">${optionsHTML}</div>
+                <div class="bg-stone-900 min-h-[220px] rounded-2xl p-6 font-mono text-white relative shadow-inner border-4 border-stone-700">
+                    <div class="text-stone-400 text-sm mb-4 border-b border-stone-700 pb-2 flex items-center justify-between">
+                        <span>Bloco do Algoritmo Final:</span>
+                        <i data-lucide="${data.icon}" class="w-5 h-5 ${data.iconColor}"></i>
+                    </div>
+                    <div class="space-y-2">${seqHTML}</div>
+                </div>
+            `;
+
+            const feedback = renderFeedback(State.lvl5.status, `Parabéns! Juntaste um Ciclo, uma Ação e uma Condição na perfeição. És um mestre da programação!`, "A lógica falhou. Ordem sugerida: 1) Abrir ciclo (Repete), 2) Ação de andar, 3) Condição (Se...), 4) Ação final.", "resetLvl5", "end");
+            return renderLevelContainer(`Nível 5: ${data.title}`, "O Desafio Final", parseText(data.instruction), data.anim, content, feedback);
+        }
+
+        function renderEnd() {
+            return `
+                <div class="text-center space-y-8 animate-fade-in py-10">
+                    <div class="flex justify-center mb-4">
+                        <div class="bg-amber-100 p-8 rounded-full inline-block relative border-4 border-amber-200 shadow-xl">
+                            ${RobotSVGs.happy}
+                            <div class="absolute -top-2 -right-2 bg-white rounded-full p-3 shadow-md border-2 border-stone-200 animate-bounce">
+                                <i data-lucide="award" class="w-10 h-10 text-amber-500"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <h1 class="text-4xl md:text-5xl font-extrabold text-amber-500 mb-2">Parabéns, Programador(a)!</h1>
+                    <p class="text-xl text-stone-600 max-w-lg mx-auto">
+                        O <b>${State.robotName}</b> está super orgulhoso! Descobriste que programar é dar regras precisas, usar sequências e condições lógicas.
+                    </p>
+                    <button onclick="initGame()" class="mt-8 bg-red-500 hover:bg-red-600 text-white text-xl font-bold py-4 px-8 rounded-xl transition-transform hover:scale-105 shadow-lg inline-flex items-center gap-2">
+                        <i data-lucide="refresh-ccw" class="w-6 h-6"></i> RECOMEÇAR COM NOVOS DESAFIOS
+                    </button>
+                </div>
+            `;
+        }
+
+        // --- INICIALIZAÇÃO ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initGame();
+        });
+
+    </script>
+</body>
+</html>
