@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superformula Generativa Animada</title>
+    <style>
+        body {
+            background-color: #050505; /* Fundo muito escuro, quase preto */
+            color: #ff3333;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        canvas {
+            border: 1px solid #333;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.1);
+            background-color: #000;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            width: 80%;
+            max-width: 800px;
+            justify-content: center;
+            color: #ddd;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 100px;
+        }
+
+        label {
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #ff3333;
+        }
+
+        button {
+            background: #ff3333;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background: #cc0000;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="myCanvas"></canvas>
+
+    <div class="controls">
+        <button id="toggleBtn">Pausar</button>
+        <div class="control-group">
+            <label>Anéis (Rings): <span id="val-rings">60</span></label>
+            <input type="range" id="rings" min="10" max="100" value="60">
+        </div>
+        <div class="control-group">
+            <label>Simetria (m): <span id="val-m">6</span></label>
+            <input type="range" id="m" min="0" max="20" value="6">
+        </div>
+        <div class="control-group">
+            <label>Espessura (n1): <span id="val-n1">0.2</span></label>
+            <input type="range" id="n1" min="0.1" max="5" step="0.1" value="0.2">
+        </div>
+        <div class="control-group">
+            <label>Velocidade: <span id="val-speed">1</span></label>
+            <input type="range" id="speed" min="0" max="5" step="0.1" value="1">
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('myCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height, cx, cy;
+
+        // Variáveis do código original da imagem
+        let params = {
+            rings: 60,
+            m: 6,
+            n1: 0.2,
+            n2: 1.7,
+            n3: 1.7,
+            a: 1,
+            b: 1,
+            speed: 0.02 // Velocidade de incremento do t
+        };
+
+        let t = 0; // Variável de tempo
+        let isAnimating = true;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            cx = width / 2;
+            cy = height / 2;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        function draw() {
+            // Limpa o canvas com um efeito de rastro leve (opcional, aqui uso limpeza total)
+            ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.strokeStyle = '#ff0000'; // Cor vermelha do vídeo
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+
+            // O código original itera sobre 'u' (provavelmente de 0 a 1)
+            // Aumentamos a resolução para o gráfico ficar suave
+            const resolution = 20000; 
+            
+            let firstPoint = true;
+
+            for (let step = 0; step <= resolution; step++) {
+                let u = step / resolution;
+                
+                // --- LÓGICA MATEMÁTICA DA IMAGEM ---
+                let i = Math.floor(u * params.rings);
+                let phi = (u * params.rings - i) * 2 * Math.PI;
+                
+                // Superformula
+                let term1 = Math.pow(Math.abs(Math.cos(params.m * phi / 4) / params.a), params.n2);
+                let term2 = Math.pow(Math.abs(Math.sin(params.m * phi / 4) / params.b), params.n3);
+                let r_shape = Math.pow(term1 + term2, -1 / params.n1);
+                
+                // Raio e Rotação baseados no tempo (t) e índice (i)
+                let radius = (i + 1) * 12 + 50 * Math.sin(i / 5 - t);
+                let rot = t * (1 - i / params.rings) + i;
+                
+                let r_final = r_shape * radius;
+                
+                // Conversão Polar para Cartesiano
+                let x = r_final * Math.cos(phi + rot);
+                let y = r_final * Math.sin(phi + rot);
+                // -----------------------------------
+
+                if (firstPoint) {
+                    ctx.moveTo(cx + x, cy - y); // Inverte Y para canvas
+                    firstPoint = false;
+                } else {
+                    ctx.lineTo(cx + x, cy - y);
+                }
+            }
+
+            ctx.stroke();
+        }
+
+        function animate() {
+            if (isAnimating) {
+                t += params.speed;
+                draw();
+                requestAnimationFrame(animate);
+            }
+        }
+
+        // Configuração dos Controles
+        document.getElementById('rings').addEventListener('input', (e) => {
+            params.rings = parseInt(e.target.value);
+            document.getElementById('val-rings').textContent = params.rings;
+            if (!isAnimating) draw();
+        });
+
+        document.getElementById('m').addEventListener('input', (e) => {
+            params.m = parseFloat(e.target.value);
+            document.getElementById('val-m').textContent = params.m;
+            if (!isAnimating) draw();
+        });
+
+        document.getElementById('n1').addEventListener('input', (e) => {
+            params.n1 = parseFloat(e.target.value);
+            document.getElementById('val-n1').textContent = params.n1;
+            if (!isAnimating) draw();
+        });
+        
+        document.getElementById('speed').addEventListener('input', (e) => {
+            params.speed = parseFloat(e.target.value) / 50; // Ajuste de escala
+            document.getElementById('val-speed').textContent = e.target.value;
+        });
+
+        document.getElementById('toggleBtn').addEventListener('click', () => {
+            isAnimating = !isAnimating;
+            document.getElementById('toggleBtn').textContent = isAnimating ? "Pausar" : "Animar";
+            if (isAnimating) animate();
+        });
+
+        // Iniciar
+        params.speed = document.getElementById('speed').value / 50;
+        animate();
+
+    </script>
+</body>
+</html>
