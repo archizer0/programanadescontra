@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Arte Paramétrica Avançada</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050a10;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        canvas {
+            display: block;
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(5, 10, 16, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            color: #CFFF04;
+            width: 300px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            max-height: 90vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #CFFF04 #050a10;
+        }
+        .controls::-webkit-scrollbar {
+            width: 6px;
+        }
+        .controls::-webkit-scrollbar-thumb {
+            background-color: #CFFF04;
+            border-radius: 3px;
+        }
+        .control-group {
+            margin-bottom: 12px;
+        }
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 11px;
+            opacity: 0.9;
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: #CFFF04;
+            background: #222;
+            height: 4px;
+            border-radius: 2px;
+            appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #CFFF04;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #050a10;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: rgba(207, 255, 4, 0.1);
+            border: 1px solid #CFFF04;
+            color: #CFFF04;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #CFFF04;
+            color: #050a10;
+        }
+        .color-picker {
+            width: 100%;
+            height: 30px;
+            border: none;
+            cursor: pointer;
+            background: transparent;
+        }
+        h1 {
+            font-size: 16px;
+            margin-top: 0;
+            border-bottom: 1px solid #CFFF04;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <h1>Acrylicode Pro</h1>
+        
+        <div class="control-group">
+            <label>Complexidade (Linhas) <span id="val-lines">800</span></label>
+            <input type="range" id="lines" min="100" max="2000" value="800">
+        </div>
+
+        <div class="control-group">
+            <label>Raio Base <span id="val-radius">150</span></label>
+            <input type="range" id="radius" min="10" max="400" value="150">
+        </div>
+
+        <div class="control-group">
+            <label>Amplitude Primária <span id="val-amp">120</span></label>
+            <input type="range" id="amplitude" min="0" max="400" value="120">
+        </div>
+        
+        <div class="control-group">
+            <label>Turbulência (Detalhe) <span id="val-turbulence">40</span></label>
+            <input type="range" id="turbulence" min="0" max="150" value="40">
+        </div>
+
+        <div class="control-group">
+            <label>Frequência X <span id="val-freqX">4.2</span></label>
+            <input type="range" id="freqX" min="1" max="30" step="0.1" value="4.2">
+        </div>
+
+        <div class="control-group">
+            <label>Frequência Y <span id="val-freqY">3.5</span></label>
+            <input type="range" id="freqY" min="1" max="30" step="0.1" value="3.5">
+        </div>
+
+        <div class="control-group">
+            <label>Distorção de Fase <span id="val-phase">0.03</span></label>
+            <input type="range" id="phase" min="0.001" max="0.3" step="0.001" value="0.03">
+        </div>
+        
+        <div class="control-group">
+            <label>Rotação Global</label>
+            <input type="range" id="rotation" min="0" max="360" value="90">
+        </div>
+
+        <div class="control-group">
+            <label>Cor da Caneta</label>
+            <input type="color" id="color" class="color-picker" value="#CFFF04">
+        </div>
+
+        <div class="control-group">
+            <label style="display:flex; align-items:center; gap: 10px; cursor:pointer;">
+                <input type="checkbox" id="animate" style="width:auto; accent-color:#CFFF04;"> 
+                <span>Animar (Flow)</span>
+            </label>
+        </div>
+
+        <button id="randomize">Gerar Nova Arte</button>
+        <button id="download">Guardar HD</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const settings = {
+            lines: 800,
+            radius: 150,
+            amplitude: 120,
+            turbulence: 40,
+            freqX: 4.2,
+            freqY: 3.5,
+            phaseIncrement: 0.03,
+            rotation: 90,
+            color: '#CFFF04',
+            animate: false
+        };
+
+        let time = 0;
+        let animationFrame;
+
+        const ui = {
+            lines: document.getElementById('lines'),
+            radius: document.getElementById('radius'),
+            amplitude: document.getElementById('amplitude'),
+            turbulence: document.getElementById('turbulence'),
+            freqX: document.getElementById('freqX'),
+            freqY: document.getElementById('freqY'),
+            phase: document.getElementById('phase'),
+            rotation: document.getElementById('rotation'),
+            color: document.getElementById('color'),
+            animate: document.getElementById('animate'),
+            randomize: document.getElementById('randomize'),
+            download: document.getElementById('download')
+        };
+
+        const labels = {
+            lines: document.getElementById('val-lines'),
+            radius: document.getElementById('val-radius'),
+            amplitude: document.getElementById('val-amp'),
+            turbulence: document.getElementById('val-turbulence'),
+            freqX: document.getElementById('val-freqX'),
+            freqY: document.getElementById('val-freqY'),
+            phase: document.getElementById('val-phase')
+        };
+
+        function resize() {
+            // Alta resolução para telas retina
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            canvas.style.width = window.innerWidth + 'px';
+            canvas.style.height = window.innerHeight + 'px';
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+
+        function draw() {
+            // Fundo escuro profundo
+            ctx.fillStyle = '#050a10';
+            ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+            const cx = window.innerWidth / 2;
+            const cy = window.innerHeight / 2;
+
+            ctx.lineWidth = 0.8; // Linha ainda mais fina para maior detalhe
+            ctx.strokeStyle = settings.color;
+            ctx.lineJoin = 'round';
+            
+            // Efeito de brilho muito leve
+            ctx.shadowBlur = 2;
+            ctx.shadowColor = settings.color;
+            
+            ctx.beginPath();
+
+            const totalLines = settings.lines;
+            
+            // Loop principal
+            for (let i = 0; i < totalLines; i++) {
+                
+                const t = i / totalLines; 
+                
+                // Múltiplos fatores de ângulo para complexidade
+                // Base Angle
+                let angle = t * Math.PI * 2 * 2; // 2 voltas para overlap
+                
+                // Rotação global
+                angle += (settings.rotation * Math.PI / 180);
+
+                // --- COMPLEXIDADE MATEMÁTICA ---
+                
+                // 1. Modulador de Onda Principal (A forma grande)
+                const mainWave = Math.sin(angle * settings.freqX + (time * 0.2)) * settings.amplitude;
+                
+                // 2. Modulador de Interferência (Cria o padrão Moiré)
+                // O deslocamento de fase (i * phaseIncrement) é crucial aqui
+                const interference = Math.cos(angle * settings.freqY + (i * settings.phaseIncrement) + time) * settings.amplitude;
+
+                // 3. Turbulência (Detalhe de alta frequência)
+                // Adiciona uma onda rápida que "vibra" a linha
+                const turbulence = Math.sin(angle * 15 + (i * 0.1)) * settings.turbulence;
+                
+                // Combinação das ondas no Raio
+                let r = settings.radius + mainWave + (interference * 0.8) + turbulence;
+                
+                // Twist espiral
+                // Torce o ângulo ligeiramente baseado no raio para criar sensação de vortice
+                const twist = (r - settings.radius) * 0.002;
+                const finalAngle = angle + twist;
+
+                const x = cx + r * Math.cos(finalAngle);
+                const y = cy + r * Math.sin(finalAngle);
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+
+            ctx.stroke();
+            
+            // Adicionar vinheta sutil para foco
+            const gradient = ctx.createRadialGradient(cx, cy, settings.radius, cx, cy, Math.max(cx, cy));
+            gradient.addColorStop(0, "transparent");
+            gradient.addColorStop(1, "rgba(0,0,0,0.4)");
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+        }
+
+        function updateSettings() {
+            settings.lines = parseInt(ui.lines.value);
+            settings.radius = parseInt(ui.radius.value);
+            settings.amplitude = parseInt(ui.amplitude.value);
+            settings.turbulence = parseInt(ui.turbulence.value);
+            settings.freqX = parseFloat(ui.freqX.value);
+            settings.freqY = parseFloat(ui.freqY.value);
+            settings.phaseIncrement = parseFloat(ui.phase.value);
+            settings.rotation = parseInt(ui.rotation.value);
+            settings.color = ui.color.value;
+            settings.animate = ui.animate.checked;
+
+            labels.lines.innerText = settings.lines;
+            labels.radius.innerText = settings.radius;
+            labels.amplitude.innerText = settings.amplitude;
+            labels.turbulence.innerText = settings.turbulence;
+            labels.freqX.innerText = settings.freqX;
+            labels.freqY.innerText = settings.freqY;
+            labels.phase.innerText = settings.phaseIncrement;
+
+            if (!settings.animate) {
+                draw();
+            }
+        }
+
+        function loop() {
+            if (settings.animate) {
+                time += 0.02;
+                draw();
+                animationFrame = requestAnimationFrame(loop);
+            } else {
+                cancelAnimationFrame(animationFrame);
+            }
+        }
+
+        function randomize() {
+            ui.lines.value = Math.floor(Math.random() * 1000) + 500;
+            ui.radius.value = Math.floor(Math.random() * 150) + 50;
+            ui.amplitude.value = Math.floor(Math.random() * 200) + 80;
+            ui.turbulence.value = Math.floor(Math.random() * 60);
+            
+            // Frequências não inteiras geram padrões mais complexos
+            ui.freqX.value = (Math.random() * 8 + 1).toFixed(1); 
+            ui.freqY.value = (Math.random() * 8 + 1).toFixed(1);
+            
+            ui.phase.value = (Math.random() * 0.15 + 0.01).toFixed(3);
+            ui.rotation.value = Math.floor(Math.random() * 360);
+            
+            const h = Math.floor(Math.random() * 360);
+            ui.color.value = hslToHex(h, 90, 60);
+
+            updateSettings();
+        }
+
+        function downloadImage() {
+            // Criar um canvas temporário maior para exportação em alta qualidade
+            const tempCanvas = document.createElement('canvas');
+            const exportScale = 2; // Dobro da resolução atual
+            tempCanvas.width = canvas.width * exportScale;
+            tempCanvas.height = canvas.height * exportScale;
+            const tCtx = tempCanvas.getContext('2d');
+            
+            // Replicar o fundo
+            tCtx.fillStyle = '#050a10';
+            tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Configurar escala e redesenhar
+            tCtx.scale(exportScale * (window.devicePixelRatio || 1), exportScale * (window.devicePixelRatio || 1));
+            
+            // Hack rápido: substituir o ctx global temporariamente (ou refatorar draw para aceitar ctx)
+            // Para simplicidade neste one-file, vamos apenas chamar draw() no canvas principal
+            // e usar o toDataURL dele, já que aumentamos a resolução no resize()
+            
+            const link = document.createElement('a');
+            link.download = `acrylicode-${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png', 1.0);
+            link.click();
+        }
+
+        function hslToHex(h, s, l) {
+            l /= 100;
+            const a = s * Math.min(l, 1 - l) / 100;
+            const f = n => {
+                const k = (n + h / 30) % 12;
+                const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                return Math.round(255 * color).toString(16).padStart(2, '0');
+            };
+            return `#${f(0)}${f(8)}${f(4)}`;
+        }
+
+        Object.values(ui).forEach(el => {
+            if(el.type === 'button') return;
+            el.addEventListener('input', () => {
+                updateSettings();
+                if(el.id === 'animate' && settings.animate && !animationFrame) loop();
+                if(el.id === 'animate' && !settings.animate) cancelAnimationFrame(animationFrame);
+            });
+        });
+
+        ui.randomize.addEventListener('click', randomize);
+        ui.download.addEventListener('click', downloadImage);
+
+        resize();
+
+    </script>
+</body>
+</html>
