@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theremin Óptico com Gradiente Dinâmico</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        canvas { display: block; }
+        
+        #camera_container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #111;
+            transform: scaleX(-1);
+            z-index: 20;
+            display: none;
+        }
+        
+        #input_video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.6;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+        
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            font-size: 0.9rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .label-red { color: #FF3B30; font-weight: bold; }
+        .label-blue { color: #00BFFF; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-overlay">
+        <button id="start-btn" class="px-8 py-4 bg-white text-black rounded-full font-bold hover:bg-gray-200 transition-all shadow-lg shadow-white/10">
+            ATIVAR GRADIENTE IMERSIVO
+        </button>
+        <p class="text-white mt-4 opacity-60 text-sm tracking-wide">As cores do fundo reagem aos teus gestos</p>
+    </div>
+
+    <div id="camera_container">
+        <video id="input_video"></video>
+    </div>
+
+    <div class="instructions">
+        <span class="label-red">Esquerda: Vermelho/Amarelo</span>
+        <span class="label-blue">Direita: Branco/Azul</span>
+    </div>
+
+    <canvas id="output_canvas"></canvas>
+
+    <script>
+        const videoElement = document.getElementById('input_video');
+        const cameraContainer = document.getElementById('camera_container');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const startBtn = document.getElementById('start-btn');
+        const uiOverlay = document.getElementById('ui-overlay');
+
+        let audioCtx;
+        let isAudioStarted = false;
+        let backgroundState = 0; // 0 (Azul) a 1 (Laranja)
+
+        class HandSynth {
+            constructor(context) {
+                this.ctx = context;
+                this.oscillator = this.ctx.createOscillator();
+                this.gainNode = this.ctx.createGain();
+                this.lfo = this.ctx.createOscillator();
+                this.lfoGain = this.ctx.createGain();
+                
+                this.analyser = this.ctx.createAnalyser();
+                this.analyser.fftSize = 1024;
+                this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+                
+                this.oscillator.type = 'sine';
+                this.lfo.type = 'sine';
+                this.lfo.frequency.value = 6;
+                this.lfoGain.gain.value = 0;
+                
+                this.lfo.connect(this.lfoGain);
+                this.lfoGain.connect(this.oscillator.frequency);
+                this.oscillator.connect(this.gainNode);
+                
+                this.gainNode.connect(this.analyser);
+                this.analyser.connect(this.ctx.destination);
+                
+                this.gainNode.gain.value = 0;
+                this.oscillator.start();
+                this.lfo.start();
+
+                this.pos = { x: -200, y: -200 };
+                this.target = { x: -200, y: -200 };
+                this.active = false;
+                this.handLabel = 'None';
+                this.xNorm = 0.5;
+                
+                this.color = 'white';
+                this.glowColor = 'rgba(255, 255, 255, 0.8)';
+                this.waveColor = 'white';
+                this.waveGlow = 'blue';
+            }
+
+            updateParams(handLandmark, label) {
+                this.xNorm = 1 - handLandmark.x;
+                const yNorm = 1 - handLandmark.y;
+                
+                this.target.x = this.xNorm * canvasElement.width;
+                this.target.y = handLandmark.y * canvasElement.height;
+                this.active = true;
+                this.handLabel = label;
+
+                if (label === 'Left') {
+                    this.color = '#FF3B30';
+                    this.glowColor = 'rgba(255, 59, 48, 0.8)';
+                    this.waveColor = '#FF4500';
+                    this.waveGlow = '#FFD700';
+                } else {
+                    this.color = '#FFFFFF';
+                    this.glowColor = 'rgba(255, 255, 255, 0.8)';
+                    this.waveColor = '#FFFFFF';
+                    this.waveGlow = '#00BFFF';
+                }
+
+                const freq = 150 + (this.xNorm * 1000);
+                this.oscillator.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.05);
+                
+                const vol = Math.max(0, Math.min(0.4, yNorm * 0.5));
+                this.gainNode.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.05);
+
+                this.lfoGain.gain.setTargetAtTime(freq * 0.02, this.ctx.currentTime, 0.05);
+            }
+
+            silence() {
+                this.active = false;
+                this.gainNode.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
+            }
+
+            drawWave() {
+                if (!this.active && this.gainNode.gain.value < 0.01) return;
+
+                this.analyser.getByteTimeDomainData(this.dataArray);
+                
+                canvasCtx.save();
+                canvasCtx.shadowBlur = 15;
+                canvasCtx.shadowColor = this.waveGlow;
+                canvasCtx.lineWidth = 3;
+                canvasCtx.strokeStyle = this.waveColor;
+                canvasCtx.globalAlpha = this.active ? 0.8 : 0.2;
+                
+                canvasCtx.beginPath();
+                const bufferLength = this.dataArray.length;
+                const sliceWidth = canvasElement.width / bufferLength;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    const v = this.dataArray[i] / 128.0;
+                    const yOffset = (this.handLabel === 'Left') ? -50 : 50;
+                    const y = (v * canvasElement.height / 2) + yOffset;
+
+                    if (i === 0) {
+                        canvasCtx.moveTo(x, y);
+                    } else {
+                        canvasCtx.lineTo(x, y);
+                    }
+                    x += sliceWidth;
+                }
+                canvasCtx.stroke();
+                canvasCtx.restore();
+            }
+
+            drawSphere() {
+                if (!this.active && this.pos.x < 0) return;
+
+                this.pos.x += (this.target.x - this.pos.x) * 0.15;
+                this.pos.y += (this.target.y - this.pos.y) * 0.15;
+
+                const gradient = canvasCtx.createRadialGradient(
+                    this.pos.x, this.pos.y, 5, 
+                    this.pos.x, this.pos.y, 70
+                );
+                gradient.addColorStop(0, this.glowColor);
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                canvasCtx.fillStyle = gradient;
+                canvasCtx.beginPath();
+                canvasCtx.arc(this.pos.x, this.pos.y, 70, 0, Math.PI * 2);
+                canvasCtx.fill();
+
+                canvasCtx.fillStyle = this.color;
+                canvasCtx.beginPath();
+                canvasCtx.arc(this.pos.x, this.pos.y, 20, 0, Math.PI * 2);
+                canvasCtx.fill();
+            }
+        }
+
+        let synths = [];
+
+        function resize() {
+            canvasElement.width = window.innerWidth;
+            canvasElement.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            synths = [new HandSynth(audioCtx), new HandSynth(audioCtx)];
+            isAudioStarted = true;
+        }
+
+        // Função para interpolar cores para o gradiente
+        function lerpColor(c1, c2, t) {
+            const r = Math.round(c1.r + (c2.r - c1.r) * t);
+            const g = Math.round(c1.g + (c2.g - c1.g) * t);
+            const b = Math.round(c1.b + (c2.b - c1.b) * t);
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        const colorAzul = { r: 5, g: 15, b: 50 };     // Azul muito escuro
+        const colorLaranja = { r: 120, g: 40, b: 5 }; // Laranja terroso escuro
+
+        function drawBackground() {
+            // Calcular a posição média X das mãos ativas
+            let activeSynths = synths.filter(s => s.active);
+            if (activeSynths.length > 0) {
+                let targetBG = activeSynths.reduce((acc, s) => acc + s.xNorm, 0) / activeSynths.length;
+                backgroundState += (targetBG - backgroundState) * 0.05;
+            } else {
+                backgroundState += (0 - backgroundState) * 0.02; // Volta ao azul se não houver mãos
+            }
+
+            const currentBGColor = lerpColor(colorAzul, colorLaranja, backgroundState);
+            
+            const grad = canvasCtx.createLinearGradient(0, 0, 0, canvasElement.height);
+            grad.addColorStop(0, currentBGColor);
+            grad.addColorStop(1, '#000000');
+            
+            canvasCtx.fillStyle = grad;
+            canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+        }
+
+        function drawScene() {
+            drawBackground();
+
+            if (isAudioStarted) {
+                synths.forEach(s => s.drawWave());
+                synths.forEach(s => s.drawSphere());
+            }
+            
+            requestAnimationFrame(drawScene);
+        }
+
+        function onResults(results) {
+            synths.forEach(s => s.active = false);
+
+            if (results.multiHandLandmarks && results.multiHandedness) {
+                results.multiHandLandmarks.forEach((hand, index) => {
+                    if (index < synths.length) {
+                        const label = results.multiHandedness[index].label;
+                        synths[index].updateParams(hand[9], label);
+                    }
+                });
+            }
+
+            synths.forEach(s => {
+                if (!s.active && isAudioStarted) s.silence();
+            });
+        }
+
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        hands.onResults(onResults);
+
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({image: videoElement});
+            },
+            width: 640,
+            height: 480
+        });
+
+        startBtn.addEventListener('click', () => {
+            initAudio();
+            uiOverlay.style.display = 'none';
+            cameraContainer.style.display = 'block';
+            camera.start();
+            drawScene();
+        });
+
+    </script>
+</body>
+</html>
