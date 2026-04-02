@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LLM Dream Loop — Semantic Collapse (Webcam Interactive)</title>
+<style>
+  body { margin:0; overflow:hidden; background:black; }
+  canvas { display:block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<video id="video" autoplay playsinline style="display:none"></video>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const video = document.getElementById('video');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let t = 0;
+let driftX = 0;
+let userText = "";
+
+window.addEventListener('keydown', (e)=>{
+  if(e.key === "Backspace") userText = userText.slice(0,-1);
+  else if(e.key.length === 1) userText += e.key;
+});
+
+// --- WEBCAM ---
+let webcamReady = false;
+let prevFrame = null;
+
+async function initWebcam(){
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    video.srcObject = stream;
+    webcamReady = true;
+  } catch (err) {
+    webcamReady = false;
+  }
+}
+initWebcam();
+
+// --- TEMPORAL BUFFER ---
+const historyCanvas = document.createElement('canvas');
+const hctx = historyCanvas.getContext('2d');
+historyCanvas.width = canvas.width;
+historyCanvas.height = canvas.height;
+
+// --- AUDIO ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function whisper(){
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.frequency.value = 200 + Math.random()*400;
+  gain.gain.value = 0.003;
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.2);
+}
+setInterval(()=>{ if(Math.random()<0.25) whisper(); },180);
+
+// --- PHRASES ---
+const fragmentsA = ["meaning","intent","response","context","signal","output","reason"];
+const fragmentsB = ["fails","loops","collapses","misaligns","echoes","distorts","forgets"];
+const fragmentsC = ["correctly","without reason","too early","incorrectly","again","as expected","never"];
+
+let phrases = [];
+
+// --- HAND DETECTION ---
+function detectHands(){
+  if(!webcamReady || video.readyState < 2) return null;
+
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height;
+  const tctx = tempCanvas.getContext('2d');
+
+  tctx.drawImage(video,0,0);
+  const frame = tctx.getImageData(0,0,canvas.width,canvas.height);
+
+  if(!prevFrame){
+    prevFrame = frame;
+    return null;
+  }
+
+  let motionPoints = [];
+
+  for(let i=0;i<frame.data.length;i+=40){
+    const diff = Math.abs(frame.data[i] - prevFrame.data[i]);
+    if(diff > 40){
+      const px = (i/4) % canvas.width;
+      const py = Math.floor((i/4)/canvas.width);
+      motionPoints.push({x:px,y:py});
+    }
+  }
+
+  prevFrame = frame;
+
+  if(motionPoints.length > 50){
+    const mid = canvas.width/2;
+    const rightSide = motionPoints.filter(p => p.x > mid);
+
+    if(rightSide.length > 10){
+      return { type: "right", point: rightSide[Math.floor(Math.random()*rightSide.length)] };
+    } else {
+      return { type: "left", point: motionPoints[Math.floor(Math.random()*motionPoints.length)] };
+    }
+  }
+
+  return null;
+}
+
+function generatePhrase(hand){
+  const a = fragmentsA[Math.floor(Math.random()*fragmentsA.length)];
+  const b = fragmentsB[Math.floor(Math.random()*fragmentsB.length)];
+  const c = fragmentsC[Math.floor(Math.random()*fragmentsC.length)];
+
+  let phrase = `${a} ${b} ${c}`;
+
+  if(userText && Math.random() < 0.5){
+    phrase += " " + userText.slice(0, Math.floor(Math.random()*userText.length));
+  }
+
+  if(Math.random() < 0.1){
+    phrase += " ...I see you";
+  }
+
+  return {
+    text: phrase,
+    x: hand ? hand.point.x : Math.random()*canvas.width,
+    y: hand ? hand.point.y : Math.random()*canvas.height,
+    vx: (Math.random()-0.5),
+    vy: (Math.random()-0.5)
+  };
+}
+
+function updatePhrases(){
+  const hand = detectHands();
+
+  if(phrases.length < 20 && Math.random() < 0.05){
+    phrases.push(generatePhrase(hand));
+  }
+
+  phrases = phrases.map(p => {
+    if(Math.random() < 0.02) return generatePhrase(hand);
+
+    if(hand){
+      if(hand.type === "right"){
+        p.x += (hand.point.x - p.x)*0.005;
+        p.y += (hand.point.y - p.y)*0.005;
+      } else {
+        p.x += (hand.point.x - p.x)*0.015;
+        p.y += (hand.point.y - p.y)*0.015;
+      }
+    } else {
+      p.x += p.vx * 0.3;
+      p.y += p.vy * 0.3;
+    }
+
+    return p;
+  });
+
+  if(phrases.length > 60) phrases.splice(0, phrases.length - 60);
+}
+
+// --- GLITCH ---
+function glitchShift(){
+  const slices = 8 + Math.floor(Math.random()*12);
+
+  for(let i=0;i<slices;i++){
+    const sliceHeight = 5 + Math.random()*40;
+    const y = Math.random()*canvas.height;
+
+    const imageData = ctx.getImageData(0, y, canvas.width, sliceHeight);
+    const data = imageData.data;
+
+    for(let x=0; x < canvas.width-1; x++){
+      for(let k=0; k < sliceHeight-1; k++){
+        const idx = (k*canvas.width + x)*4;
+        if(Math.random() < 0.02){
+          const swap = idx + 4;
+          for(let c=0;c<4;c++){
+            const tmp = data[idx+c];
+            data[idx+c] = data[swap+c];
+            data[swap+c] = tmp;
+          }
+        }
+      }
+    }
+
+    const shift = (Math.random()-0.5)*200;
+    ctx.putImageData(imageData, shift, y);
+  }
+}
+
+function draw(){
+  t += 0.01;
+  driftX += 0.3;
+
+  updatePhrases();
+
+  if(webcamReady && video.readyState >= 2){
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = "black";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  // temporal drift
+  hctx.drawImage(canvas, 0, 0);
+  ctx.globalAlpha = 0.1;
+  ctx.drawImage(historyCanvas, driftX % canvas.width, 0);
+  ctx.globalAlpha = 1;
+
+  // vivid colors (+25%)
+  for(let i=0;i<25;i++){
+    ctx.fillStyle = `hsla(${Math.random()*360},100%,70%,0.1875)`;
+    ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, Math.random()*250, Math.random()*250);
+  }
+
+  // phrases
+  ctx.font = "30pt monospace";
+  ctx.textAlign = "left";
+  for(let p of phrases){
+    ctx.fillStyle = `rgba(255,255,255,${0.7 + Math.random()*0.5})`;
+    ctx.fillText(p.text, p.x, p.y);
+  }
+
+  if(Math.random() < 0.4) glitchShift();
+
+  if(userText){
+    ctx.textAlign = "center";
+    ctx.fillStyle = "white";
+    ctx.fillText(userText, canvas.width/2, canvas.height - 80);
+  }
+
+  requestAnimationFrame(draw);
+}
+
+canvas.addEventListener('click', ()=> audioCtx.resume());
+
+// --- TESTS ---
+console.assert(Array.isArray(phrases), "Phrases array ok");
+console.assert(typeof detectHands === "function", "Hand detection exists");
+console.assert(typeof generatePhrase === "function", "generatePhrase exists");
+console.assert(typeof updatePhrases === "function", "updatePhrases exists");
+
+// start
+draw();
+
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  historyCanvas.width = canvas.width;
+  historyCanvas.height = canvas.height;
+});
+</script>
+</body>
+</html>
