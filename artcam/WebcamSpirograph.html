@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spirograph Geometry Lab - Gesture Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MediaPipe dependencies for hand tracking -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <style>
+        body {
+            background-color: #050a18; /* Deep blue verging on black */
+            color: #e2e8f0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+        .canvas-container {
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.2);
+            background: #020617;
+            border: 1px solid #1e293b;
+        }
+        input[type="range"] {
+            accent-color: #3b82f6;
+        }
+        .control-panel {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid #334155;
+        }
+        #webcam-feed {
+            transform: scaleX(-1);
+            border-radius: 8px;
+            width: 100%;
+            height: auto;
+            border: 2px solid #334155;
+        }
+        .active-gesture {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-center border-b border-slate-700 pb-6 gap-4">
+            <div>
+                <h1 class="text-3xl font-black uppercase tracking-tighter text-blue-400">Geometry Lab <span class="text-white">X</span></h1>
+                <p class="text-xs text-slate-400 font-mono mt-1">Mathematical Art • Hand Gesture Input • Rainbow Mode</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex flex-col items-end">
+                    <span class="text-[10px] uppercase font-bold text-slate-500">Gesture Engine</span>
+                    <span id="gestureStatus" class="text-xs font-mono text-red-500">OFFLINE</span>
+                </div>
+                <button id="startCamera" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full transition-all uppercase shadow-lg shadow-blue-900/20">Start Camera</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Left Panel: Controls -->
+            <div class="lg:col-span-3 space-y-6 control-panel p-6 rounded-2xl">
+                <!-- Webcam Mini View -->
+                <div class="relative group">
+                    <video id="webcam-feed" autoplay playsinline class="bg-black opacity-50 group-hover:opacity-100 transition-opacity"></video>
+                    <div id="gestureOverlay" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                         <span class="text-[10px] text-white bg-black/50 px-2 py-1 rounded">Camera Preview</span>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold uppercase text-slate-400">Hand Control</label>
+                        <input type="checkbox" id="gestureToggle" class="w-4 h-4 rounded border-slate-700 bg-slate-800 focus:ring-blue-500">
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold uppercase text-slate-400">Rainbow Mode</label>
+                        <input type="checkbox" id="rainbowToggle" checked class="w-4 h-4 rounded border-slate-700 bg-slate-800 focus:ring-blue-500">
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-700 space-y-4">
+                        <div>
+                            <div class="flex justify-between items-center">
+                                <label class="text-[10px] font-bold uppercase text-slate-500">Ring (R)</label>
+                                <span id="valR" class="text-xs font-mono text-blue-400">150</span>
+                            </div>
+                            <input type="range" id="inputR" min="50" max="250" value="150" class="w-full">
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center">
+                                <label class="text-[10px] font-bold uppercase text-slate-500">Wheel (r)</label>
+                                <span id="valr" class="text-xs font-mono text-blue-400">52</span>
+                            </div>
+                            <input type="range" id="inputr" min="5" max="150" value="52" class="w-full">
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center">
+                                <label class="text-[10px] font-bold uppercase text-slate-500">Pen (d)</label>
+                                <span id="vald" class="text-xs font-mono text-blue-400">40</span>
+                            </div>
+                            <input type="range" id="inputd" min="0" max="150" value="40" class="w-full">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-700">
+                    <div class="flex gap-2">
+                        <button id="typeHypo" class="flex-1 py-2 bg-blue-600 text-white text-[10px] rounded font-bold uppercase">Inside</button>
+                        <button id="typeEpi" class="flex-1 py-2 bg-slate-800 text-slate-400 text-[10px] rounded font-bold uppercase">Outside</button>
+                    </div>
+                </div>
+
+                <button id="downloadBtn" class="w-full py-3 bg-white text-black text-xs font-black hover:bg-blue-400 transition-all rounded-xl uppercase">Export Masterpiece</button>
+            </div>
+
+            <!-- Main Canvas -->
+            <div class="lg:col-span-9 flex flex-col">
+                <div class="canvas-container relative flex-grow rounded-3xl overflow-hidden flex items-center justify-center min-h-[600px]">
+                    <canvas id="spiroCanvas"></canvas>
+                    
+                    <!-- Feedback HUD -->
+                    <div class="absolute top-6 left-6 flex flex-col gap-2 pointer-events-none">
+                        <div class="bg-black/40 backdrop-blur px-3 py-1 rounded-full border border-white/10 flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                            <span class="text-[10px] font-mono text-white/80 uppercase">Real-time Rendering</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 grid grid-cols-3 gap-4">
+                    <div class="p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+                        <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Hand Horizontal</p>
+                        <p class="text-xs text-slate-300 italic">Adjusts Outer Ring</p>
+                    </div>
+                    <div class="p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+                        <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Hand Vertical</p>
+                        <p class="text-xs text-slate-300 italic">Adjusts Inner Wheel</p>
+                    </div>
+                    <div class="p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+                        <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Finger Pinch</p>
+                        <p class="text-xs text-slate-300 italic">Adjusts Pen Hole</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('spiroCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = canvas.parentElement;
+        const videoElement = document.getElementById('webcam-feed');
+
+        // App State
+        let R = 150;
+        let r = 52;
+        let d = 40;
+        let isHypo = true;
+        let useRainbow = true;
+        let useGestures = false;
+        let resolution = 0.04;
+
+        function resize() {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            draw();
+        }
+
+        function gcd(a, b) {
+            a = Math.abs(a); b = Math.abs(b);
+            return b === 0 ? a : gcd(b, a % b);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            const rInt = Math.round(r * 10);
+            const RInt = Math.round(R * 10);
+            const common = gcd(RInt, rInt);
+            const loops = rInt / common;
+            const maxT = Math.PI * 2 * loops;
+
+            ctx.lineWidth = 1.8;
+            ctx.lineJoin = 'round';
+
+            for (let t = 0; t <= maxT + resolution; t += resolution) {
+                let x, y;
+
+                if (isHypo) {
+                    x = (R - r) * Math.cos(t) + d * Math.cos(((R - r) / r) * t);
+                    y = (R - r) * Math.sin(t) - d * Math.sin(((R - r) / r) * t);
+                } else {
+                    x = (R + r) * Math.cos(t) - d * Math.cos(((R + r) / r) * t);
+                    y = (R + r) * Math.sin(t) - d * Math.sin(((R + r) / r) * t);
+                }
+
+                if (useRainbow) {
+                    ctx.strokeStyle = `hsl(${(t * 50) % 360}, 80%, 60%)`;
+                } else {
+                    ctx.strokeStyle = '#60a5fa';
+                }
+
+                if (t === 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + x, centerY + y);
+                } else {
+                    ctx.lineTo(centerX + x, centerY + y);
+                    // Draw segments to allow color changes
+                    if (useRainbow) {
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(centerX + x, centerY + y);
+                    }
+                }
+            }
+            if (!useRainbow) ctx.stroke();
+
+            // Background Grid (Radar Style)
+            ctx.globalCompositeOperation = 'destination-over';
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.05)';
+            ctx.lineWidth = 1;
+            for(let i=1; i<=5; i++) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, i * 80, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // --- GESTURE LOGIC ---
+        let hands;
+        let camera;
+
+        async function initGestures() {
+            hands = new Hands({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            hands.onResults(onResults);
+
+            camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({image: videoElement});
+                },
+                width: 320,
+                height: 240
+            });
+            
+            document.getElementById('gestureStatus').textContent = 'READY';
+            document.getElementById('gestureStatus').className = 'text-xs font-mono text-yellow-500';
+        }
+
+        function onResults(results) {
+            if (!useGestures || !results.multiHandLandmarks || results.multiHandLandmarks.length === 0) return;
+
+            const landmarks = results.multiHandLandmarks[0];
+            
+            // Hand tracking usually gives values from 0.0 to 1.0
+            // Wrist (index 0) position
+            const wrist = landmarks[0];
+            
+            // 1. Horizontal Motion -> Ring Size (R)
+            // Flip X because of mirrored view
+            const targetR = 50 + (1 - wrist.x) * 200;
+            R = R * 0.9 + targetR * 0.1; // Smoothing
+
+            // 2. Vertical Motion -> Wheel Size (r)
+            const targetr = 5 + wrist.y * 145;
+            r = r * 0.9 + targetr * 0.1;
+
+            // 3. Pinch Distance -> Pen Distance (d)
+            // Index tip (8) and Thumb tip (4)
+            const thumb = landmarks[4];
+            const index = landmarks[8];
+            const dist = Math.sqrt(Math.pow(thumb.x - index.x, 2) + Math.pow(thumb.y - index.y, 2));
+            const targetd = Math.min(150, dist * 400);
+            d = d * 0.9 + targetd * 0.1;
+
+            // Update UI
+            updateUI();
+            draw();
+        }
+
+        function updateUI() {
+            document.getElementById('inputR').value = R;
+            document.getElementById('valR').textContent = Math.round(R);
+            document.getElementById('inputr').value = r;
+            document.getElementById('valr').textContent = Math.round(r);
+            document.getElementById('inputd').value = d;
+            document.getElementById('vald').textContent = Math.round(d);
+        }
+
+        // --- INTERFACE LISTENERS ---
+        document.getElementById('startCamera').addEventListener('click', async () => {
+            if (!camera) {
+                await initGestures();
+                camera.start();
+                document.getElementById('gestureStatus').textContent = 'ACTIVE';
+                document.getElementById('gestureStatus').className = 'text-xs font-mono text-green-500';
+                document.getElementById('startCamera').textContent = 'Camera On';
+            }
+        });
+
+        document.getElementById('gestureToggle').addEventListener('change', (e) => {
+            useGestures = e.target.checked;
+        });
+
+        document.getElementById('rainbowToggle').addEventListener('change', (e) => {
+            useRainbow = e.target.checked;
+            draw();
+        });
+
+        const inputs = ['inputR', 'inputr', 'inputd'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            el.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                if (id === 'inputR') R = val;
+                if (id === 'inputr') r = val;
+                if (id === 'inputd') d = val;
+                document.getElementById('val' + id.slice(-1)).textContent = Math.round(val);
+                draw();
+            });
+        });
+
+        document.getElementById('typeHypo').addEventListener('click', (e) => {
+            isHypo = true;
+            e.target.className = 'flex-1 py-2 bg-blue-600 text-white text-[10px] rounded font-bold uppercase';
+            document.getElementById('typeEpi').className = 'flex-1 py-2 bg-slate-800 text-slate-400 text-[10px] rounded font-bold uppercase';
+            draw();
+        });
+
+        document.getElementById('typeEpi').addEventListener('click', (e) => {
+            isHypo = false;
+            e.target.className = 'flex-1 py-2 bg-blue-600 text-white text-[10px] rounded font-bold uppercase';
+            document.getElementById('typeHypo').className = 'flex-1 py-2 bg-slate-800 text-slate-400 text-[10px] rounded font-bold uppercase';
+            draw();
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = `digital-spiro-${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+        window.addEventListener('resize', resize);
+        window.onload = resize;
+
+    </script>
+</body>
+</html>
