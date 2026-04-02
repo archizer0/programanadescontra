@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Núcleo Pulsante e Synthwave</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #ff4500; /* Mudado para laranja para combinar */
+            pointer-events: none;
+            text-shadow: 0 0 5px #ff4500;
+            z-index: 10;
+        }
+        #audio-status {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #00ff00;
+        }
+    </style>
+    <!-- Importar Three.js via CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+    <!-- Importar Tone.js via CDN (para áudio) -->
+    <script src="https://unpkg.com/tone@14.7.58/build/Tone.js"></script>
+</head>
+<body>
+
+    <div id="info">
+        <h3>Arte Generativa: Cyber-Core</h3>
+        <p>A esfera central segue o movimento do rato.</p>
+        <p id="audio-status">Clique ou toque no ecrã para iniciar o áudio synthwave...</p>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // Variáveis globais para o shader da esfera (acessadas no loop animate)
+        const sphereUniforms = {
+            uTime: { value: 0 }
+        };
+        
+        // --- Setup Raycasting e Pointer ---
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        let isHovering = false;
+        
+        // --- Configuração da Cena ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+        scene.fog = new THREE.FogExp2(0x000000, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+        camera.position.y = 1;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        // --- Iluminação ---
+        const ambientLight = new THREE.AmbientLight(0x404040, 1); 
+        scene.add(ambientLight);
+        
+        // Luzes pontuais para realçar o reflexo
+        const light1 = new THREE.PointLight(0xff00ff, 2, 50);
+        light1.position.set(5, 5, 5);
+        scene.add(light1);
+
+        const light2 = new THREE.PointLight(0x00ffff, 2, 50);
+        light2.position.set(-5, -5, 5);
+        scene.add(light2);
+
+        // --- Configuração de Reflexos (CubeCamera) ---
+        const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256);
+        cubeRenderTarget.texture.type = THREE.HalfFloatType;
+        const cubeCamera = new THREE.CubeCamera(0.1, 1000, cubeRenderTarget);
+        scene.add(cubeCamera);
+
+
+        // --- 1. Grelha Neon ---
+        const gridSize = 200;
+        const gridDivisions = 60;
+        const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x00ff00, 0x004400);
+        gridHelper.position.y = -2;
+        scene.add(gridHelper);
+
+        // --- 2. Esfera Central: Geometria e Materiais ---
+        const sphereGeo = new THREE.SphereGeometry(1.2, 64, 64);
+
+        // --- Material 1: Pulsante (Shader) ---
+        const vertexShader = `
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            void main() {
+                vUv = uv;
+                vNormal = normalize(normalMatrix * normal);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        const fragmentShader = `
+            uniform float uTime;
+            varying vec3 vNormal;
+
+            void main() {
+                float pulse = sin(uTime * 2.0) * 0.5 + 0.5;
+                float mixFactor = (vNormal.y * 0.6 + 0.4) + (pulse * 0.4);
+
+                vec3 color1 = vec3(0.8, 0.1, 0.0);
+                vec3 color2 = vec3(1.0, 0.9, 0.1);
+
+                vec3 finalColor = mix(color1, color2, clamp(mixFactor, 0.0, 1.0));
+                finalColor *= (1.2 + pulse * 0.8);
+
+                gl_FragColor = vec4(finalColor, 1.0);
+            }
+        `;
+
+        const sphereMatPulsing = new THREE.ShaderMaterial({
+            uniforms: sphereUniforms,
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader
+        });
+
+        // --- Material 2: Espelhado (Standard) ---
+        const sphereMatMirrored = new THREE.MeshStandardMaterial({
+            color: 0x111111,
+            metalness: 1.0,
+            roughness: 0.0, // Espelho perfeito
+            envMap: cubeRenderTarget.texture,
+            envMapIntensity: 1.0
+        });
+
+        // Inicializar a esfera com o material pulsante
+        const sphere = new THREE.Mesh(sphereGeo, sphereMatPulsing);
+        scene.add(sphere);
+
+        // --- 3. Anel Pulsante ---
+        const ringGeo = new THREE.TorusGeometry(1.8, 0.05, 16, 100);
+        const ringMat = new THREE.MeshBasicMaterial({ 
+            color: 0xff4500, 
+            transparent: true,
+            opacity: 0.8
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = Math.PI / 2.5;
+        scene.add(ring);
+
+        // --- 4. Pirâmides Wireframe ---
+        const pyramids = [];
+        const numPyramids = 40;
+
+        for (let i = 0; i < numPyramids; i++) {
+            const geo = new THREE.TetrahedronGeometry(Math.random() * 0.5 + 0.2);
+            const color = new THREE.Color().setHSL(Math.random(), 1, 0.5);
+            const mat = new THREE.MeshBasicMaterial({ color: color, wireframe: true });
+            const mesh = new THREE.Mesh(geo, mat);
+            
+            resetPyramid(mesh, true);
+            scene.add(mesh);
+            pyramids.push({ mesh: mesh, speed: Math.random() * 0.1 + 0.05, rotSpeed: Math.random() * 0.05 });
+        }
+
+        function resetPyramid(mesh, initial = false) {
+            mesh.position.z = initial ? (Math.random() * -50) : -50;
+            const spread = 20;
+            let x = (Math.random() - 0.5) * spread;
+            let y = (Math.random() - 0.5) * spread;
+            
+            if (Math.abs(x) < 2.5) x += (x > 0 ? 2.5 : -2.5); 
+            if (Math.abs(y) < 2.5) y += (y > 0 ? 2.5 : -2.5);
+
+            mesh.position.x = x;
+            mesh.position.y = y;
+        }
+
+        // --- 5. Partículas ---
+        const particleCount = 1000;
+        const particlesGeo = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        const particleData = [];
+        const colorObj = new THREE.Color();
+
+        for (let i = 0; i < particleCount; i++) {
+            const z = (Math.random() * 100) - 80;
+            const r = Math.random() * 10 + 2;
+            const angle = Math.random() * Math.PI * 2;
+
+            particleData.push({ r, angle, speed: (Math.random() * 0.1) + 0.02, zSpeed: (Math.random() * 0.2) + 0.1 });
+
+            positions[i * 3] = r * Math.cos(angle);
+            positions[i * 3 + 1] = r * Math.sin(angle);
+            positions[i * 3 + 2] = z;
+
+            colorObj.setHSL(Math.random(), 0.8, 0.5);
+            colors[i * 3] = colorObj.r;
+            colors[i * 3 + 1] = colorObj.g;
+            colors[i * 3 + 2] = colorObj.b;
+        }
+
+        particlesGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particlesGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const particlesMat = new THREE.PointsMaterial({
+            size: 0.1,
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const particleSystem = new THREE.Points(particlesGeo, particlesMat);
+        scene.add(particleSystem);
+
+
+        // --- CONFIGURAÇÃO DE ÁUDIO (Tone.js) ---
+
+        function setupAudio() {
+            // Reverb e Delay são cruciais para o som synthwave
+            const pingPong = new Tone.PingPongDelay("8n", 0.5).toDestination();
+            const reverb = new Tone.Reverb({
+                decay: 4,
+                preDelay: 0.05,
+                wet: 0.5
+            }).connect(pingPong);
+            
+            // 1. Synth Arpeggiator (Som plucky, dente de serra)
+            const arpeggiator = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "sawtooth" },
+                envelope: {
+                    attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.5
+                },
+                volume: -10 
+            }).connect(reverb);
+            
+            // Sequência de arpejo (C minor)
+            const arpeggioNotes = ["C4", "Eb4", "G4", "C5", "Bb4", "G4", "Eb4", "C4"];
+
+            new Tone.Sequence((time, note) => {
+                arpeggiator.triggerAttackRelease(note, "16n", time);
+            }, arpeggioNotes, "8n").start(0);
+
+            // 2. Pad Synth (Para atmosfera, som suave)
+            const padSynth = new Tone.PolySynth(Tone.AMSynth, {
+                volume: -18,
+                oscillator: { type: "sine" },
+                envelope: {
+                    attack: 3, decay: 1, sustain: 0.5, release: 5
+                },
+            }).toDestination();
+
+            // Tocar um acorde sustentado (C minor)
+            Tone.Transport.scheduleOnce(time => {
+                padSynth.triggerAttack(["C3", "Eb3", "G3"], time);
+            }, 0);
+            
+            // Configurar o Transport (motor de tempo do Tone.js)
+            Tone.Transport.bpm.value = 130;
+            Tone.Transport.loopEnd = "2m"; // 2 barras de loop (para a sustentação)
+            Tone.Transport.loop = true;
+        }
+
+
+        // --- Animação e Interatividade ---
+        let time = 0;
+        let mouseX = 0;
+        let mouseY = 0;
+        let audioStarted = false;
+
+        document.addEventListener('mousemove', onPointerMove);
+        
+        function onPointerMove(event) {
+            // Posição para movimento da câmara
+            mouseX = (event.clientX - window.innerWidth / 2) * 0.001;
+            mouseY = (event.clientY - window.innerHeight / 2) * 0.001;
+
+            // Posição normalizada do ponteiro para Raycasting e Movimento da Esfera
+            pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+            pointer.y = - (event.clientY / window.innerHeight) * 2 + 1;
+        }
+
+        // Listener para iniciar o áudio (necessário para navegadores)
+        document.addEventListener('click', async () => {
+            if (!audioStarted) {
+                try {
+                    await Tone.start();
+                    setupAudio();
+                    Tone.Transport.start();
+                    audioStarted = true;
+                    
+                    document.getElementById('audio-status').textContent = 'Áudio iniciado. Desfrute da melodia!';
+                    document.getElementById('audio-status').style.color = '#00ff00';
+                } catch (e) {
+                    console.error("Erro ao iniciar o áudio:", e);
+                    document.getElementById('audio-status').textContent = 'Erro ao iniciar o áudio. Tente novamente.';
+                }
+            }
+        }, { once: true });
+
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+
+            // --- 0. MOVER ESFERA PARA SEGUIR O RATO ---
+            // Escala as coordenadas normalizadas (-1 a 1) para um movimento mais sutil (e.g., -1.0 a 1.0 em X/Y no espaço 3D)
+            const targetSphereX = pointer.x * 1.0; 
+            const targetSphereY = pointer.y * 1.0; 
+            
+            // Suavizar a posição da esfera (interpolação linear)
+            // Usa 0.15 para um movimento responsivo mas não instantâneo
+            sphere.position.x += (targetSphereX - sphere.position.x) * 0.15;
+            sphere.position.y += (targetSphereY - sphere.position.y) * 0.15;
+
+            // 1. Raycasting (Detetar se o rato está sobre a esfera)
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObject(sphere);
+
+            const nowHovering = intersects.length > 0;
+
+            if (nowHovering !== isHovering) {
+                isHovering = nowHovering;
+                // Trocar material
+                sphere.material = isHovering ? sphereMatMirrored : sphereMatPulsing;
+            }
+
+            // --- Atualizar Shader da Esfera (sempre) ---
+            sphereUniforms.uTime.value = time;
+            sphere.rotation.y += 0.005;
+            sphere.rotation.x += 0.002;
+            
+            // --- Câmera Cúbica (Renderizar reflexos) ---
+            if (isHovering) {
+                // Move a cubeCamera para a nova posição da esfera
+                cubeCamera.position.copy(sphere.position);
+                sphere.visible = false;
+                cubeCamera.update(renderer, scene);
+                sphere.visible = true;
+            }
+
+
+            // Anel
+            const scale = 1 + Math.sin(time * 3) * 0.05;
+            ring.scale.set(scale, scale, 1);
+            ring.rotation.z -= 0.01;
+            const hue = 0.05 + Math.sin(time) * 0.02; 
+            ring.material.color.setHSL(hue, 1, 0.5);
+
+            // Grelha
+            gridHelper.position.z = (time * 10) % (gridSize / gridDivisions);
+            
+            // Pirâmides
+            pyramids.forEach(p => {
+                p.mesh.position.z += p.speed * 5;
+                p.mesh.rotation.x += p.rotSpeed;
+                p.mesh.rotation.y += p.rotSpeed;
+                if (p.mesh.position.z > 5) resetPyramid(p.mesh);
+            });
+
+            // Partículas
+            const positions = particleSystem.geometry.attributes.position.array;
+            for (let i = 0; i < particleCount; i++) {
+                const data = particleData[i];
+                let z = positions[i * 3 + 2];
+                z += data.zSpeed;
+                if (z > 10) z = -80;
+                positions[i * 3 + 2] = z;
+
+                data.angle += data.speed * 0.5;
+                positions[i * 3] = Math.cos(data.angle) * data.r;
+                positions[i * 3 + 1] = Math.sin(data.angle) * data.r;
+            }
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+            particleSystem.rotation.z += 0.001;
+
+            // Interação Câmara (Mantida para um toque adicional de imersão)
+            camera.position.x += (mouseX * 5 - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY * 5 + 1 - camera.position.y) * 0.05;
+            camera.lookAt(scene.position);
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
