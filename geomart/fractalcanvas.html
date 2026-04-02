@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Arte Geométrica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            color: #fff;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        .controls {
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(15px);
+            border-right: 1px solid #333;
+        }
+        input[type="range"] {
+            accent-color: #f59e0b;
+        }
+    </style>
+</head>
+<body class="flex h-screen">
+
+    <!-- Painel de Controlo -->
+    <div class="controls w-80 h-full p-6 flex flex-col gap-6 z-10 overflow-y-auto">
+        <div>
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-red-600 bg-clip-text text-transparent">
+                Fractal Canvas v2
+            </h1>
+            <p class="text-xs text-gray-400 mt-1">Geometria em Grande Escala</p>
+        </div>
+
+        <div class="space-y-4">
+            <!-- Configurações de Geometria -->
+            <section>
+                <label class="block text-sm font-medium mb-2">Simetria (Lados)</label>
+                <input type="range" id="symmetry" min="2" max="12" value="4" class="w-full">
+            </section>
+
+            <section>
+                <label class="block text-sm font-medium mb-2">Escala (Zoom)</label>
+                <input type="range" id="zoom" min="50" max="500" value="250" class="w-full">
+                <p class="text-[10px] text-gray-500 italic">Aumenta para padrões maiores</p>
+            </section>
+
+            <section>
+                <label class="block text-sm font-medium mb-2">Curvatura (Espiral)</label>
+                <input type="range" id="curvature" min="0" max="100" value="30" class="w-full">
+            </section>
+
+            <section>
+                <label class="block text-sm font-medium mb-2">Complexidade</label>
+                <input type="range" id="complexity" min="1" max="50" value="15" class="w-full">
+            </section>
+
+            <section>
+                <label class="block text-sm font-medium mb-2">Velocidade</label>
+                <input type="range" id="speed" min="1" max="100" value="30" class="w-full">
+            </section>
+
+            <hr class="border-gray-800">
+
+            <!-- Esquema de Cores -->
+            <section>
+                <label class="block text-sm font-medium mb-2">Esquema de Cores</label>
+                <select id="colorPalette" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm">
+                    <option value="classic">Incandescente (Amarelo/Vermelho)</option>
+                    <option value="solar">Solar (Ouro/Branco)</option>
+                    <option value="plasma">Plasma (Roxo/Ciano)</option>
+                    <option value="monochrome">Ethereal (Branco/Cinza)</option>
+                </select>
+            </section>
+        </div>
+
+        <div class="mt-auto flex flex-col gap-2">
+            <button id="clearBtn" class="bg-gray-800 hover:bg-gray-700 text-white py-2 px-4 rounded transition">
+                Limpar Tela
+            </button>
+            <button id="snapshotBtn" class="bg-yellow-600 hover:bg-yellow-500 text-white py-2 px-4 rounded transition font-bold">
+                Guardar Imagem HD
+            </button>
+        </div>
+    </div>
+
+    <!-- Área do Canvas -->
+    <main class="flex-1 relative">
+        <canvas id="mainCanvas"></canvas>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Estado da aplicação melhorado para maior escala
+        const state = {
+            symmetry: 4,
+            curvature: 0.03,
+            complexity: 15,
+            speed: 0.03,
+            zoom: 250, // Escala de visualização
+            palette: 'classic',
+            particles: []
+        };
+
+        const palettes = {
+            classic: ['#ff0000', '#ff4d00', '#ff9900', '#ffcc00', '#ffff00', '#ffffff'],
+            solar: ['#996600', '#cc9933', '#ffcc66', '#ffff99', '#ffffff'],
+            plasma: ['#4b0082', '#8a2be2', '#00ffff', '#7fffd4', '#ffffff'],
+            monochrome: ['#333333', '#666666', '#999999', '#cccccc', '#ffffff']
+        };
+
+        class Particle {
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                // Spawn radius aumentado para preencher mais o canvas
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * 100; 
+                this.x = Math.cos(angle) * r;
+                this.y = Math.sin(angle) * r;
+                
+                this.prevX = this.x;
+                this.prevY = this.y;
+                this.age = 0;
+                this.maxAge = 150 + Math.random() * 300;
+                this.color = palettes[state.palette][Math.floor(Math.random() * palettes[state.palette].length)];
+                this.velocityScale = (0.5 + Math.random() * 2) * (state.speed * 15);
+            }
+
+            update() {
+                this.prevX = this.x;
+                this.prevY = this.y;
+
+                const angle = Math.atan2(this.y, this.x);
+                const dist = Math.sqrt(this.x * this.x + this.y * this.y);
+                
+                // Campo de força matemático baseado em fluxo e turbulência
+                const force = Math.sin(dist * state.curvature) * state.complexity;
+                
+                // Movimento radial + tangencial
+                this.x += Math.cos(angle + force) * this.velocityScale;
+                this.y += Math.sin(angle + force) * this.velocityScale;
+
+                this.age++;
+                // Reset se sair da área visível (considerando o zoom) ou ficar muito velho
+                const limit = Math.max(canvas.width, canvas.height);
+                if (this.age > this.maxAge || Math.abs(this.x) > limit || Math.abs(this.y) > limit) {
+                    this.init();
+                }
+            }
+
+            draw() {
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const scale = state.zoom / 100; // Aplica o zoom aqui
+
+                ctx.beginPath();
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 0.8;
+                ctx.globalAlpha = 0.4;
+
+                for (let i = 0; i < state.symmetry; i++) {
+                    const rot = (Math.PI * 2 / state.symmetry) * i;
+                    
+                    const x1 = centerX + (this.prevX * Math.cos(rot) - this.prevY * Math.sin(rot)) * scale;
+                    const y1 = centerY + (this.prevX * Math.sin(rot) + this.prevY * Math.cos(rot)) * scale;
+                    const x2 = centerX + (this.x * Math.cos(rot) - this.y * Math.sin(rot)) * scale;
+                    const y2 = centerY + (this.x * Math.sin(rot) + this.y * Math.cos(rot)) * scale;
+
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                }
+                ctx.stroke();
+            }
+        }
+
+        function setup() {
+            canvas.width = window.innerWidth - 320;
+            canvas.height = window.innerHeight;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Aumentamos o número de partículas para preencher o espaço maior
+            state.particles = [];
+            for (let i = 0; i < 800; i++) {
+                state.particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            // Rasto ligeiramente mais opaco para manter a definição nas extremidades
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.015)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            state.particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // Event Listeners
+        window.addEventListener('resize', setup);
+        
+        document.getElementById('symmetry').addEventListener('input', (e) => {
+            state.symmetry = parseInt(e.target.value);
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        });
+
+        document.getElementById('zoom').addEventListener('input', (e) => {
+            state.zoom = parseInt(e.target.value);
+            // Limpar ao mudar o zoom drasticamente para evitar sobreposição confusa
+            if(Math.abs(state.zoom - e.target.value) > 20) ctx.fillRect(0, 0, canvas.width, canvas.height);
+        });
+
+        document.getElementById('curvature').addEventListener('input', (e) => {
+            state.curvature = e.target.value / 1000;
+        });
+
+        document.getElementById('complexity').addEventListener('input', (e) => {
+            state.complexity = e.target.value / 5;
+        });
+
+        document.getElementById('speed').addEventListener('input', (e) => {
+            state.speed = e.target.value / 1000;
+        });
+
+        document.getElementById('colorPalette').addEventListener('change', (e) => {
+            state.palette = e.target.value;
+            state.particles.forEach(p => p.init());
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        });
+
+        document.getElementById('snapshotBtn').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'fractal-masterpiece.png';
+            link.href = canvas.toDataURL('image/png', 1.0);
+            link.click();
+        });
+
+        setup();
+        animate();
+    </script>
+</body>
+</html>
