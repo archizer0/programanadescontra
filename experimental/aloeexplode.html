@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aloe Vera 3D - Explosão e Reconstrução</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #2E86C1; 
+        }
+        canvas { 
+            display: block; 
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-family: 'Courier New', monospace;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px black;
+            font-size: 14px;
+        }
+    </style>
+    <!-- Importando Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="info">Ciclo Infinito: Estilhaçar e Reunir</div>
+
+    <script>
+        // --- Configuração da Cena ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color('#387CB8'); // Azul céu
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 22);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 2.0;
+
+        // Grupo principal
+        const group = new THREE.Group();
+        scene.add(group);
+
+        // Array para armazenar dados de animação de cada peça
+        const debris = [];
+
+        // --- Funções Auxiliares ---
+        
+        function getColorForHeight(percent) {
+            const colorTop = new THREE.Color('#6B8E23'); // Verde oliva
+            const colorMid = new THREE.Color('#FF4500'); // Laranja avermelhado
+            const colorBot = new THREE.Color('#CD5C5C'); // Vermelho indiano
+            const finalColor = new THREE.Color();
+
+            if (percent > 0.8) {
+                const t = (percent - 0.8) * 5; 
+                finalColor.lerpColors(colorMid, colorTop, t);
+            } else {
+                const t = percent / 0.8;
+                finalColor.lerpColors(colorBot, colorMid, t);
+            }
+            return finalColor;
+        }
+
+        // Função para guardar dados de animação num objeto
+        function storeAnimationData(mesh, x, y, z) {
+            // Posição Original
+            mesh.userData.origin = new THREE.Vector3(x, y, z);
+            
+            // Rotação Original
+            mesh.userData.origRot = mesh.rotation.clone();
+
+            // Vetor de Explosão (Direção aleatória para fora)
+            // Normalizamos a posição atual para obter a direção "para fora" do centro
+            const explosionDir = new THREE.Vector3(x, y, z).normalize();
+            
+            // Adicionamos aleatoriedade pura para ser caótico (estilhaçar)
+            explosionDir.x += (Math.random() - 0.5) * 2;
+            explosionDir.y += (Math.random() - 0.5) * 2;
+            explosionDir.z += (Math.random() - 0.5) * 2;
+            explosionDir.normalize().multiplyScalar(10 + Math.random() * 15); // Força da explosão
+
+            mesh.userData.explosionVector = explosionDir;
+
+            // Rotação aleatória extra durante a explosão
+            mesh.userData.randomRotSpeed = {
+                x: (Math.random() - 0.5) * 4,
+                y: (Math.random() - 0.5) * 4,
+                z: (Math.random() - 0.5) * 4
+            };
+
+            debris.push(mesh);
+        }
+
+        // --- Geração da Geometria ---
+
+        // 1. O Caule Central
+        const stemGeometry = new THREE.CylinderGeometry(0.3, 0.6, 10, 8);
+        const stemMaterial = new THREE.MeshBasicMaterial({ color: 0x556B2F, wireframe: true });
+        const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+        // O caule não explode como um todo, vamos deixá-lo fixo ou explodir levemente?
+        // Vamos fazer o caule explodir também para ser total.
+        stem.position.y = -4;
+        storeAnimationData(stem, 0, -4, 0); 
+        group.add(stem);
+
+        // 2. As Flores
+        const numFlorets = 350;
+        const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+
+        for (let i = 0; i < numFlorets; i++) {
+            const t = i / numFlorets; 
+            const height = 8;
+            const y = (1 - t) * height - (height / 2); 
+            const maxRadius = 2.5;
+            const radius = Math.sqrt(t) * maxRadius * (0.2 + 0.8 * t); 
+            const theta = i * goldenAngle;
+            const x = radius * Math.cos(theta);
+            const z = radius * Math.sin(theta);
+
+            const floretLen = 1.2 + Math.random() * 0.3;
+            const floretGeo = new THREE.CylinderGeometry(0.02, 0.1, floretLen, 5, 1);
+            floretGeo.translate(0, floretLen / 2, 0);
+
+            const myColor = getColorForHeight(1 - t);
+            const floretMat = new THREE.MeshBasicMaterial({ color: myColor, wireframe: true });
+            const floret = new THREE.Mesh(floretGeo, floretMat);
+
+            // Posiciona
+            floret.position.set(x, y + 1, z);
+            
+            // Rota
+            floret.lookAt(0, y + 1, 0); 
+            const droopAngle = (t - 0.2) * Math.PI / 1.5; 
+            floret.rotateX(Math.PI / 2 + droopAngle); 
+
+            // Armazena dados antes de adicionar ao grupo
+            storeAnimationData(floret, floret.position.x, floret.position.y, floret.position.z);
+
+            group.add(floret);
+        }
+
+        group.position.y = -1;
+
+        // --- Animação ---
+
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = clock.getElapsedTime();
+            
+            // Ciclo de explosão: 
+            // Math.sin(time) vai de -1 a 1. 
+            // Mapeamos para 0 a 1.
+            // Usamos 'pow' para fazer a fase "junta" durar um pouco mais visualmente ou ser mais rápida na explosão
+            let cycle = (Math.sin(time * 0.8) + 1) / 2; 
+            
+            // Easing suave (Smoothstep)
+            cycle = cycle * cycle * (3 - 2 * cycle);
+
+            debris.forEach(mesh => {
+                const data = mesh.userData;
+
+                // Nova Posição: Origem + (VetorExplosão * fatorCiclo)
+                mesh.position.x = data.origin.x + (data.explosionVector.x * cycle);
+                mesh.position.y = data.origin.y + (data.explosionVector.y * cycle);
+                mesh.position.z = data.origin.z + (data.explosionVector.z * cycle);
+
+                // Nova Rotação: RotaçãoOriginal + (VelocidadeGiro * fatorCiclo)
+                mesh.rotation.x = data.origRot.x + (data.randomRotSpeed.x * cycle);
+                mesh.rotation.y = data.origRot.y + (data.randomRotSpeed.y * cycle);
+                mesh.rotation.z = data.origRot.z + (data.randomRotSpeed.z * cycle);
+            });
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Responsividade
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+
+    </script>
+</body>
+</html>
