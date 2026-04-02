@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luminous Quad Grid Tessellation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #010409;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            cursor: grab;
+        }
+        body:active {
+            cursor: grabbing;
+        }
+        canvas {
+            display: block;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(1, 4, 9, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            pointer-events: none;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        .controls h1 {
+            margin: 0 0 5px 0;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        .controls p {
+            margin: 0;
+            font-size: 0.7rem;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <h1>Luminous Multiverse</h1>
+        <p>Triakis • 4.6.12 • 4.8.8 • 3.4.6.4 • Drag to Orbit</p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, group;
+        let mouse = new THREE.Vector2(-1000, -1000);
+        
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let manualRotation = new THREE.Euler(0.4, 0.4, 0);
+        
+        const scale = 1.5;
+        const gridCount = 10; 
+        
+        let targetZ = 22;
+        let currentZ = 22;
+        const minZ = 5;
+        const maxZ = 60;
+
+        const hexWidth = Math.sqrt(3) * scale;
+        const hexHeight = 2 * scale;
+        const rowSpacing = hexHeight * 0.75;
+        const colSpacing = hexWidth;
+        const worldSize = gridCount * colSpacing;
+
+        function init() {
+            scene = new THREE.Scene();
+            // Darker background and lighter fog for glow depth
+            scene.fog = new THREE.FogExp2(0x010409, 0.03);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = currentZ;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            // Important for luminosity: preserve drawing buffer and enable additive blending features
+            renderer.setClearColor(0x010409, 1);
+            document.body.appendChild(renderer.domElement);
+
+            group = new THREE.Group();
+            scene.add(group);
+
+            createGrids();
+
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('wheel', onWheel, { passive: false });
+
+            animate();
+        }
+
+        function createGrids() {
+            // High-luminosity materials with full opacity capability and Additive Blending
+            const triakisMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, linewidth: 2, blending: THREE.AdditiveBlending });
+            const grid4612Mat = new THREE.LineBasicMaterial({ color: 0x00f2ff, transparent: true, opacity: 0.5, linewidth: 2, blending: THREE.AdditiveBlending });
+            const grid488Mat = new THREE.LineBasicMaterial({ color: 0xff00cc, transparent: true, opacity: 0.45, linewidth: 2, blending: THREE.AdditiveBlending });
+            const grid3464Mat = new THREE.LineBasicMaterial({ color: 0xffe600, transparent: true, opacity: 0.4, linewidth: 2, blending: THREE.AdditiveBlending });
+
+            for (let r = -gridCount; r < gridCount; r++) {
+                for (let c = -gridCount; c < gridCount; c++) {
+                    let x = c * colSpacing;
+                    let y = r * rowSpacing;
+                    if (Math.abs(r) % 2 !== 0) x += colSpacing / 2;
+
+                    // Grid 1: Triakis (XY - 0°) - Pure White / Silver
+                    const tUnit = createTriakisUnit(scale, triakisMat);
+                    tUnit.position.set(x, y, 0);
+                    tUnit.userData = { ox: x, oy: y, oz: 0, phase: Math.random() * 6, type: 'triakis' };
+                    group.add(tUnit);
+
+                    // Grid 2: 4.6.12 (YZ - 90°) - Electric Cyan
+                    const pUnit = create4612Unit(scale * 0.8, grid4612Mat);
+                    pUnit.rotation.y = Math.PI / 2;
+                    pUnit.position.set(0, y, x);
+                    pUnit.userData = { ox: 0, oy: y, oz: x, phase: Math.random() * 6, type: '4612' };
+                    group.add(pUnit);
+
+                    // Grid 3: 4.8.8 (45° Diagonal) - Neon Magenta
+                    const dUnit = create488Unit(scale * 0.9, grid488Mat);
+                    dUnit.rotation.y = Math.PI / 4;
+                    const dx = (x + y) * 0.707;
+                    const dz = (x - y) * 0.707;
+                    dUnit.position.set(dx, (x + y) * 0.5, dz);
+                    dUnit.userData = { ox: dx, oy: (x + y) * 0.5, oz: dz, phase: Math.random() * 6, type: '488' };
+                    group.add(dUnit);
+
+                    // Grid 4: 3.4.6.4 (-45° Diagonal) - Golden Sun
+                    const oUnit = create3464Unit(scale * 0.7, grid3464Mat);
+                    oUnit.rotation.y = -Math.PI / 4;
+                    const ox = (x - y) * 0.707;
+                    const oz = (x + y) * 0.707;
+                    oUnit.position.set(ox, (x - y) * 0.5, oz);
+                    oUnit.userData = { ox: ox, oy: (x - y) * 0.5, oz: oz, phase: Math.random() * 6, type: '3464' };
+                    group.add(oUnit);
+                }
+            }
+        }
+
+        function createTriakisUnit(s, material) {
+            const hexPoints = [];
+            for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI / 3) * i - (Math.PI / 6);
+                hexPoints.push(new THREE.Vector3(s * Math.cos(angle), s * Math.sin(angle), 0));
+            }
+            const vertices = [];
+            for (let i = 0; i < 6; i++) {
+                vertices.push(hexPoints[i].x, hexPoints[i].y, hexPoints[i].z, hexPoints[(i + 1) % 6].x, hexPoints[(i + 1) % 6].y, hexPoints[(i + 1) % 6].z);
+                vertices.push(0, 0, 0, hexPoints[i].x, hexPoints[i].y, hexPoints[i].z);
+                const mid = hexPoints[i].clone().add(hexPoints[(i + 1) % 6]).multiplyScalar(0.5);
+                vertices.push(0, 0, 0, mid.x, mid.y, mid.z);
+            }
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            return new THREE.LineSegments(geometry, material.clone());
+        }
+
+        function create4612Unit(s, material) {
+            const vertices = [];
+            const r12 = s;
+            for (let i = 0; i < 12; i++) {
+                const a1 = (Math.PI / 6) * i;
+                const a2 = (Math.PI / 6) * (i + 1);
+                vertices.push(r12 * Math.cos(a1), r12 * Math.sin(a1), 0, r12 * Math.cos(a2), r12 * Math.sin(a2), 0);
+                const spurLen = s * 0.3;
+                vertices.push(r12 * Math.cos(a1), r12 * Math.sin(a1), 0, (r12 + spurLen) * Math.cos(a1), (r12 + spurLen) * Math.sin(a1), 0);
+            }
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            return new THREE.LineSegments(geometry, material.clone());
+        }
+
+        function create488Unit(s, material) {
+            const vertices = [];
+            const octPoints = [];
+            for (let i = 0; i < 8; i++) {
+                const angle = (Math.PI / 4) * i + (Math.PI / 8);
+                octPoints.push(new THREE.Vector3(s * Math.cos(angle), s * Math.sin(angle), 0));
+            }
+            for (let i = 0; i < 8; i++) {
+                vertices.push(octPoints[i].x, octPoints[i].y, octPoints[i].z, octPoints[(i + 1) % 8].x, octPoints[(i + 1) % 8].y, octPoints[(i + 1) % 8].z);
+                const spur = octPoints[i].clone().multiplyScalar(1.2);
+                vertices.push(octPoints[i].x, octPoints[i].y, octPoints[i].z, spur.x, spur.y, spur.z);
+            }
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            return new THREE.LineSegments(geometry, material.clone());
+        }
+
+        function create3464Unit(s, material) {
+            const vertices = [];
+            const r6 = s;
+            for (let i = 0; i < 6; i++) {
+                const a1 = (Math.PI / 3) * i;
+                const a2 = (Math.PI / 3) * (i + 1);
+                vertices.push(r6 * Math.cos(a1), r6 * Math.sin(a1), 0, r6 * Math.cos(a2), r6 * Math.sin(a2), 0);
+                const spur = r6 * 1.4;
+                vertices.push(r6 * Math.cos(a1), r6 * Math.sin(a1), 0, spur * Math.cos(a1 + 0.2), spur * Math.sin(a1 + 0.2), 0);
+                vertices.push(r6 * Math.cos(a1), r6 * Math.sin(a1), 0, spur * Math.cos(a1 - 0.2), spur * Math.sin(a1 - 0.2), 0);
+            }
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            return new THREE.LineSegments(geometry, material.clone());
+        }
+
+        function onMouseDown(e) { isDragging = true; }
+        function onMouseUp(e) { isDragging = false; }
+
+        function onMouseMove(event) {
+            const currentPosition = { x: event.clientX, y: event.clientY };
+            if (isDragging) {
+                const deltaMove = { x: currentPosition.x - previousMousePosition.x, y: currentPosition.y - previousMousePosition.y };
+                manualRotation.y += deltaMove.x * 0.005;
+                manualRotation.x += deltaMove.y * 0.005;
+            }
+            previousMousePosition = currentPosition;
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        }
+
+        function onWheel(event) {
+            event.preventDefault();
+            targetZ = THREE.MathUtils.clamp(targetZ + event.deltaY * 0.02, minZ, maxZ);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function wrap(v, min, max) {
+            const r = max - min;
+            return ((((v - min) % r) + r) % r) + min;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = performance.now() * 0.001;
+            currentZ = THREE.MathUtils.lerp(currentZ, targetZ, 0.08);
+            camera.position.z = currentZ;
+
+            if (!isDragging) manualRotation.y += 0.0008;
+
+            group.rotation.x = manualRotation.x;
+            group.rotation.y = manualRotation.y;
+
+            const drift = time * 0.4;
+
+            group.children.forEach((unit) => {
+                const d = unit.userData;
+                
+                if (d.type === 'triakis') {
+                    unit.position.x = wrap(d.ox + drift, -worldSize, worldSize);
+                    unit.position.y = wrap(d.oy + drift * 0.5, -worldSize, worldSize);
+                } else if (d.type === '4612') {
+                    unit.position.z = wrap(d.oz + drift, -worldSize, worldSize);
+                    unit.position.y = wrap(d.oy + drift * 0.5, -worldSize, worldSize);
+                } else if (d.type === '488') {
+                    unit.position.x = wrap(d.ox + drift * 0.7, -worldSize, worldSize);
+                    unit.position.z = wrap(d.oz + drift * 0.7, -worldSize, worldSize);
+                } else if (d.type === '3464') {
+                    unit.position.x = wrap(d.ox - drift * 0.7, -worldSize, worldSize);
+                    unit.position.z = wrap(d.oz + drift * 0.7, -worldSize, worldSize);
+                }
+
+                // Enhanced Shimmer for luminosity
+                const shimmer = Math.sin(time * 2.5 + d.phase) * 0.5 + 0.5;
+                const baseOp = d.type === 'triakis' ? 0.15 : (d.type === '4612' ? 0.12 : 0.1);
+                unit.material.opacity = baseOp + shimmer * 0.65;
+
+                const viewPos = unit.position.clone().applyMatrix4(group.matrixWorld);
+                const screenPos = viewPos.clone().project(camera);
+                const dist = mouse.distanceTo(new THREE.Vector2(screenPos.x, screenPos.y));
+
+                // Interaction glow boost
+                if (dist < 0.22) {
+                    const power = (1 - dist / 0.22);
+                    unit.scale.setScalar(1 + power * 0.45);
+                    unit.material.opacity = Math.min(1.0, unit.material.opacity + power * 0.85);
+                } else {
+                    unit.scale.setScalar(THREE.MathUtils.lerp(unit.scale.x, 1, 0.1));
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
