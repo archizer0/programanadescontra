@@ -1,0 +1,323 @@
+
+<style>
+  #pw { position:relative; width:100%; height:540px; background:#010102; border-radius:12px; overflow:hidden; }
+  #pc { display:block; width:100%; height:100%; }
+  #pui { position:absolute; bottom:14px; left:14px; color:rgba(255,255,255,0.38); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:10px; pointer-events:none; line-height:1.8; background:rgba(0,0,0,0.65); padding:10px 14px; border-radius:10px; text-transform:uppercase; letter-spacing:0.1em; border:1px solid rgba(255,255,255,0.06); }
+  #pui kbd { background:rgba(255,255,255,0.13); padding:1px 5px; border-radius:3px; color:#ddd; font-size:9px; }
+  #pload { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:rgba(255,255,255,0.65); font-family:sans-serif; font-size:11px; letter-spacing:0.22em; text-align:center; pointer-events:none; }
+  #pmode { position:absolute; top:14px; right:14px; color:rgba(255,255,255,0.3); font-family:sans-serif; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; }
+</style>
+
+<div id="pw">
+  <canvas id="pc"></canvas>
+  <div id="pload">INITIALISING PORTRAIT ENGINE…</div>
+  <div id="pmode">NO CAMERA</div>
+  <div id="pui">
+    <kbd>R</kbd> Reset portrait &nbsp;|&nbsp; <kbd>S</kbd> Save &nbsp;|&nbsp; <kbd>Space</kbd> Clear canvas<br>
+    Particle portrait · shadow density + edge tracing
+  </div>
+</div>
+<video id="pv" autoplay playsinline style="display:none"></video>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+<script>
+(function(){
+
+/* ── NOISE ── */
+class Noise {
+  constructor(s){ this.p=new Uint8Array(512); this.seed(s||Math.random()); }
+  seed(){
+    for(let i=0;i<256;i++) this.p[i]=i;
+    for(let i=255;i>0;i--){ const r=Math.floor(Math.random()*(i+1)); [this.p[i],this.p[r]]=[this.p[r],this.p[i]]; }
+    for(let i=0;i<256;i++) this.p[256+i]=this.p[i];
+  }
+  fade(t){return t*t*t*(t*(t*6-15)+10);}
+  lerp(t,a,b){return a+t*(b-a);}
+  grad(h,x,y,z){h&=15;const u=h<8?x:y,v=h<4?y:(h===12||h===14?x:z);return((h&1)?-u:u)+((h&2)?-v:v);}
+  perlin(x,y,z){
+    const X=Math.floor(x)&255,Y=Math.floor(y)&255,Z=Math.floor(z)&255;
+    x-=Math.floor(x);y-=Math.floor(y);z-=Math.floor(z);
+    const u=this.fade(x),v=this.fade(y),w=this.fade(z),p=this.p;
+    const A=p[X]+Y,AA=p[A]+Z,AB=p[A+1]+Z,B=p[X+1]+Y,BA=p[B]+Z,BB=p[B+1]+Z;
+    return this.lerp(w,
+      this.lerp(v,this.lerp(u,this.grad(p[AA],x,y,z),this.grad(p[BA],x-1,y,z)),
+                  this.lerp(u,this.grad(p[AB],x,y-1,z),this.grad(p[BB],x-1,y-1,z))),
+      this.lerp(v,this.lerp(u,this.grad(p[AA+1],x,y,z-1),this.grad(p[BA+1],x-1,y,z-1)),
+                  this.lerp(u,this.grad(p[AB+1],x,y-1,z-1),this.grad(p[BB+1],x-1,y-1,z-1))));
+  }
+}
+
+/* ── VIDEO SAMPLER ── */
+const VW=160, VH=120;
+const vc=document.createElement('canvas'); vc.width=VW; vc.height=VH;
+const vx=vc.getContext('2d');
+let vpx=null, edg=null;
+
+function captureFrame(vid){
+  if(vid.readyState<2) return;
+  vx.save(); vx.scale(-1,1); vx.translate(-VW,0);
+  vx.drawImage(vid,0,0,VW,VH); vx.restore();
+  vpx=vx.getImageData(0,0,VW,VH);
+  buildEdges();
+}
+
+function buildEdges(){
+  if(!vpx) return;
+  edg=new Float32Array(VW*VH);
+  const d=vpx.data;
+  const lum=(px,py)=>{
+    if(px<0||px>=VW||py<0||py>=VH) return 0;
+    const i=(py*VW+px)*4;
+    return (d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)/255;
+  };
+  for(let y=1;y<VH-1;y++) for(let x=1;x<VW-1;x++){
+    const gx=-lum(x-1,y-1)+lum(x+1,y-1)-2*lum(x-1,y)+2*lum(x+1,y)-lum(x-1,y+1)+lum(x+1,y+1);
+    const gy=-lum(x-1,y-1)-2*lum(x,y-1)-lum(x+1,y-1)+lum(x-1,y+1)+2*lum(x,y+1)+lum(x+1,y+1);
+    edg[y*VW+x]=Math.min(1,Math.sqrt(gx*gx+gy*gy)*5);
+  }
+}
+
+function vCoords(x,y,w,h){ return [Math.floor((x/w)*VW), Math.floor((y/h)*VH)]; }
+
+function sampleBrightness(x,y,w,h){
+  if(!vpx) return 0.5;
+  const [vxi,vyi]=vCoords(x,y,w,h);
+  if(vxi<0||vxi>=VW||vyi<0||vyi>=VH) return 0.5;
+  const i=(vyi*VW+vxi)*4;
+  return (vpx.data[i]*0.299+vpx.data[i+1]*0.587+vpx.data[i+2]*0.114)/255;
+}
+
+function sampleRGB(x,y,w,h){
+  if(!vpx) return null;
+  const [vxi,vyi]=vCoords(x,y,w,h);
+  if(vxi<0||vxi>=VW||vyi<0||vyi>=VH) return null;
+  const i=(vyi*VW+vxi)*4;
+  return [vpx.data[i],vpx.data[i+1],vpx.data[i+2]];
+}
+
+function sampleEdge(x,y,w,h){
+  if(!edg) return 0;
+  const [vxi,vyi]=vCoords(x,y,w,h);
+  if(vxi<0||vxi>=VW||vyi<0||vyi>=VH) return 0;
+  return edg[vyi*VW+vxi];
+}
+
+function edgeGradient(x,y,w,h){
+  if(!edg) return [0,0];
+  const [vxi,vyi]=vCoords(x,y,w,h);
+  if(vxi<=0||vxi>=VW-1||vyi<=0||vyi>=VH-1) return [0,0];
+  return [edg[vyi*VW+vxi+1]-edg[vyi*VW+vxi-1],
+          edg[(vyi+1)*VW+vxi]-edg[(vyi-1)*VW+vxi]];
+}
+
+/* ── PARTICLE ── */
+class Particle {
+  constructor(w,h){ this.init(w,h); }
+  init(w,h){
+    this.x=Math.random()*w; this.y=Math.random()*h;
+    this.px=this.x; this.py=this.y;
+    this.sm=0.8+Math.random()*1.8;
+    this.ho=Math.random()*90;
+    this.life=Math.random()*200;
+    this.vx=0; this.vy=0;
+    this.inside=false;
+  }
+  L(t,a,b){return a+t*(b-a);}
+
+  update(noise,w,h,z,lm,mask){
+    this.px=this.x; this.py=this.y; this.life++;
+    const ns=0.003;
+    let angle=noise.perlin(this.x*ns,this.y*ns,z)*Math.PI*8;
+    let tvx=Math.cos(angle)*this.sm;
+    let tvy=Math.sin(angle)*this.sm;
+
+    // mask check
+    this.inside=false;
+    if(mask){
+      const mx=Math.floor((this.x/w)*mask.width);
+      const my=Math.floor((this.y/h)*mask.height);
+      if(mx>=0&&mx<mask.width&&my>=0&&my<mask.height)
+        this.inside=mask.data[(my*mask.width+mx)*4]>128;
+    }
+
+    // face/hand contour attraction
+    let onLM=false;
+    if(lm&&lm.length){
+      for(let i=0;i<lm.length;i++){
+        const l=lm[i],dx=l.x*w-this.x,dy=l.y*h-this.y,d2=dx*dx+dy*dy;
+        if(d2<1600){ // 40px
+          const dist=Math.sqrt(d2),att=(1-dist/40)*2.5;
+          // tangential flow along contour
+          tvx=this.L(att,tvx,(-dy/dist)*3.5);
+          tvy=this.L(att,tvy,(dx/dist)*3.5);
+          onLM=true; break;
+        }
+      }
+    }
+
+    if(this.inside&&!onLM&&vpx){
+      const bri=sampleBrightness(this.x,this.y,w,h);
+      const ev=sampleEdge(this.x,this.y,w,h);
+      const [gx,gy]=edgeGradient(this.x,this.y,w,h);
+      const gm=Math.sqrt(gx*gx+gy*gy);
+
+      // Pull toward edges (outlines facial features)
+      if(gm>0.015){
+        tvx+=gx/gm*2.5;
+        tvy+=gy/gm*2.5;
+      }
+
+      // Dark regions → slow down → more trail → portrait shadows
+      // Bright regions → speed up → sparse trails → highlights
+      const sf=0.1+bri*0.9;
+      tvx*=sf; tvy*=sf;
+    } else if(!this.inside){
+      // Background: dim, drifting
+      tvx*=0.4; tvy*=0.4;
+    }
+
+    this.vx=this.L(0.1,this.vx,tvx);
+    this.vy=this.L(0.1,this.vy,tvy);
+    this.x+=this.vx; this.y+=this.vy;
+    if(this.x<0||this.x>w||this.y<0||this.y>h||this.life>1000) this.init(w,h);
+  }
+
+  draw(ctx,baseHue,w,h){
+    if(this.inside&&vpx){
+      const rgb=sampleRGB(this.x,this.y,w,h);
+      if(rgb){
+        const bri=(rgb[0]*0.299+rgb[1]*0.587+rgb[2]*0.114)/255;
+        // Opacity inversely proportional to brightness: shadows deposit heavily, highlights barely
+        const a=0.02+(1-bri)*(1-bri)*0.38;
+        ctx.strokeStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`;
+      } else {
+        ctx.strokeStyle=`hsla(${(baseHue+this.ho)%360},75%,65%,0.1)`;
+      }
+    } else {
+      // Faint ambient drift outside the person
+      ctx.strokeStyle=`hsla(${(baseHue+this.ho)%360},55%,40%,0.04)`;
+    }
+    ctx.beginPath(); ctx.moveTo(this.px,this.py); ctx.lineTo(this.x,this.y); ctx.stroke();
+  }
+}
+
+/* ── SETUP ── */
+const wrap=document.getElementById('pw');
+const canvas=document.getElementById('pc');
+const ctx=canvas.getContext('2d',{alpha:false});
+const video=document.getElementById('pv');
+const loadDiv=document.getElementById('pload');
+const modeDiv=document.getElementById('pmode');
+
+let W,H,particles=[],noise=new Noise(),zOff=0,hue=Math.random()*360;
+let landmarks=[],currentMask=null,frameN=0;
+
+function resize(){
+  const r=wrap.getBoundingClientRect();
+  W=canvas.width=r.width; H=canvas.height=r.height;
+  particles=[];
+  for(let i=0;i<5000;i++) particles.push(new Particle(W,H));
+  ctx.fillStyle='#010102'; ctx.fillRect(0,0,W,H);
+}
+
+function loop(){
+  // Very slow fade — trails persist for ~300+ frames, portrait accumulates
+  ctx.fillStyle='rgba(1,1,2,0.0035)';
+  ctx.fillRect(0,0,W,H);
+  zOff+=0.0015; hue=(hue+0.25)%360; frameN++;
+  // Capture video frame every 12 frames
+  if(frameN%12===0) captureFrame(video);
+  ctx.lineWidth=0.9;
+  for(let i=0;i<particles.length;i++){
+    particles[i].update(noise,W,H,zOff,landmarks,currentMask);
+    particles[i].draw(ctx,hue,W,H);
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ── MEDIAPIPE ── */
+function onFaceHands(results){
+  let nl=[];
+  if(results.multiFaceLandmarks){
+    for(const face of results.multiFaceLandmarks){
+      // Oval + eyes + brows + nose bridge + lips — full portrait feature set
+      const idxs=[
+        10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109,
+        33,7,163,144,145,153,154,155,133,173,157,158,159,160,161,246,
+        362,382,381,380,374,373,390,249,263,466,388,387,386,385,384,398,
+        70,63,105,66,107,55,65,52,53,46,300,293,334,296,336,285,295,282,283,276,
+        1,2,98,327,168,6,195,5,4,45,220,115,48,64,240,
+        61,185,40,39,37,0,267,269,270,409,291,375,321,405,314,17,84,181,91,146,
+        78,95,88,178,87,14,317,402,318,324,308,415,310,311,312,13,82,81,80,191
+      ];
+      const seen=new Set();
+      idxs.forEach(idx=>{
+        if(seen.has(idx)) return; seen.add(idx);
+        const pt=face[idx]; if(pt) nl.push({x:1-pt.x,y:pt.y});
+      });
+    }
+  }
+  if(results.multiHandLandmarks)
+    for(const h of results.multiHandLandmarks)
+      h.forEach(pt=>{ if(pt) nl.push({x:1-pt.x,y:pt.y}); });
+  landmarks=nl;
+}
+
+async function initAI(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}});
+    video.srcObject=stream;
+    modeDiv.textContent='PORTRAIT ACTIVE';
+
+    const selfie=new SelfieSegmentation({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`});
+    selfie.setOptions({modelSelection:1});
+    selfie.onResults(r=>{
+      if(r.segmentationMask){
+        const mc=document.createElement('canvas');
+        mc.width=r.segmentationMask.width; mc.height=r.segmentationMask.height;
+        const mx=mc.getContext('2d');
+        mx.save(); mx.scale(-1,1); mx.translate(-mc.width,0);
+        mx.drawImage(r.segmentationMask,0,0); mx.restore();
+        currentMask=mx.getImageData(0,0,mc.width,mc.height);
+        if(loadDiv) loadDiv.style.display='none';
+      }
+    });
+
+    const faceMesh=new FaceMesh({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`});
+    faceMesh.setOptions({maxNumFaces:1,refineLandmarks:true,minDetectionConfidence:0.5});
+    faceMesh.onResults(onFaceHands);
+
+    const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+    hands.setOptions({maxNumHands:2,modelComplexity:1,minDetectionConfidence:0.5});
+    hands.onResults(onFaceHands);
+
+    async function process(){
+      if(video.readyState>=2){
+        await selfie.send({image:video});
+        await faceMesh.send({image:video});
+        await hands.send({image:video});
+      }
+      requestAnimationFrame(process);
+    }
+    process();
+  }catch(err){
+    console.warn('Camera error:',err);
+    if(loadDiv){ loadDiv.textContent='NO CAMERA — AMBIENT MODE'; setTimeout(()=>loadDiv.style.display='none',2500); }
+    modeDiv.textContent='NOISE ONLY';
+  }
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.code==='KeyR'){ noise.seed(Math.random()); resize(); }
+  if(e.code==='KeyS'){ const a=document.createElement('a'); a.download='portrait.png'; a.href=canvas.toDataURL(); a.click(); }
+  if(e.code==='Space'){ ctx.fillStyle='#010102'; ctx.fillRect(0,0,W,H); e.preventDefault(); }
+});
+
+new ResizeObserver(resize).observe(wrap);
+resize(); loop(); initAI();
+
+})();
+</script>
