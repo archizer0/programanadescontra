@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webcam Reactive Flow Field</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #020204;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.5);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            pointer-events: none;
+            line-height: 1.6;
+            background: rgba(0,0,0,0.6);
+            padding: 12px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            z-index: 10;
+        }
+        kbd {
+            background: rgba(255,255,255,0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #fff;
+            font-weight: bold;
+        }
+        #video-preview {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+    <video id="video-preview" autoplay playsinline></video>
+    
+    <div id="ui-overlay">
+        <kbd>R</kbd> Reset | 
+        <kbd>P</kbd> Pause | 
+        <kbd>S</kbd> Save | 
+        <kbd>Space</kbd> Clear<br>
+        Webcam Reactive • Tendrils form around shapes
+    </div>
+
+    <script>
+        /**
+         * NOISE IMPLEMENTATION
+         */
+        class Noise {
+            constructor(seed = Math.random()) {
+                this.p = new Uint8Array(512);
+                this.seed(seed);
+            }
+            seed(seed) {
+                for (let i = 0; i < 256; i++) this.p[i] = i;
+                for (let i = 255; i > 0; i--) {
+                    const r = Math.floor(Math.random() * (i + 1));
+                    [this.p[i], this.p[r]] = [this.p[r], this.p[i]];
+                }
+                for (let i = 0; i < 256; i++) this.p[256 + i] = this.p[i];
+            }
+            fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+            lerp(t, a, b) { return a + t * (b - a); }
+            grad(hash, x, y, z) {
+                const h = hash & 15;
+                const u = h < 8 ? x : y;
+                const v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+            }
+            perlin(x, y, z) {
+                const X = Math.floor(x) & 255; const Y = Math.floor(y) & 255; const Z = Math.floor(z) & 255;
+                x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
+                const u = this.fade(x); const v = this.fade(y); const w = this.fade(z);
+                const p = this.p;
+                const A = p[X] + Y, AA = p[A] + Z, AB = p[A + 1] + Z;
+                const B = p[X + 1] + Y, BA = p[B] + Z, BB = p[B + 1] + Z;
+                return this.lerp(w, this.lerp(v, this.lerp(u, this.grad(p[AA], x, y, z), this.grad(p[BA], x - 1, y, z)),
+                                        this.lerp(u, this.grad(p[AB], x, y - 1, z), this.grad(p[BB], x - 1, y - 1, z))),
+                                this.lerp(v, this.lerp(u, this.grad(p[AA + 1], x, y, z - 1), this.grad(p[BA + 1], x - 1, y, z - 1)),
+                                        this.lerp(u, this.grad(p[AB + 1], x, y - 1, z - 1), this.grad(p[BB + 1], x - 1, y - 1, z - 1))));
+            }
+        }
+
+        /**
+         * PARTICLE ENGINE
+         */
+        class Particle {
+            constructor(w, h) {
+                this.init(w, h);
+            }
+            init(w, h) {
+                this.x = Math.random() * w;
+                this.y = Math.random() * h;
+                this.prevX = this.x;
+                this.prevY = this.y;
+                this.speedMult = 1.2 + Math.random() * 1.8; 
+                this.hueOffset = Math.random() * 80; 
+            }
+            update(noise, w, h, zOffset, noiseScale, turbulence, flowData, flowRes) {
+                this.prevX = this.x;
+                this.prevY = this.y;
+
+                let angle = noise.perlin(this.x * noiseScale, this.y * noiseScale, zOffset) * Math.PI * 8;
+
+                // Webcam Reactive Logic
+                if (flowData) {
+                    const gx = Math.floor((this.x / w) * flowRes);
+                    const gy = Math.floor((this.y / h) * flowRes);
+                    const idx = gy * flowRes + gx;
+                    
+                    // If pixel is bright (part of shape), divert angle
+                    if (flowData[idx] > 50) { 
+                        angle += Math.PI * 0.5; // Rotate flow around shapes
+                        this.speedMult *= 1.05; // Speed up near edges
+                    } else {
+                        this.speedMult = Math.max(1.2, this.speedMult * 0.99);
+                    }
+                }
+
+                if (turbulence.active) {
+                    const dx = this.x - turbulence.x;
+                    const dy = this.y - turbulence.y;
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq < 90000) {
+                        angle += Math.atan2(dy, dx) * (1 - Math.sqrt(distSq)/300) * 4;
+                    }
+                }
+
+                this.x += Math.cos(angle) * this.speedMult;
+                this.y += Math.sin(angle) * this.speedMult;
+
+                if (this.x < 0 || this.x > w || this.y < 0 || this.y > h) this.init(w, h);
+            }
+            draw(ctx, baseHue) {
+                const h = (baseHue + this.hueOffset) % 360;
+                ctx.strokeStyle = `hsla(${h}, 90%, 60%, 0.18)`;
+                ctx.beginPath();
+                ctx.moveTo(this.prevX, this.prevY);
+                ctx.lineTo(this.x, this.y);
+                ctx.stroke();
+            }
+        }
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        const video = document.getElementById('video-preview');
+        
+        let width, height;
+        let particles = [];
+        let noise = new Noise();
+        let zOffset = 0;
+        let globalHue = Math.random() * 360;
+        let isPaused = false;
+        let turbulence = { x: 0, y: 0, active: false };
+
+        // Webcam Analysis Properties
+        const videoCanvas = document.createElement('canvas');
+        const vCtx = videoCanvas.getContext('2d');
+        const FLOW_RES = 80; // Analysis grid resolution
+        let flowData = new Uint8Array(FLOW_RES * FLOW_RES);
+
+        const PARTICLE_COUNT = 4500;
+        const NOISE_SCALE = 0.0035;
+        const Z_STEP = 0.003;
+        const HUE_STEP = 0.5;
+
+        async function initWebcam() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+                video.srcObject = stream;
+                videoCanvas.width = FLOW_RES;
+                videoCanvas.height = FLOW_RES;
+            } catch (err) {
+                console.error("Webcam error:", err);
+            }
+        }
+
+        function analyzeWebcam() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                // Draw small flipped video for analysis
+                vCtx.save();
+                vCtx.scale(-1, 1);
+                vCtx.drawImage(video, -FLOW_RES, 0, FLOW_RES, FLOW_RES);
+                vCtx.restore();
+
+                const imgData = vCtx.getImageData(0, 0, FLOW_RES, FLOW_RES).data;
+                for (let i = 0; i < FLOW_RES * FLOW_RES; i++) {
+                    // Simple grayscale brightness for shape detection
+                    const r = imgData[i * 4];
+                    const g = imgData[i * 4 + 1];
+                    const b = imgData[i * 4 + 2];
+                    flowData[i] = (r + g + b) / 3;
+                }
+            }
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            resetParticles();
+            ctx.fillStyle = '#020204';
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        function resetParticles() {
+            particles = [];
+            for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle(width, height));
+        }
+
+        function update() {
+            if (isPaused) return;
+
+            analyzeWebcam();
+
+            ctx.fillStyle = 'rgba(2, 2, 4, 0.012)';
+            ctx.fillRect(0, 0, width, height);
+
+            zOffset += Z_STEP;
+            globalHue = (globalHue + HUE_STEP) % 360;
+
+            ctx.lineWidth = 1.0;
+            for (let p of particles) {
+                p.update(noise, width, height, zOffset, NOISE_SCALE, turbulence, flowData, FLOW_RES);
+                p.draw(ctx, globalHue);
+            }
+        }
+
+        function loop() {
+            update();
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('keydown', (e) => {
+            if(e.code === 'KeyR') { noise.seed(Math.random()); resetParticles(); ctx.fillRect(0,0,width,height); }
+            if(e.code === 'KeyP') isPaused = !isPaused;
+            if(e.code === 'KeyS') { const a = document.createElement('a'); a.download='art.png'; a.href=canvas.toDataURL(); a.click(); }
+            if(e.code === 'Space') { ctx.fillStyle = '#020204'; ctx.fillRect(0, 0, width, height); }
+        });
+
+        canvas.addEventListener('mousedown', (e) => { turbulence.active = true; turbulence.x = e.clientX; turbulence.y = e.clientY; });
+        canvas.addEventListener('mousemove', (e) => { if(turbulence.active) { turbulence.x = e.clientX; turbulence.y = e.clientY; } });
+        canvas.addEventListener('mouseup', () => turbulence.active = false);
+
+        initWebcam();
+        resize();
+        loop();
+    </script>
+</body>
+</html>
