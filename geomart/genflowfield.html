@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High Intensity Flow Field</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #020204;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.5);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            pointer-events: none;
+            line-height: 1.6;
+            background: rgba(0,0,0,0.6);
+            padding: 12px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        kbd {
+            background: rgba(255,255,255,0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #fff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+    
+    <div id="ui-overlay">
+        <kbd>R</kbd> Reset | 
+        <kbd>P</kbd> Pause | 
+        <kbd>S</kbd> Save | 
+        <kbd>Space</kbd> Clear<br>
+        Ultra Long Trails • High Velocity Mode
+    </div>
+
+    <script>
+        /**
+         * NOISE IMPLEMENTATION
+         */
+        class Noise {
+            constructor(seed = Math.random()) {
+                this.p = new Uint8Array(512);
+                this.seed(seed);
+            }
+
+            seed(seed) {
+                for (let i = 0; i < 256; i++) this.p[i] = i;
+                for (let i = 255; i > 0; i--) {
+                    const r = Math.floor(Math.random() * (i + 1));
+                    [this.p[i], this.p[r]] = [this.p[r], this.p[i]];
+                }
+                for (let i = 0; i < 256; i++) this.p[256 + i] = this.p[i];
+            }
+
+            fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+            lerp(t, a, b) { return a + t * (b - a); }
+            grad(hash, x, y, z) {
+                const h = hash & 15;
+                const u = h < 8 ? x : y;
+                const v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+            }
+
+            perlin(x, y, z) {
+                const X = Math.floor(x) & 255;
+                const Y = Math.floor(y) & 255;
+                const Z = Math.floor(z) & 255;
+                x -= Math.floor(x);
+                y -= Math.floor(y);
+                z -= Math.floor(z);
+                const u = this.fade(x);
+                const v = this.fade(y);
+                const w = this.fade(z);
+                const p = this.p;
+                const A = p[X] + Y, AA = p[A] + Z, AB = p[A + 1] + Z;
+                const B = p[X + 1] + Y, BA = p[B] + Z, BB = p[B + 1] + Z;
+
+                return this.lerp(w, this.lerp(v, this.lerp(u, this.grad(p[AA], x, y, z),
+                                                this.grad(p[BA], x - 1, y, z)),
+                                        this.lerp(u, this.grad(p[AB], x, y - 1, z),
+                                                this.grad(p[BB], x - 1, y - 1, z))),
+                                this.lerp(v, this.lerp(u, this.grad(p[AA + 1], x, y, z - 1),
+                                                this.grad(p[BA + 1], x - 1, y, z - 1)),
+                                        this.lerp(u, this.grad(p[AB + 1], x, y - 1, z - 1),
+                                                this.grad(p[BB + 1], x - 1, y - 1, z - 1))));
+            }
+        }
+
+        /**
+         * PARTICLE ENGINE
+         */
+        class Particle {
+            constructor(w, h) {
+                this.init(w, h);
+            }
+
+            init(w, h) {
+                this.x = Math.random() * w;
+                this.y = Math.random() * h;
+                this.prevX = this.x;
+                this.prevY = this.y;
+                this.speedMult = 1.5 + Math.random() * 2.0; 
+                this.hueOffset = Math.random() * 80; 
+            }
+
+            update(noise, w, h, zOffset, noiseScale, turbulence) {
+                this.prevX = this.x;
+                this.prevY = this.y;
+
+                let angle = noise.perlin(this.x * noiseScale, this.y * noiseScale, zOffset) * Math.PI * 10;
+
+                if (turbulence.active) {
+                    const dx = this.x - turbulence.x;
+                    const dy = this.y - turbulence.y;
+                    const distSq = dx * dx + dy * dy;
+                    const radiusSq = 300 * 300;
+                    if (distSq < radiusSq) {
+                        const force = (1 - Math.sqrt(distSq) / 300) * 5;
+                        angle += Math.atan2(dy, dx) * force;
+                    }
+                }
+
+                this.x += Math.cos(angle) * this.speedMult;
+                this.y += Math.sin(angle) * this.speedMult;
+
+                if (this.x < 0 || this.x > w || this.y < 0 || this.y > h) {
+                    this.init(w, h);
+                }
+            }
+
+            draw(ctx, baseHue) {
+                const h = (baseHue + this.hueOffset) % 360;
+                ctx.strokeStyle = `hsla(${h}, 90%, 65%, 0.25)`;
+                ctx.beginPath();
+                ctx.moveTo(this.prevX, this.prevY);
+                ctx.lineTo(this.x, this.y);
+                ctx.stroke();
+            }
+        }
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        let width, height;
+        let particles = [];
+        let noise = new Noise();
+        let zOffset = 0;
+        let globalHue = Math.random() * 360;
+        let isPaused = false;
+        let turbulence = { x: 0, y: 0, active: false };
+        
+        const PARTICLE_COUNT = 5000;
+        const NOISE_SCALE = 0.004;
+        const Z_STEP = 0.004;
+        const HUE_STEP = 0.6;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            resetParticles();
+            ctx.fillStyle = '#020204';
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        function resetParticles() {
+            particles = [];
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                particles.push(new Particle(width, height));
+            }
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = '#020204';
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        function update() {
+            if (isPaused) return;
+
+            // Fading trails: Lower alpha (0.008) = longer trails
+            ctx.fillStyle = 'rgba(2, 2, 4, 0.008)';
+            ctx.fillRect(0, 0, width, height);
+
+            zOffset += Z_STEP;
+            globalHue = (globalHue + HUE_STEP) % 360;
+
+            ctx.lineWidth = 1.0;
+            for (let p of particles) {
+                p.update(noise, width, height, zOffset, NOISE_SCALE, turbulence);
+                p.draw(ctx, globalHue);
+            }
+        }
+
+        function loop() {
+            update();
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        for (let i = 0; i < 150; i++) {
+            zOffset += Z_STEP;
+            globalHue = (globalHue + HUE_STEP) % 360;
+            for (let p of particles) {
+                p.update(noise, width, height, zOffset, NOISE_SCALE, turbulence);
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            switch(e.code) {
+                case 'KeyR':
+                    noise.seed(Math.random() * 10000);
+                    resetParticles();
+                    clearCanvas();
+                    break;
+                case 'KeyP':
+                    isPaused = !isPaused;
+                    break;
+                case 'KeyS':
+                    const link = document.createElement('a');
+                    link.download = `long-trails-flow-${Date.now()}.png`;
+                    link.href = canvas.toDataURL();
+                    link.click();
+                    break;
+                case 'Space':
+                    clearCanvas();
+                    break;
+            }
+        });
+
+        const handleInteraction = (e) => {
+            turbulence.active = true;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            turbulence.x = clientX;
+            turbulence.y = clientY;
+        };
+
+        const stopInteraction = () => {
+            turbulence.active = false;
+        };
+
+        canvas.addEventListener('mousedown', handleInteraction);
+        canvas.addEventListener('mousemove', (e) => { if(turbulence.active) handleInteraction(e); });
+        canvas.addEventListener('mouseup', stopInteraction);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInteraction(e); });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInteraction(e); });
+        canvas.addEventListener('touchend', stopInteraction);
+
+        window.onload = loop;
+    </script>
+</body>
+</html>
