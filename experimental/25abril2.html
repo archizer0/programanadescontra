@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cravo Realista & Mão Virtual - Movimento Vertical</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ffffff;
+        }
+
+        /* --- CONTENTOR DE FUNDO (LIMITADO A 2/3 DA ALTURA) --- */
+        .background-container {
+            position: absolute;
+            top: 16.66vh; 
+            left: 0;
+            width: 100vw;
+            height: 66.66vh;
+            z-index: -1;
+            overflow: hidden;
+            filter: contrast(175%) brightness(115%);
+            background: #080000; 
+        }
+
+        .stripe {
+            position: absolute;
+            /* A altura fixa de 300% foi removida para podermos dar alturas variadas a cada retângulo */
+            mix-blend-mode: screen;
+            opacity: 0.8;
+            box-shadow: 0 0 40px rgba(0,0,0,0.6);
+            top: 0;
+        }
+
+        /* Animações Verticais Intensas (Entram e Saem totalmente do Ecrã) */
+        @keyframes sweepUp {
+            0% { transform: translateY(100vh); }
+            100% { transform: translateY(-150vh); }
+        }
+
+        @keyframes sweepDown {
+            0% { transform: translateY(-150vh); }
+            100% { transform: translateY(100vh); }
+        }
+
+        /* Animação de Tremor Subtil */
+        @keyframes tremor {
+            0%, 100% { translate: 0 0; }
+            20% { translate: -2px 0; }
+            40% { translate: 1px 0; }
+            60% { translate: 2px 0; }
+            80% { translate: -1px 0; }
+        }
+
+        /* Paleta Alargada de Vermelhos e Brancos */
+        .red-v-dark { background: linear-gradient(to bottom, #220000, #440000, #220000); width: 12vw; }
+        .red-blood { background: linear-gradient(to bottom, #660000, #aa0000, #660000); width: 15vw; }
+        .red-hot { background: linear-gradient(to bottom, #ff0000, #ff5555, #ff0000); width: 10vw; }
+        .white-ghost { background: rgba(255, 255, 255, 0.9); width: 8vw; }
+        .white-silver { background: linear-gradient(to bottom, #cccccc, #ffffff, #cccccc); width: 14vw; }
+        .white-ivory { background: #fdf5e6; width: 6vw; }
+
+        /* Posicionamento, Alturas Variadas e Sincronização de Movimento Intenso */
+        .s1 { left: -5vw; height: 120%; animation: sweepUp 3s ease-in-out infinite alternate, tremor 0.15s infinite; }
+        .s2 { left: 8vw; height: 90%; animation: sweepDown 4.5s ease-in-out infinite alternate, tremor 0.25s infinite; opacity: 0.6; }
+        .s3 { left: 20vw; height: 140%; animation: sweepUp 3.5s ease-in-out infinite alternate, tremor 0.2s infinite; }
+        .s4 { left: 32vw; height: 110%; animation: sweepDown 5s ease-in-out infinite alternate, tremor 0.35s infinite; width: 20vw !important; z-index: 2; }
+        .s5 { left: 50vw; height: 85%; animation: sweepUp 4s ease-in-out infinite alternate, tremor 0.18s infinite; opacity: 0.5; }
+        .s6 { left: 65vw; height: 150%; animation: sweepDown 3.2s ease-in-out infinite alternate, tremor 0.12s infinite; }
+        .s7 { left: 78vw; height: 100%; animation: sweepUp 4.8s ease-in-out infinite alternate, tremor 0.28s infinite; }
+        .s8 { left: 90vw; height: 130%; animation: sweepDown 3.8s ease-in-out infinite alternate, tremor 0.22s infinite; }
+        .s9 { left: 40vw; height: 200%; animation: sweepUp 7s ease-in-out infinite alternate, tremor 0.4s infinite; width: 30vw !important; opacity: 0.3; } /* Camada de fundo larga */
+
+        .noise {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.06; pointer-events: none; z-index: 7;
+        }
+
+        /* --- VIDEO HIDDEN BUT ACTIVE --- */
+        #video-container {
+            position: absolute;
+            width: 1px; height: 1px;
+            opacity: 0; pointer-events: none;
+        }
+
+        #ui-container {
+            position: absolute;
+            bottom: 30px; width: 100%;
+            text-align: center; pointer-events: none; z-index: 10;
+        }
+        h1 { margin: 0; font-size: 0.9rem; letter-spacing: 5px; font-weight: 300; text-transform: uppercase; color: rgba(255,255,255,0.6); }
+    </style>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+</head>
+<body>
+
+    <div class="background-container">
+        <div class="stripe red-v-dark s1"></div>
+        <div class="stripe white-silver s2"></div>
+        <div class="stripe red-blood s3"></div>
+        <div class="stripe white-ghost s4"></div>
+        <div class="stripe red-hot s5"></div>
+        <div class="stripe white-ivory s6"></div>
+        <div class="stripe red-blood s7"></div>
+        <div class="stripe white-silver s8"></div>
+        <div class="stripe red-v-dark s9"></div>
+    </div>
+    <div class="noise"></div>
+
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline></video>
+    </div>
+
+    <div id="ui-container">
+        <h1 id="status-text">A INICIALIZAR SENSORES...</h1>
+    </div>
+
+    <script>
+        let scene, camera, renderer, flowerGroup;
+        let handGroup, handPoints = [], handBones = [];
+        let targetFlowerPos = new THREE.Vector3(0, 0, 0);
+        let targetFlowerRot = new THREE.Euler(0, 0, 0);
+        let isGrabbed = false;
+        const videoElement = document.getElementById('webcam');
+        const statusText = document.getElementById('status-text');
+        const clock = new THREE.Clock();
+
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.6
+        });
+
+        function initThree() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 1, 9);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            flowerGroup = createRealisticFlower();
+            scene.add(flowerGroup);
+
+            handGroup = new THREE.Group();
+            scene.add(handGroup);
+
+            const pointMat = new THREE.MeshBasicMaterial({ color: 0x00f2ff, wireframe: true, transparent: true, opacity: 0.5 });
+            const pointGeom = new THREE.SphereGeometry(0.08, 6, 6);
+
+            for (let i = 0; i < 21; i++) {
+                const p = new THREE.Mesh(pointGeom, pointMat);
+                handPoints.push(p);
+                handGroup.add(p);
+            }
+
+            const boneGeom = new THREE.CylinderGeometry(0.04, 0.04, 1, 5, 1);
+            const connections = [[0,1,2,3,4], [0,5,6,7,8], [5,9,10,11,12], [9,13,14,15,16], [13,17,18,19,20], [0,17]];
+            
+            connections.forEach(path => {
+                for (let i = 0; i < path.length - 1; i++) {
+                    const bone = new THREE.Mesh(boneGeom, pointMat);
+                    bone.userData = { startIdx: path[i], endIdx: path[i+1] };
+                    handGroup.add(bone);
+                    handBones.push(bone);
+                }
+            });
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function createRealisticFlower() {
+            const group = new THREE.Group();
+            const redMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, transparent: true, opacity: 0.6 });
+            const greenMat = new THREE.MeshBasicMaterial({ color: 0x00ff44, wireframe: true, transparent: true, opacity: 0.8 });
+
+            const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 8, 8, 15), greenMat);
+            stem.position.y = -4;
+            group.add(stem);
+
+            const calyx = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.15, 1.2, 12), greenMat);
+            calyx.position.y = 0.2;
+            group.add(calyx);
+
+            const petalsGroup = new THREE.Group();
+            petalsGroup.position.y = 0.8;
+            const numPetals = 220;
+
+            for (let i = 0; i < numPetals; i++) {
+                const layer = i / numPetals;
+                const radius = 0.7 + Math.random() * 0.9;
+                const petalGeom = new THREE.CircleGeometry(radius, 24);
+                
+                const pos = petalGeom.attributes.position;
+                for (let j = 1; j < pos.count; j++) {
+                    const x = pos.getX(j);
+                    const y = pos.getY(j);
+                    const angle = Math.atan2(y, x);
+                    const dist = Math.sqrt(x*x + y*y);
+                    const jitter = Math.sin(angle * 35) * 0.15 * (dist/radius);
+                    pos.setXY(j, Math.cos(angle) * (dist + jitter), Math.sin(angle) * (dist + jitter));
+                    pos.setZ(j, Math.sin(angle * 4) * 0.4 + (Math.random() - 0.5) * 0.25);
+                }
+
+                const petal = new THREE.Mesh(petalGeom, redMat);
+                const phi = Math.acos(1 - layer); 
+                const theta = Math.sqrt(numPetals * Math.PI) * phi;
+                petal.position.set(Math.cos(theta)*Math.sin(phi)*0.6, Math.cos(phi)*0.5, Math.sin(theta)*Math.sin(phi)*0.6);
+                petal.lookAt(0, petal.position.y - 1.2, 0);
+                petal.rotation.z += Math.random() * Math.PI;
+                petalsGroup.add(petal);
+            }
+            group.add(petalsGroup);
+            return group;
+        }
+
+        function onResults(results) {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                statusText.innerText = "SENSOR ATIVO";
+                const landmarks = results.multiHandLandmarks[0];
+                landmarks.forEach((lm, i) => {
+                    const x = (0.5 - lm.x) * 14; 
+                    const y = (0.5 - lm.y) * 11;
+                    const z = -lm.z * 15;
+                    handPoints[i].position.set(x, y, z);
+                });
+
+                handBones.forEach(bone => {
+                    const p1 = handPoints[bone.userData.startIdx].position;
+                    const p2 = handPoints[bone.userData.endIdx].position;
+                    const dist = p1.distanceTo(p2);
+                    bone.position.copy(p1).lerp(p2, 0.5);
+                    bone.scale.set(1, dist, 1);
+                    bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
+                });
+
+                const thumbTip = handPoints[4].position;
+                const indexTip = handPoints[8].position;
+                const pinchCenter = new THREE.Vector3().copy(thumbTip).add(indexTip).multiplyScalar(0.5);
+                const pinchDist = thumbTip.distanceTo(indexTip);
+                const distToStem = Math.sqrt(pinchCenter.x * pinchCenter.x + pinchCenter.z * pinchCenter.z);
+
+                if (pinchDist < 2.5 && distToStem < 4.0 && pinchCenter.y < 2.0) {
+                    isGrabbed = true;
+                    statusText.innerText = "MANIPULAÇÃO DO CRAVO";
+                    statusText.style.color = "#00f2ff";
+                    targetFlowerPos.y = pinchCenter.y + 3.0;
+                    const wrist = handPoints[0].position;
+                    const handDir = new THREE.Vector3().copy(pinchCenter).sub(wrist).normalize();
+                    targetFlowerRot.x = handDir.z * 1.5;
+                    targetFlowerRot.z = -handDir.x * 1.5;
+                } else {
+                    isGrabbed = false;
+                    statusText.innerText = "GESTO DE PINÇA NO CAULE";
+                    statusText.style.color = "#ffffff";
+                }
+            } else {
+                isGrabbed = false;
+                statusText.innerText = "A AGUARDAR INPUT DE MÃO";
+                statusText.style.color = "#ffffff";
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+            
+            if (!isGrabbed) {
+                targetFlowerPos.set(0, Math.sin(time * 1.5) * 0.2, 0);
+                targetFlowerRot.set(0, 0, 0);
+            }
+
+            flowerGroup.position.lerp(targetFlowerPos, 0.12);
+            const currentQuat = new THREE.Quaternion().setFromEuler(flowerGroup.rotation);
+            const targetQuat = new THREE.Quaternion().setFromEuler(targetFlowerRot);
+            currentQuat.slerp(targetQuat, 0.12);
+            flowerGroup.rotation.setFromQuaternion(currentQuat);
+
+            renderer.render(scene, camera);
+        }
+
+        const cameraUtils = new Camera(videoElement, {
+            onFrame: async () => { await hands.send({ image: videoElement }); },
+            width: 640, height: 480
+        });
+
+        window.onload = () => { initThree(); cameraUtils.start(); };
+        hands.onResults(onResults);
+    </script>
+</body>
+</html>
