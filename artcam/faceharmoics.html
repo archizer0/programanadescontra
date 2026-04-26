@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Harmonics - Generative Art</title>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #030308; /* Very dark blue/black background */
+            font-family: 'Inter', sans-serif;
+            color: #ffffff;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Overlay UI matching the aesthetic */
+        #ui-layer {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            pointer-events: none;
+            z-index: 10;
+            text-shadow: 0px 2px 10px rgba(0,0,0,0.8);
+        }
+
+        h1 {
+            font-weight: 600;
+            font-size: 24px;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        p.subtitle {
+            font-weight: 300;
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 8px;
+        }
+
+        .tag {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            border: 1px solid rgba(255,255,255,0.2);
+            pointer-events: auto;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .tag:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Control Panel */
+        #controls {
+            position: absolute;
+            top: 30px;
+            right: -320px; /* Hidden by default */
+            width: 300px;
+            background: rgba(10, 10, 15, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 20;
+            pointer-events: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        #controls.open {
+            right: 30px;
+        }
+
+        #controls h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            background: transparent;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            margin-top: -5px;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        .control-group input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+        }
+
+        #interaction-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            letter-spacing: 2px;
+            opacity: 0.5;
+            pointer-events: none;
+            transition: opacity 1s;
+            text-transform: uppercase;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+            letter-spacing: 2px;
+            opacity: 1;
+            pointer-events: none;
+            transition: opacity 0.5s;
+            text-transform: uppercase;
+            z-index: 100;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        @media (max-width: 768px) {
+            #controls {
+                top: auto;
+                bottom: -400px;
+                right: 50%;
+                transform: translateX(50%);
+                width: 90%;
+                transition: bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+            #controls.open {
+                bottom: 100px;
+                right: 50%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="artCanvas"></canvas>
+
+    <video id="webcam" playsinline style="display: none;"></video>
+    <div id="loading">Initializing Neural Models...</div>
+
+    <div id="interaction-hint">Move mouse to interact</div>
+
+    <div id="ui-layer">
+        <h1>Harmonics</h1>
+        <p class="subtitle">Interactive Generative System</p>
+        <div class="tag" id="toggleControls">⚙️ Tweak Parameters</div>
+    </div>
+
+    <div id="controls">
+        <h3>Wave Parameters</h3>
+        
+        <div class="control-group">
+            <label>Complexity <span><span id="valLines">250</span></span></label>
+            <input type="range" id="paramLines" min="50" max="500" value="250">
+        </div>
+        
+        <div class="control-group">
+            <label>Primary Frequency <span><span id="valFreq1">1.5</span></span></label>
+            <input type="range" id="paramFreq1" min="0.1" max="5.0" step="0.1" value="1.5">
+        </div>
+
+        <div class="control-group">
+            <label>Secondary Frequency <span><span id="valFreq2">2.5</span></span></label>
+            <input type="range" id="paramFreq2" min="0.1" max="5.0" step="0.1" value="2.5">
+        </div>
+
+        <div class="control-group">
+            <label>Phase Spread <span><span id="valPhase">3.14</span></span></label>
+            <input type="range" id="paramPhase" min="0" max="10" step="0.1" value="3.14">
+        </div>
+
+        <div class="control-group">
+            <label>Ribbon Width <span><span id="valWidth">0.6</span></span></label>
+            <input type="range" id="paramWidth" min="0.1" max="1.5" step="0.05" value="0.6">
+        </div>
+        
+        <div class="control-group">
+            <label>Animation Speed <span><span id="valSpeed">1.0</span></span></label>
+            <input type="range" id="paramSpeed" min="0" max="3" step="0.1" value="1.0">
+        </div>
+    </div>
+
+    <script type="module">
+        // --- Fix for the harmless WebAssembly INFO log that shows up as an error ---
+        // MediaPipe WASM bindings route some standard output info logs to console.error.
+        // We intercept console.error to filter out this specific noisy, non-fatal message.
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+            if (args.length > 0 && typeof args[0] === 'string' && args[0].includes('TensorFlow Lite XNNPACK delegate')) {
+                return; // Suppress harmless info
+            }
+            originalConsoleError.apply(console, args);
+        };
+
+        // Migrated to MediaPipe Tasks Vision to completely resolve WASM global module collisions
+        import { FaceLandmarker, HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm";
+
+        const canvas = document.getElementById('artCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false }); // Optimize for no transparency on base canvas
+        const videoElement = document.getElementById('webcam');
+        const loadingElement = document.getElementById('loading');
+
+        let width, height;
+        let time = 0;
+        
+        // Face & Hand tracking variables
+        let faceLandmarker = null;
+        let handLandmarker = null;
+        let faceLandmarks = null;
+        let handLandmarksList = null;
+        let cameraActive = false;
+        let lastVideoTime = -1;
+
+        // Path indices from FaceMesh topology
+        const LEFT_OUTLINE = [10, 109, 67, 103, 54, 21, 162, 127, 234, 93, 132, 215, 58, 138, 135, 136, 150, 149, 176, 148, 152];
+        const RIGHT_OUTLINE = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 435, 288, 367, 364, 365, 379, 378, 400, 377, 152];
+        const CENTER_LINE = [10, 151, 9, 8, 168, 6, 197, 195, 5, 4, 1, 2, 164, 0, 11, 12, 13, 14, 15, 16, 17, 18, 200, 199, 175, 152];
+        
+        // Path indices from Hands
+        const HAND_CENTER = [0, 9, 10, 11, 12]; // Wrist up through middle finger
+
+        // Interaction variables
+        let mouseX = 0.5;
+        let mouseY = 0.5;
+        let targetMouseX = 0.5;
+        let targetMouseY = 0.5;
+        let hasInteracted = false;
+
+        // Parameters map
+        const params = {
+            lines: 250,
+            freq1: 1.5,
+            freq2: 2.5,
+            phaseSpread: Math.PI,
+            ribbonWidth: 0.6,
+            speed: 1.0
+        };
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        // UI Interactions
+        document.getElementById('toggleControls').addEventListener('click', () => {
+            document.getElementById('controls').classList.toggle('open');
+        });
+
+        // Setup Slider Listeners
+        const setupSlider = (id, paramKey, displayId) => {
+            const slider = document.getElementById(id);
+            const display = document.getElementById(displayId);
+            slider.addEventListener('input', (e) => {
+                let val = parseFloat(e.target.value);
+                params[paramKey] = val;
+                display.innerText = val.toFixed(paramKey === 'lines' ? 0 : 2);
+            });
+        };
+
+        setupSlider('paramLines', 'lines', 'valLines');
+        setupSlider('paramFreq1', 'freq1', 'valFreq1');
+        setupSlider('paramFreq2', 'freq2', 'valFreq2');
+        setupSlider('paramPhase', 'phaseSpread', 'valPhase');
+        setupSlider('paramWidth', 'ribbonWidth', 'valWidth');
+        setupSlider('paramSpeed', 'speed', 'valSpeed');
+
+        // Mouse/Touch tracking for interactive influence
+        const updateMouse = (x, y) => {
+            targetMouseX = x / width;
+            targetMouseY = y / height;
+            if (!hasInteracted) {
+                hasInteracted = true;
+                document.getElementById('interaction-hint').style.opacity = 0;
+            }
+        };
+
+        window.addEventListener('mousemove', (e) => updateMouse(e.clientX, e.clientY));
+        window.addEventListener('touchstart', (e) => updateMouse(e.touches[0].clientX, e.touches[0].clientY));
+        window.addEventListener('touchmove', (e) => updateMouse(e.touches[0].clientX, e.touches[0].clientY));
+
+        // Initialize MediaPipe Tasks Vision (Modern implementation, fixes WASM conflicts)
+        async function initTrackers() {
+            try {
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+                );
+                
+                faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+                        delegate: "GPU"
+                    },
+                    outputFaceBlendshapes: false,
+                    runningMode: "VIDEO",
+                    numFaces: 1
+                });
+                
+                handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numHands: 2
+                });
+
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+                videoElement.srcObject = stream;
+                videoElement.onloadedmetadata = () => {
+                    videoElement.play();
+                    cameraActive = true;
+                };
+            } catch (err) {
+                console.error("Camera access denied or unavailable", err);
+                if(loadingElement) {
+                    loadingElement.innerText = "Camera Access Denied. Using Mouse Mode.";
+                    setTimeout(() => { loadingElement.style.opacity = 0; }, 3000);
+                }
+            }
+        }
+        
+        initTrackers();
+
+        // Face mesh projection helpers
+        function getCanvasPos(landmark, drawX, drawY, drawW, drawH) {
+            let flippedX = 1.0 - landmark.x; // Mirroring for webcam
+            return {
+                x: drawX + flippedX * drawW,
+                y: drawY + landmark.y * drawH,
+                z: landmark.z * drawW 
+            };
+        }
+
+        function getPointOnPath(pathArr, t, landmarks, drawX, drawY, drawW, drawH) {
+            let index = t * (pathArr.length - 1);
+            let i1 = Math.floor(index);
+            let i2 = Math.ceil(index);
+            let frac = index - i1;
+            let p1 = getCanvasPos(landmarks[pathArr[i1]], drawX, drawY, drawW, drawH);
+            let p2 = getCanvasPos(landmarks[pathArr[i2]], drawX, drawY, drawW, drawH);
+            return {
+                x: p1.x + (p2.x - p1.x) * frac,
+                y: p1.y + (p2.y - p1.y) * frac,
+                z: p1.z + (p2.z - p1.z) * frac
+            };
+        }
+
+        // Main Render Loop
+        function render() {
+            // Smooth mouse interpolation
+            mouseX += (targetMouseX - mouseX) * 0.05;
+            mouseY += (targetMouseY - mouseY) * 0.05;
+
+            let videoW = videoElement.videoWidth || 640;
+            let videoH = videoElement.videoHeight || 480;
+            let drawX = 0, drawY = 0, drawW = width, drawH = height;
+
+            // Process video logic
+            if (cameraActive && videoElement.readyState >= 2) {
+                const videoRatio = videoW / videoH;
+                const canvasRatio = width / height;
+                if (canvasRatio > videoRatio) {
+                    drawW = width;
+                    drawH = width / videoRatio;
+                    drawY = (height - drawH) / 2;
+                } else {
+                    drawH = height;
+                    drawW = height * videoRatio;
+                    drawX = (width - drawW) / 2;
+                }
+
+                // Detect on new frames
+                let startTimeMs = performance.now();
+                if (lastVideoTime !== videoElement.currentTime) {
+                    lastVideoTime = videoElement.currentTime;
+                    
+                    if (faceLandmarker) {
+                        const faceResult = faceLandmarker.detectForVideo(videoElement, startTimeMs);
+                        faceLandmarks = (faceResult.faceLandmarks && faceResult.faceLandmarks.length > 0) 
+                            ? faceResult.faceLandmarks[0] : null;
+                    }
+                    
+                    if (handLandmarker) {
+                        const handResult = handLandmarker.detectForVideo(videoElement, startTimeMs);
+                        handLandmarksList = (handResult.landmarks && handResult.landmarks.length > 0) 
+                            ? handResult.landmarks : null;
+                    }
+
+                    if ((faceLandmarks || handLandmarksList) && loadingElement.style.opacity !== '0') {
+                        loadingElement.style.opacity = 0;
+                        document.getElementById('interaction-hint').style.opacity = 0;
+                    }
+                }
+            }
+
+            // Draw background (video or solid dark)
+            if (cameraActive && videoElement.readyState >= 2 && (faceLandmarks || handLandmarksList)) {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.save();
+                ctx.translate(width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(videoElement, drawX, drawY, drawW, drawH);
+                ctx.restore();
+                ctx.fillStyle = 'rgba(3, 3, 8, 0.85)'; // Darken video so lines pop
+                ctx.fillRect(0, 0, width, height);
+            } else {
+                ctx.fillStyle = '#030308';
+                ctx.fillRect(0, 0, width, height);
+            }
+
+            // Use 'lighter' composite operation to make overlapping lines glow brightly
+            ctx.globalCompositeOperation = 'lighter';
+
+            // Advance time
+            time += 0.005 * params.speed;
+
+            const lines = Math.floor(params.lines);
+            const halfLines = Math.max(1, Math.floor(lines / 2));
+            const pointsPerLine = Math.min(150, height / 5);
+
+            if (faceLandmarks) {
+                // --- FACE MAPPED RENDERING ---
+                // Draw explicit middle symmetry line mapped to nose ridge
+                ctx.beginPath();
+                for (let j = 0; j <= pointsPerLine; j++) {
+                    let pt = getPointOnPath(CENTER_LINE, j / pointsPerLine, faceLandmarks, drawX, drawY, drawW, drawH);
+                    if (j === 0) ctx.moveTo(pt.x, pt.y);
+                    else ctx.lineTo(pt.x, pt.y);
+                }
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.lineWidth = 8;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.stroke();
+
+                for (let i = 0; i < halfLines; i++) {
+                    let normI = i / Math.max(1, halfLines - 1);
+                    let scaledNormI = normI * params.ribbonWidth;
+
+                    let pathRight = [];
+                    let pathLeft = [];
+
+                    for (let j = 0; j <= pointsPerLine; j++) {
+                        let normJ = j / pointsPerLine;
+
+                        let centerPt = getPointOnPath(CENTER_LINE, normJ, faceLandmarks, drawX, drawY, drawW, drawH);
+                        let ptA = getPointOnPath(RIGHT_OUTLINE, normJ, faceLandmarks, drawX, drawY, drawW, drawH);
+                        let ptB = getPointOnPath(LEFT_OUTLINE, normJ, faceLandmarks, drawX, drawY, drawW, drawH);
+
+                        // Assign left/right visually based on x coordinate (handles mirroring properly)
+                        let visualLeftPt = ptA.x < ptB.x ? ptA : ptB;
+                        let visualRightPt = ptA.x > ptB.x ? ptA : ptB;
+
+                        let localWidthL = centerPt.x - visualLeftPt.x;
+                        let localWidthR = visualRightPt.x - centerPt.x;
+
+                        let baseLx = centerPt.x - localWidthL * scaledNormI;
+                        let baseRx = centerPt.x + localWidthR * scaledNormI;
+                        
+                        let baseY_L = centerPt.y + (visualLeftPt.y - centerPt.y) * scaledNormI;
+                        let baseY_R = centerPt.y + (visualRightPt.y - centerPt.y) * scaledNormI;
+
+                        let envelope = Math.sin(normJ * Math.PI - Math.PI/2) * 0.5 + 0.5;
+                        let angle1 = normJ * Math.PI * params.freq1 + normI * params.phaseSpread + time;
+                        let wave1 = Math.sin(angle1) * (localWidthR * 0.3); // Scale amplitude by face width
+
+                        let angle2 = normJ * Math.PI * params.freq2 - time * 1.5;
+                        let wave2 = Math.cos(angle2) * (localWidthR * 0.15) * envelope;
+
+                        let dx = wave1 + wave2;
+
+                        pathRight.push({ x: baseRx + dx, y: baseY_R });
+                        pathLeft.push({ x: baseLx - dx, y: baseY_L });
+                    }
+
+                    // Spatial Color Mapping
+                    let timeOffset = Math.sin(time) * 0.1;
+                    let apparentXRight = Math.max(0, Math.min(1, 0.5 + (scaledNormI * 0.5) + timeOffset));
+                    let hueRight = 240 - (apparentXRight * 240);
+                    
+                    let apparentXLeft = Math.max(0, Math.min(1, 0.5 - (scaledNormI * 0.5) + timeOffset));
+                    let hueLeft = 240 - (apparentXLeft * 240);
+                    
+                    let alpha = 0.15;
+
+                    // Draw Right Path
+                    ctx.beginPath();
+                    ctx.strokeStyle = `hsla(${hueRight}, 80%, 55%, ${alpha})`;
+                    ctx.lineWidth = 1.5;
+                    for (let j = 0; j <= pointsPerLine; j++) {
+                        if (j === 0) ctx.moveTo(pathRight[j].x, pathRight[j].y);
+                        else ctx.lineTo(pathRight[j].x, pathRight[j].y);
+                    }
+                    ctx.stroke();
+
+                    // Draw Left Path
+                    ctx.beginPath();
+                    ctx.strokeStyle = `hsla(${hueLeft}, 80%, 55%, ${alpha})`;
+                    ctx.lineWidth = 1.5;
+                    for (let j = 0; j <= pointsPerLine; j++) {
+                        if (j === 0) ctx.moveTo(pathLeft[j].x, pathLeft[j].y);
+                        else ctx.lineTo(pathLeft[j].x, pathLeft[j].y);
+                    }
+                    ctx.stroke();
+                }
+            }
+            
+            if (handLandmarksList) {
+                // --- HAND MAPPED RENDERING ---
+                const handLines = Math.max(20, Math.floor(lines / 3)); 
+                const handHalfLines = Math.max(1, Math.floor(handLines / 2));
+                const handPoints = 50;
+
+                for (let h = 0; h < handLandmarksList.length; h++) {
+                    let landmarks = handLandmarksList[h];
+
+                    // Base width derived from thumb to pinky distance
+                    let ptThumb = getCanvasPos(landmarks[4], drawX, drawY, drawW, drawH);
+                    let ptPinky = getCanvasPos(landmarks[20], drawX, drawY, drawW, drawH);
+                    let handWidth = Math.hypot(ptThumb.x - ptPinky.x, ptThumb.y - ptPinky.y) * params.ribbonWidth * 1.5;
+
+                    for (let i = 0; i < handHalfLines; i++) {
+                        let normI = i / Math.max(1, handHalfLines - 1);
+                        let scaledNormI = normI * handWidth;
+
+                        let pathRight = [];
+                        let pathLeft = [];
+
+                        for (let j = 0; j <= handPoints; j++) {
+                            let normJ = j / handPoints;
+                            let centerPt = getPointOnPath(HAND_CENTER, normJ, landmarks, drawX, drawY, drawW, drawH);
+                            
+                            // Calculate normal vector perpendicular to the hand's direction at this point
+                            let t1 = Math.max(0.0, normJ - 0.05);
+                            let t2 = Math.min(1.0, normJ + 0.05);
+                            let pt1 = getPointOnPath(HAND_CENTER, t1, landmarks, drawX, drawY, drawW, drawH);
+                            let pt2 = getPointOnPath(HAND_CENTER, t2, landmarks, drawX, drawY, drawW, drawH);
+                            
+                            let dxDir = pt2.x - pt1.x;
+                            let dyDir = pt2.y - pt1.y;
+                            let len = Math.hypot(dxDir, dyDir);
+                            
+                            let nx = 1, ny = 0;
+                            if (len > 0.001) {
+                                nx = -dyDir / len;
+                                ny = dxDir / len;
+                            }
+
+                            // Distinct bubble envelope for hands
+                            let envelope = Math.sin(normJ * Math.PI) * 0.5 + 0.5; 
+                            
+                            // Faster, tighter waves
+                            let angle1 = normJ * Math.PI * params.freq1 * 2 + normI * params.phaseSpread + time * 2; 
+                            let wave1 = Math.sin(angle1) * (handWidth * 0.4); 
+
+                            let angle2 = normJ * Math.PI * params.freq2 * 2 - time * 3;
+                            let wave2 = Math.cos(angle2) * (handWidth * 0.2) * envelope;
+
+                            let totalOffset = (scaledNormI * 0.5) + wave1 + wave2;
+
+                            pathRight.push({ x: centerPt.x + nx * totalOffset, y: centerPt.y + ny * totalOffset });
+                            pathLeft.push({ x: centerPt.x - nx * totalOffset, y: centerPt.y - ny * totalOffset });
+                        }
+
+                        // Warm colors (Reds/Yellows/Oranges) to contrast the face map
+                        let timeOffset = Math.sin(time * 2) * 0.1;
+                        let hueRight = 60 - ((Math.max(0, Math.min(1, 0.5 + normI * 0.5 + timeOffset))) * 60); 
+                        let hueLeft = 60 - ((Math.max(0, Math.min(1, 0.5 - normI * 0.5 + timeOffset))) * 60); 
+                        let alpha = 0.2;
+
+                        ctx.beginPath();
+                        ctx.strokeStyle = `hsla(${hueRight}, 100%, 60%, ${alpha})`;
+                        ctx.lineWidth = 1.5;
+                        for (let j = 0; j <= handPoints; j++) {
+                            if (j === 0) ctx.moveTo(pathRight[j].x, pathRight[j].y);
+                            else ctx.lineTo(pathRight[j].x, pathRight[j].y);
+                        }
+                        ctx.stroke();
+
+                        ctx.beginPath();
+                        ctx.strokeStyle = `hsla(${hueLeft}, 100%, 60%, ${alpha})`;
+                        ctx.lineWidth = 1.5;
+                        for (let j = 0; j <= handPoints; j++) {
+                            if (j === 0) ctx.moveTo(pathLeft[j].x, pathLeft[j].y);
+                            else ctx.lineTo(pathLeft[j].x, pathLeft[j].y);
+                        }
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            if (!faceLandmarks && !handLandmarksList) {
+                // --- MOUSE MAPPED RENDERING (Original Fallback) ---
+                // Draw explicit middle symmetry line
+                ctx.beginPath();
+                ctx.moveTo(width / 2, 0);
+                ctx.lineTo(width / 2, height);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Glow for middle line
+                ctx.beginPath();
+                ctx.moveTo(width / 2, 0);
+                ctx.lineTo(width / 2, height);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.lineWidth = 8;
+                ctx.stroke();
+
+                for (let i = 0; i < halfLines; i++) {
+                    let normI = i / Math.max(1, halfLines - 1);
+
+                    let interactivePhase = mouseX * Math.PI * 2;
+                    let interactiveAmp = 0.5 + (1.0 - mouseY); 
+
+                    let pathRight = [];
+                    let pathLeft = [];
+
+                    for (let j = 0; j <= pointsPerLine; j++) {
+                        let normJ = j / pointsPerLine;
+                        let y = normJ * height;
+                        let cx = width / 2;
+                        
+                        let envelope = Math.sin(normJ * Math.PI - Math.PI/2) * 0.5 + 0.5;
+                        let spreadX = normI * width * params.ribbonWidth * 0.5;
+                        
+                        let angle1 = normJ * Math.PI * params.freq1 + normI * params.phaseSpread + time + interactivePhase;
+                        let wave1 = Math.sin(angle1) * width * 0.2 * interactiveAmp;
+
+                        let angle2 = normJ * Math.PI * params.freq2 - time * 1.5;
+                        let wave2 = Math.cos(angle2) * width * 0.1 * interactiveAmp * envelope;
+
+                        let dx = spreadX * Math.cos(angle1) + wave1 + wave2; 
+
+                        pathRight.push({x: cx + dx, y: y});
+                        pathLeft.push({x: cx - dx, y: y});
+                    }
+
+                    let timeOffset = Math.sin(time) * 0.1;
+                    let apparentXRight = Math.max(0, Math.min(1, 0.5 + (normI * 0.5) + timeOffset));
+                    let hueRight = 240 - (apparentXRight * 240);
+                    
+                    let apparentXLeft = Math.max(0, Math.min(1, 0.5 - (normI * 0.5) + timeOffset));
+                    let hueLeft = 240 - (apparentXLeft * 240);
+                    
+                    let alpha = 0.15; 
+                    
+                    ctx.beginPath();
+                    ctx.strokeStyle = `hsla(${hueRight}, 80%, 55%, ${alpha})`;
+                    ctx.lineWidth = 1.5;
+                    for (let j = 0; j <= pointsPerLine; j++) {
+                        if (j === 0) ctx.moveTo(pathRight[j].x, pathRight[j].y);
+                        else ctx.lineTo(pathRight[j].x, pathRight[j].y);
+                    }
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.strokeStyle = `hsla(${hueLeft}, 80%, 55%, ${alpha})`;
+                    ctx.lineWidth = 1.5;
+                    for (let j = 0; j <= pointsPerLine; j++) {
+                        if (j === 0) ctx.moveTo(pathLeft[j].x, pathLeft[j].y);
+                        else ctx.lineTo(pathLeft[j].x, pathLeft[j].y);
+                    }
+                    ctx.stroke();
+                }
+            }
+
+            // Reset composite operation for UI drawing if needed later
+            ctx.globalCompositeOperation = 'source-over';
+
+            requestAnimationFrame(render);
+        }
+
+        // Start the loop
+        render();
+
+    </script>
+</body>
+</html>
