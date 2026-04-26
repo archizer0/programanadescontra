@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vivid Splatter Vision</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MediaPipe Hands -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+            background: #fdfcf8;
+            font-family: sans-serif;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #bg-canvas { z-index: 1; }
+        #paint-canvas { z-index: 2; cursor: crosshair; }
+        
+        /* Webcam Preview */
+        #video-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 160px;
+            height: 120px;
+            z-index: 50;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            background: #000;
+            transform: scaleX(-1); /* Mirror video */
+        }
+        video { width: 100%; height: 100%; object-fit: cover; }
+
+        .ui-panel {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(15px);
+            border-radius: 40px;
+            padding: 14px 28px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+        .color-dot {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .color-dot.active {
+            border-color: white;
+            transform: scale(1.4) translateY(-8px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .status-badge {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            padding: 8px 16px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            pointer-events: none;
+        }
+        .btn-clear {
+            padding: 8px 22px;
+            background: #fff;
+            border-radius: 20px;
+            font-weight: 800;
+            color: #222;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="status-badge" id="status">Initializing Camera & AI...</div>
+
+    <div id="video-container">
+        <video id="input-video" playsinline></video>
+    </div>
+
+    <canvas id="bg-canvas"></canvas>
+    <canvas id="paint-canvas"></canvas>
+
+    <div class="ui-panel">
+        <div id="colors" class="flex gap-3">
+            <div class="color-dot active" data-color="#FF0040" style="background: #FF0040;"></div>
+            <div class="color-dot" data-color="#00D2FF" style="background: #00D2FF;"></div>
+            <div class="color-dot" data-color="#9D00FF" style="background: #9D00FF;"></div>
+            <div class="color-dot" data-color="#FFEB00" style="background: #FFEB00;"></div>
+            <div class="color-dot" data-color="#00FF95" style="background: #00FF95;"></div>
+            <div class="color-dot" data-color="#1A1A1A" style="background: #1A1A1A;"></div>
+        </div>
+        <div class="w-px h-8 bg-black/10 mx-2"></div>
+        <button class="btn-clear" onclick="clearCanvas()">RESET</button>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('input-video');
+        const statusElement = document.getElementById('status');
+        const bgCanvas = document.getElementById('bg-canvas');
+        const paintCanvas = document.getElementById('paint-canvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        const paintCtx = paintCanvas.getContext('2d');
+
+        let width, height;
+        let isPainting = false;
+        let lastX = 0, lastY = 0;
+        let currentColor = '#FF0040';
+        let bgHue = Math.random() * 360;
+        let targetHue = Math.random() * 360;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            bgCanvas.width = width;
+            bgCanvas.height = height;
+            const temp = paintCtx.getImageData(0, 0, paintCanvas.width, paintCanvas.height);
+            paintCanvas.width = width;
+            paintCanvas.height = height;
+            paintCtx.putImageData(temp, 0, 0);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function animateBG() {
+            if (Math.abs(bgHue - targetHue) < 0.5) targetHue = Math.random() * 360;
+            bgHue += (targetHue - bgHue) * 0.003;
+            const g = bgCtx.createRadialGradient(width/2, height/2, 0, width/2, height/2, width * 0.8);
+            g.addColorStop(0, `hsla(${bgHue}, 85%, 95%, 1)`);
+            g.addColorStop(1, `hsla(${(bgHue + 40) % 360}, 65%, 88%, 1)`);
+            bgCtx.fillStyle = g;
+            bgCtx.fillRect(0, 0, width, height);
+            requestAnimationFrame(animateBG);
+        }
+
+        function generateSplat(x, y, dx, dy) {
+            const velocity = Math.sqrt(dx*dx + dy*dy);
+            const count = Math.floor(Math.random() * 6) + 2;
+            paintCtx.fillStyle = currentColor;
+            paintCtx.strokeStyle = currentColor;
+
+            for (let i = 0; i < count; i++) {
+                const spread = 5 + (velocity * 2);
+                const offsetX = (Math.random() - 0.5) * spread;
+                const offsetY = (Math.random() - 0.5) * spread;
+                
+                let baseSize = (velocity < 5) ? Math.random() * 20 + 8 : Math.random() * 8 + 1;
+                
+                paintCtx.globalAlpha = Math.random() * 0.4 + 0.6;
+                paintCtx.beginPath();
+                paintCtx.arc(x + offsetX, y + offsetY, baseSize / 2, 0, Math.PI * 2);
+                paintCtx.fill();
+
+                if (velocity > 12 && Math.random() > 0.6) {
+                    paintCtx.beginPath();
+                    paintCtx.lineWidth = Math.random() * 2;
+                    paintCtx.moveTo(x + offsetX, y + offsetY);
+                    paintCtx.lineTo(x + offsetX + dx * 2, y + offsetY + dy * 2);
+                    paintCtx.stroke();
+                }
+            }
+        }
+
+        function paintStep(x, y) {
+            const dx = x - lastX;
+            const dy = y - lastY;
+            
+            paintCtx.globalAlpha = 0.8;
+            paintCtx.lineWidth = Math.random() * 3 + 1;
+            paintCtx.beginPath();
+            paintCtx.moveTo(lastX, lastY);
+            paintCtx.lineTo(x, y);
+            paintCtx.stroke();
+
+            generateSplat(x, y, dx, dy);
+            lastX = x;
+            lastY = y;
+        }
+
+        function clearCanvas() {
+            paintCtx.clearRect(0, 0, width, height);
+        }
+
+        // --- MediaPipe Hands Setup ---
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.7
+        });
+
+        hands.onResults((results) => {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                statusElement.innerText = "Hand Detected: Pinch index & thumb to paint";
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // Mirror coordinates: (1.0 - x)
+                const indexTip = landmarks[8];
+                const thumbTip = landmarks[4];
+                
+                const posX = (1.0 - indexTip.x) * width;
+                const posY = indexTip.y * height;
+
+                // Check distance between thumb and index to trigger "paint"
+                const dist = Math.sqrt(
+                    Math.pow(indexTip.x - thumbTip.x, 2) + 
+                    Math.pow(indexTip.y - thumbTip.y, 2)
+                );
+
+                const pinchThreshold = 0.05; // Adjust based on sensitivity
+
+                if (dist < pinchThreshold) {
+                    if (!isPainting) {
+                        isPainting = true;
+                        lastX = posX;
+                        lastY = posY;
+                    }
+                    paintStep(posX, posY);
+                } else {
+                    isPainting = false;
+                }
+            } else {
+                statusElement.innerText = "No hand detected. Show your hand to camera.";
+                isPainting = false;
+            }
+        });
+
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({image: videoElement});
+            },
+            width: 640,
+            height: 480
+        });
+        camera.start();
+
+        // UI Listeners
+        document.querySelectorAll('.color-dot').forEach(dot => {
+            dot.addEventListener('click', () => {
+                document.querySelector('.color-dot.active').classList.remove('active');
+                dot.classList.add('active');
+                currentColor = dot.dataset.color;
+            });
+        });
+
+        animateBG();
+    </script>
+</body>
+</html>
