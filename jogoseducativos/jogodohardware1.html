@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz: O Mundo do Hardware</title>
+    <!-- Tailwind CSS para o design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Animações simples para transições mais suaves */
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .option-btn {
+            transition: all 0.2s ease;
+        }
+        .option-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .correct-answer {
+            background-color: #22c55e !important; /* Tailwind green-500 */
+            color: white !important;
+            border-color: #22c55e !important;
+        }
+        .wrong-answer {
+            background-color: #ef4444 !important; /* Tailwind red-500 */
+            color: white !important;
+            border-color: #ef4444 !important;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-slate-200 min-h-screen flex items-center justify-center p-4 font-sans text-slate-800">
+
+    <!-- Container Principal do Jogo -->
+    <div class="bg-white rounded-3xl shadow-xl w-full max-w-3xl overflow-hidden relative border border-slate-100">
+        
+        <!-- Barra de Progresso (Escondida no ecrã inicial) -->
+        <div id="progress-container" class="w-full bg-slate-100 h-2 hidden">
+            <div id="progress-bar" class="bg-blue-600 h-2 transition-all duration-300" style="width: 0%"></div>
+        </div>
+
+        <!-- ECRÃ INICIAL -->
+        <div id="start-screen" class="p-10 text-center fade-in">
+            <div class="w-24 h-24 mx-auto mb-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+                </svg>
+            </div>
+            <h1 class="text-4xl font-extrabold text-blue-900 mb-4">Mestre do Hardware</h1>
+            <p class="text-slate-600 mb-8 text-lg">Testa os teus conhecimentos sobre os diferentes tipos de periféricos informáticos, baseado no teu cartaz de estudo!</p>
+            <button onclick="startGame()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-full text-xl transition transform hover:scale-105 shadow-lg">
+                Começar o Jogo
+            </button>
+        </div>
+
+        <!-- ECRÃ DO QUIZ -->
+        <div id="quiz-screen" class="hidden p-6 sm:p-10">
+            <div class="flex justify-between items-center mb-6">
+                <span id="question-counter" class="text-sm font-bold text-slate-500 uppercase tracking-wider">Pergunta 1/8</span>
+                <span id="score-display" class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">Pontos: 0</span>
+            </div>
+
+            <!-- Imagem da Pergunta -->
+            <div class="w-full h-64 sm:h-80 bg-slate-100 rounded-2xl mb-6 overflow-hidden flex items-center justify-center relative shadow-inner">
+                <!-- Fallback em caso de erro na imagem -->
+                <div id="img-loading" class="absolute inset-0 flex items-center justify-center text-slate-500 font-medium bg-slate-100 z-20">
+                    <svg class="animate-spin -ml-1 mr-3 h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    A carregar imagem...
+                </div>
+                <img id="question-image" src="" alt="Imagem do periférico" class="w-full h-full object-cover relative z-10 hidden">
+            </div>
+
+            <!-- Texto da Pergunta -->
+            <h2 id="question-text" class="text-2xl font-bold text-slate-800 mb-8 text-center leading-snug">
+                <!-- A pergunta entra aqui -->
+            </h2>
+
+            <!-- Opções -->
+            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Botões gerados via JS -->
+            </div>
+        </div>
+
+        <!-- ECRÃ DE RESULTADOS -->
+        <div id="result-screen" class="hidden p-10 text-center">
+            <div id="result-icon" class="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center text-5xl">
+                <!-- Ícone gerado via JS (Troféu ou Rosto triste) -->
+            </div>
+            <h2 id="result-title" class="text-4xl font-extrabold mb-4 text-slate-800">Fim do Jogo!</h2>
+            <p id="result-message" class="text-xl text-slate-600 mb-8">
+                Acertaste <span id="final-score" class="font-bold text-blue-600 text-2xl">0</span> de <span id="total-questions" class="font-bold text-2xl">0</span> perguntas.
+            </p>
+            
+            <div id="feedback-message" class="p-4 rounded-xl mb-8 font-medium">
+                <!-- Mensagem motivacional -->
+            </div>
+
+            <button onclick="restartGame()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg transition shadow-md">
+                Jogar Novamente
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // Função para baralhar as perguntas aleatoriamente (Fisher-Yates shuffle)
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        // Função para gerar uma imagem SVG local garantida caso a foto falhe
+        function createFallbackImage(text, icon) {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
+                <rect width="800" height="400" fill="#f1f5f9"/>
+                <text x="400" y="160" font-size="100" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif">${icon}</text>
+                <text x="400" y="280" font-size="35" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" fill="#475569" font-weight="bold">${text}</text>
+            </svg>`;
+            return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+        }
+
+        // Banco de Dados Completo do Quiz (24 questões)
+        const allQuizData = [
+            {
+                deviceName: "Teclado",
+                emoji: "⌨️",
+                question: "O Teclado permite a introdução de dados no sistema informático. A que categoria pertence?",
+                image: "https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80",
+                options: ["Periférico de Entrada", "Periférico de Saída", "Periférico de Entrada e Saída", "Periférico de Armazenamento"],
+                correctAnswer: 0
+            },
+            {
+                deviceName: "Monitor",
+                emoji: "🖥️",
+                question: "O Monitor apresenta informação visual do computador para o utilizador. Logo, é considerado um...",
+                image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&q=80",
+                options: ["Periférico de Entrada", "Periférico de Saída", "Periférico de Armazenamento", "Periférico de Entrada e Saída"],
+                correctAnswer: 1
+            },
+            {
+                deviceName: "Pen Drive",
+                emoji: "💾",
+                question: "Uma Pen (ou Cartão de Memória) permite guardar informação para uso futuro. Qual é a sua classificação?",
+                image: "https://images.unsplash.com/photo-1608667508765-33cdb79b6928?w=800&q=80",
+                options: ["Periférico de Entrada", "Periférico de Saída", "Periférico de Armazenamento", "Periférico de Entrada e Saída"],
+                correctAnswer: 2
+            },
+            {
+                deviceName: "Impressora Multifunções",
+                emoji: "🖨️",
+                question: "A Impressora Multifunções consegue imprimir documentos (saída) e digitalizar/scanear imagens (entrada). Portanto, é um:",
+                image: "https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?w=800&q=80",
+                options: ["Periférico de Saída", "Periférico de Entrada", "Periférico de Armazenamento", "Periférico de Entrada e Saída"],
+                correctAnswer: 3
+            },
+            {
+                deviceName: "Auscultadores",
+                emoji: "🎧",
+                question: "Os Auscultadores (Headphones) permitem ouvir o som gerado pelo computador. São classificados como:",
+                image: "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=800&q=80",
+                options: ["Periféricos de Entrada", "Periféricos de Saída", "Periféricos de Armazenamento", "Periféricos de Entrada e Saída"],
+                correctAnswer: 1
+            },
+            {
+                deviceName: "Microfone",
+                emoji: "🎙️",
+                question: "O Microfone capta a nossa voz e envia esse dado para o computador. É um equipamento de:",
+                image: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=800&q=80",
+                options: ["Entrada", "Saída", "Armazenamento", "Entrada e Saída"],
+                correctAnswer: 0
+            },
+            {
+                deviceName: "Óculos VR",
+                emoji: "🥽",
+                question: "Os Óculos de Realidade Virtual exibem imagens (saída) e captam os movimentos da nossa cabeça (entrada). São classificados como:",
+                image: "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?w=800&q=80",
+                options: ["Periféricos de Entrada", "Periféricos de Saída", "Periféricos de Entrada e Saída", "Periféricos de Armazenamento"],
+                correctAnswer: 2
+            },
+            {
+                deviceName: "Disco Rígido",
+                emoji: "💽",
+                question: "Um disco HDD/SSD encontra-se dentro ou fora do computador para gravar ficheiros permanentemente. É um:",
+                image: "https://images.unsplash.com/photo-1531492746076-161ca9bcad58?w=800&q=80",
+                options: ["Periférico de Entrada", "Periférico de Entrada e Saída", "Periférico de Saída", "Periférico de Armazenamento"],
+                correctAnswer: 3
+            },
+            {
+                deviceName: "Rato",
+                emoji: "🖱️",
+                question: "O Rato (Mouse) é essencial para mover o cursor no ecrã e interagir com elementos. É um:",
+                image: "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&q=80",
+                options: ["Periférico de Entrada", "Periférico de Saída", "Periférico de Armazenamento", "Periférico de Entrada e Saída"],
+                correctAnswer: 0
+            },
+            {
+                deviceName: "Webcam",
+                emoji: "📷",
+                question: "Uma Webcam capta vídeo e imagens em tempo real para enviar para o computador. Trata-se de um:",
+                image: "https://images.unsplash.com/photo-1623126908029-58cb08a4b0fa?w=800&q=80",
+                options: ["Periférico de Saída", "Periférico de Armazenamento", "Periférico de Entrada", "Periférico de Entrada e Saída"],
+                correctAnswer: 2
+            },
+            {
+                deviceName: "Projetor",
+                emoji: "📽️",
+                question: "Um Projetor recebe a imagem do computador e projeta-a numa parede ou tela. É classificado como:",
+                image: "https://images.unsplash.com/photo-1628126235206-5260b9ea6441?w=800&q=80",
+                options: ["Periférico de Entrada", "Periférico de Saída", "Periférico de Armazenamento", "Periférico de Entrada e Saída"],
+                correctAnswer: 1
+            },
+            {
+                deviceName: "Ecrã Tátil",
+                emoji: "📱",
+                question: "Um Ecrã Tátil (Touchscreen), mostra a imagem e regista os teus toques em simultâneo. É um:",
+                image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800&q=80",
+                options: ["Periférico de Entrada", "Periférico de Saída", "Periférico de Entrada e Saída", "Periférico de Armazenamento"],
+                correctAnswer: 2
+            },
+            {
+                deviceName: "Colunas de Som",
+                emoji: "🔈",
+                question: "As Colunas de Som (Speakers) emitem a música ou os efeitos sonoros provenientes do PC. São consideradas:",
+                image: "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=800&q=80",
+                options: ["Periféricos de Entrada e Saída", "Periféricos de Entrada", "Periféricos de Armazenamento", "Periféricos de Saída"],
+                correctAnswer: 3
+            },
+            {
+                deviceName: "Cartão SD",
+                emoji: "📼",
+                question: "Um Cartão SD guarda fotos e vídeos de forma persistente e removível. É um:",
+                image: "https://images.unsplash.com/photo-1625842268584-8f3296236761?w=800&q=80",
+                options: ["Periférico de Entrada", "Periférico de Saída", "Periférico de Armazenamento", "Periférico de Entrada e Saída"],
+                correctAnswer: 2
+            },
+            {
+                deviceName: "Scanner",
+                emoji: "📠",
+                question: "Um Scanner (digitalizador) simples lê um documento em papel e converte-o para formato digital no computador. É um:",
+                image: "https://images.unsplash.com/photo-1555664424-778a1e5e1b48?w=800&q=80",
+                options: ["Periférico de Entrada", "Periférico de Saída", "Periférico de Armazenamento", "Periférico de Entrada e Saída"],
+                correctAnswer: 0
+            },
+            {
+                deviceName: "Comando de Jogo",
+                emoji: "🎮",
+                question: "Um Comando de Videojogos (Gamepad) envia os teus comandos e movimentos para o jogo. Trata-se de um:",
+                image: "https://images.unsplash.com/photo-1592840496694-26d035b52b48?w=800&q=80",
+                options: ["Periférico de Saída", "Periférico de Entrada", "Periférico de Entrada e Saída", "Periférico de Armazenamento"],
+                correctAnswer: 1
+            },
+            {
+                deviceName: "Plotter",
+                emoji: "🖨️",
+                question: "Uma Plotter é uma impressora de grande formato usada para imprimir projetos arquitetónicos e plantas (saída). É um:",
+                image: "https://images.unsplash.com/photo-1603380353725-f8a4d39cc41e?w=800&q=80",
+                options: ["Periférico de Saída", "Periférico de Entrada", "Periférico de Armazenamento", "Periférico de Entrada e Saída"],
+                correctAnswer: 0
+            },
+            {
+                deviceName: "Leitor de Código de Barras",
+                emoji: "🛒",
+                question: "O Leitor de Código de Barras lê as listras de um produto e envia o código para a caixa registadora. É um:",
+                image: "https://images.unsplash.com/photo-1607344645866-009c320b63e0?w=800&q=80",
+                options: ["Periférico de Saída", "Periférico de Armazenamento", "Periférico de Entrada e Saída", "Periférico de Entrada"],
+                correctAnswer: 3
+            },
+            {
+                deviceName: "Quadro Interativo",
+                emoji: "🏫",
+                question: "Um Quadro Interativo mostra a imagem do PC e permite escrever e interagir com ele usando uma caneta especial. É um:",
+                image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&q=80",
+                options: ["Periférico de Entrada", "Periférico de Entrada e Saída", "Periférico de Saída", "Periférico de Armazenamento"],
+                correctAnswer: 1
+            },
+            {
+                deviceName: "CD e DVD",
+                emoji: "💿",
+                question: "Os discos óticos (CDs, DVDs, Blu-rays) servem para gravar e manter filmes e dados a longo prazo. São periféricos de:",
+                image: "https://images.unsplash.com/photo-1606229365485-93a3b8ee0385?w=800&q=80",
+                options: ["Entrada", "Saída", "Armazenamento", "Entrada e Saída"],
+                correctAnswer: 2
+            },
+            {
+                deviceName: "Mesa Digitalizadora",
+                emoji: "✍️",
+                question: "Uma Mesa Digitalizadora (Tablet Gráfico) envia os teus desenhos e traços manuais para o ecrã do computador. É um:",
+                image: "https://images.unsplash.com/photo-1588666309990-d68f08e3d4a6?w=800&q=80",
+                options: ["Periférico de Entrada", "Periférico de Saída", "Periférico de Armazenamento", "Periférico de Entrada e Saída"],
+                correctAnswer: 0
+            },
+            {
+                deviceName: "Leitor de Cartões",
+                emoji: "💳",
+                question: "O Leitor do Cartão de Cidadão recolhe os teus dados de identificação do chip e envia-os para o sistema. Trata-se de um:",
+                image: "https://images.unsplash.com/photo-1563630382218-bc16e8721bf7?w=800&q=80",
+                options: ["Periférico de Saída", "Periférico de Entrada e Saída", "Periférico de Armazenamento", "Periférico de Entrada"],
+                correctAnswer: 3
+            },
+            {
+                deviceName: "Disco Externo",
+                emoji: "💽",
+                question: "Um Disco Rígido Externo liga-se por USB para criar cópias de segurança (backups) dos teus ficheiros. É um:",
+                image: "https://images.unsplash.com/photo-1597404294360-feeeda04612e?w=800&q=80",
+                options: ["Periférico de Entrada", "Periférico de Armazenamento", "Periférico de Saída", "Periférico de Entrada e Saída"],
+                correctAnswer: 1
+            },
+            {
+                deviceName: "Impressora 3D",
+                emoji: "🧊",
+                question: "A Impressora 3D recebe um modelo digital e \"imprime-o\" criando um objeto físico real tridimensional. Logo, é um:",
+                image: "https://images.unsplash.com/photo-1631481971775-654ba29f44ce?w=800&q=80",
+                options: ["Periférico de Saída", "Periférico de Entrada", "Periférico de Armazenamento", "Periférico de Entrada e Saída"],
+                correctAnswer: 0
+            }
+        ];
+
+        // Variáveis de estado do jogo
+        let quizData = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let canAnswer = true;
+
+        // Elementos do DOM
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        
+        function startGame() {
+            // Prepara as perguntas (Sorteio) para esta ronda
+            quizData = shuffleArray(allQuizData);
+            
+            startScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            quizScreen.classList.add('fade-in');
+            progressContainer.classList.remove('hidden');
+            
+            currentQuestionIndex = 0;
+            score = 0;
+            updateScoreDisplay();
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            canAnswer = true;
+            const currentData = quizData[currentQuestionIndex];
+            
+            // Atualizar contadores e barra de progresso
+            document.getElementById('question-counter').innerText = `Pergunta ${currentQuestionIndex + 1} de ${quizData.length}`;
+            const progress = ((currentQuestionIndex) / quizData.length) * 100;
+            progressBar.style.width = `${progress}%`;
+
+            // Carregar conteúdo da pergunta
+            document.getElementById('question-text').innerText = currentData.question;
+            
+            const imgElement = document.getElementById('question-image');
+            const loadingElement = document.getElementById('img-loading');
+            
+            // Estado inicial da imagem enquanto carrega
+            imgElement.classList.add('hidden');
+            loadingElement.classList.remove('hidden');
+            imgElement.src = ''; // Limpar anterior para evitar piscares
+            
+            // Pré-carregamento robusto via JavaScript
+            const bgImage = new Image();
+            bgImage.onload = function() {
+                imgElement.src = currentData.image;
+                imgElement.classList.remove('hidden');
+                loadingElement.classList.add('hidden');
+            };
+            bgImage.onerror = function() {
+                // Em caso de falha absoluta da internet, cria um cartão de recurso com o nome e ícone garantido localmente
+                imgElement.src = createFallbackImage(currentData.deviceName, currentData.emoji);
+                imgElement.classList.remove('hidden');
+                loadingElement.classList.add('hidden');
+            };
+            bgImage.src = currentData.image;
+
+            // Gerar botões de opções
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = ''; // Limpar opções anteriores
+            
+            currentData.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.innerText = option;
+                // Classes base do botão
+                button.className = 'option-btn border-2 border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:border-blue-300 font-semibold py-4 px-6 rounded-xl text-left w-full focus:outline-none';
+                button.onclick = () => selectAnswer(index, button);
+                optionsContainer.appendChild(button);
+            });
+
+            // Adicionar animação ao ecrã
+            quizScreen.classList.remove('fade-in');
+            void quizScreen.offsetWidth; // Trigger reflow
+            quizScreen.classList.add('fade-in');
+        }
+
+        function selectAnswer(selectedIndex, selectedButton) {
+            if (!canAnswer) return;
+            canAnswer = false; // Bloqueia múltiplos cliques
+
+            const currentData = quizData[currentQuestionIndex];
+            const isCorrect = selectedIndex === currentData.correctAnswer;
+            const allButtons = document.querySelectorAll('.option-btn');
+
+            if (isCorrect) {
+                score++;
+                updateScoreDisplay();
+                selectedButton.classList.add('correct-answer');
+                // Efeito sonoro simples ou feedback visual
+                selectedButton.innerHTML += ' <span class="float-right">✅</span>';
+            } else {
+                selectedButton.classList.add('wrong-answer');
+                selectedButton.innerHTML += ' <span class="float-right">❌</span>';
+                // Destacar a resposta correta
+                allButtons[currentData.correctAnswer].classList.add('correct-answer');
+            }
+
+            // Desativar todos os botões
+            allButtons.forEach(btn => btn.disabled = true);
+
+            // Aguardar um pouco antes da próxima pergunta
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < quizData.length) {
+                    loadQuestion();
+                } else {
+                    showResults();
+                }
+            }, 2000); // 2 segundos de pausa para ver a resposta correta
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('score-display').innerText = `Pontos: ${score}`;
+        }
+
+        function showResults() {
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            resultScreen.classList.add('fade-in');
+            progressContainer.classList.add('hidden');
+
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('total-questions').innerText = quizData.length;
+
+            const percentage = (score / quizData.length) * 100;
+            const feedbackElement = document.getElementById('feedback-message');
+            const iconElement = document.getElementById('result-icon');
+
+            if (percentage === 100) {
+                feedbackElement.innerHTML = "Excelente! Tens um conhecimento perfeito sobre hardware!";
+                feedbackElement.className = "p-4 rounded-xl mb-8 font-medium bg-green-100 text-green-800";
+                iconElement.innerHTML = "🏆";
+                iconElement.className = "w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center text-5xl bg-yellow-100";
+            } else if (percentage >= 70) {
+                feedbackElement.innerHTML = "Muito bem! Dominas a maioria dos conceitos de periféricos.";
+                feedbackElement.className = "p-4 rounded-xl mb-8 font-medium bg-blue-100 text-blue-800";
+                iconElement.innerHTML = "🌟";
+                iconElement.className = "w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center text-5xl bg-blue-100";
+            } else if (percentage >= 50) {
+                feedbackElement.innerHTML = "Bom esforço! Mas ainda podes rever algumas definições do cartaz.";
+                feedbackElement.className = "p-4 rounded-xl mb-8 font-medium bg-yellow-100 text-yellow-800";
+                iconElement.innerHTML = "👍";
+                iconElement.className = "w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center text-5xl bg-yellow-100";
+            } else {
+                feedbackElement.innerHTML = "Precisa de estudo! Revê o cartaz sobre as entradas, saídas e armazenamento.";
+                feedbackElement.className = "p-4 rounded-xl mb-8 font-medium bg-red-100 text-red-800";
+                iconElement.innerHTML = "📚";
+                iconElement.className = "w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center text-5xl bg-red-100";
+            }
+        }
+
+        function restartGame() {
+            resultScreen.classList.add('hidden');
+            startGame();
+        }
+    </script>
+</body>
+</html>
