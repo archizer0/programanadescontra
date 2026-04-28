@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espelho de Almas: Pura Alquimia</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #010103;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+            padding: 8px 16px;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-size: 0.6rem;
+            font-family: sans-serif;
+            letter-spacing: 2px;
+            backdrop-filter: blur(8px);
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            border-color: #fff;
+        }
+
+        #status-light {
+            position: fixed;
+            bottom: 35px;
+            left: 35px;
+            width: 4px;
+            height: 4px;
+            background: #1a1a1a;
+            border-radius: 50%;
+            z-index: 5;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        .active {
+            background: #fff !important;
+            box-shadow: 0 0 8px #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="status-light"></div>
+
+    <div id="controls">
+        <button onclick="toggleMirror()">Inverter</button>
+        <button onclick="clearArt()">Limpar</button>
+        <button onclick="saveArt()">Salvar</button>
+    </div>
+
+    <script>
+        let video;
+        let prevFrame;
+        let particles = [];
+        let paletteIndex = 0;
+        let mirror = true;
+        let motionThreshold = 30; // Mais sensível para captar detalhes finos
+        
+        const palettes = [
+            ['#FF3300', '#FFCC00', '#110000', '#FFFFFF', '#FF8800', '#550000'], // Óleo Quente Denso
+            ['#020210', '#004488', '#00FFFF', '#FFFFFF', '#000000', '#002244'], // Profundidade Marinha
+            ['#0a0a0a', '#333333', '#FF0000', '#880000', '#111111', '#FF5555'], // Noir Violento
+            ['#FF00FF', '#00FFFF', '#FFFF00', '#FFFFFF', '#000000', '#5500FF']  // Glitch Oil HD
+        ];
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            video = createCapture(VIDEO);
+            video.size(160, 120);
+            video.hide();
+            
+            prevFrame = createImage(160, 120);
+            background(1, 1, 3);
+        }
+
+        function draw() {
+            // Acumulação de pigmento com rasto mais fino
+            fill(1, 1, 3, 12);
+            rect(0, 0, width, height);
+            
+            video.loadPixels();
+            prevFrame.loadPixels();
+            
+            let motionPoints = [];
+
+            if (video.pixels.length > 0) {
+                // Step reduzido para maior densidade (mais pinceladas, menores)
+                let step = 4; 
+                
+                for (let y = 0; y < video.height; y += step) {
+                    for (let x = 0; x < video.width; x += step) {
+                        let i = (x + y * video.width) * 4;
+                        let r = video.pixels[i];
+                        let g = video.pixels[i + 1];
+                        let b = video.pixels[i + 2];
+                        let bright = (r + g + b) / 3;
+
+                        let pr = prevFrame.pixels[i];
+                        let pg = prevFrame.pixels[i + 1];
+                        let pb = prevFrame.pixels[i + 2];
+                        let d = dist(r, g, b, pr, pg, pb);
+                        
+                        let vx = mirror ? map(x, video.width, 0, 0, width) : map(x, 0, video.width, 0, width);
+                        let vy = map(y, 0, video.height, 0, height);
+
+                        if (d > motionThreshold) {
+                            motionPoints.push({x: vx, y: vy, r:r, g:g, b:b});
+                        }
+
+                        // Desenho de Pinceladas Pequenas e Densas
+                        if (bright > 25) {
+                            drawMicroStroke(vx, vy, r, g, b, bright, false);
+                            
+                            // Escorrimento espontâneo mais raro para manter o foco na densidade
+                            if (random() > 0.9992) {
+                                particles.push(new DripParticle(vx, vy, color(r, g, b)));
+                            }
+                        } else if (random() > 0.96) {
+                            // Fundo Vertical com traços mais finos
+                            drawMicroStroke(vx, vy, 5, 5, 20, bright, true);
+                        }
+                    }
+                }
+
+                // Gesto de Mão (Explosões Refinadas)
+                const light = document.getElementById('status-light');
+                if (motionPoints.length > 100) { 
+                    light.classList.add('active');
+                    // Cria mais gotas, mas menores
+                    for (let i = 0; i < 15; i++) {
+                        let p = motionPoints[floor(random(motionPoints.length))];
+                        particles.push(new DripParticle(p.x, p.y, color(p.r, p.g, p.b)));
+                    }
+                } else {
+                    light.classList.remove('active');
+                }
+
+                prevFrame.copy(video, 0, 0, 160, 120, 0, 0, 160, 120);
+            }
+
+            // Atualização das Partículas
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].display();
+                if (particles[i].isDead()) particles.splice(i, 1);
+            }
+        }
+
+        function drawMicroStroke(x, y, r, g, b, br, isVertical) {
+            push();
+            // Jitter aleatório para aspeto de "pintura à mão"
+            translate(x + random(-3, 3), y + random(-3, 3));
+            
+            let alpha = map(br, 0, 255, 40, 240);
+            // Pinceladas significativamente mais finas
+            let weight = map(br, 0, 255, 0.5, 6);
+            
+            strokeWeight(weight + random(-0.5, 1));
+            stroke(r + random(-15, 15), g + random(-15, 15), b + random(-15, 15), alpha);
+
+            if (isVertical) {
+                // Escorrimento de fundo mais delicado
+                let h = random(30, 120);
+                line(0, 0, 0, h);
+            } else {
+                // Micro-pincelada Explosiva
+                rotate(random(TWO_PI) + frameCount * 0.02);
+                let w = map(br, 0, 255, 4, 30); // Comprimento reduzido
+                
+                noFill();
+                beginShape();
+                vertex(-w/2, random(-4, 4));
+                bezierVertex(
+                    random(-w, w), random(-10, 10), 
+                    random(-w, w), random(-10, 10), 
+                    w/2, random(-4, 4)
+                );
+                endShape();
+                
+                // Micro-salpicos
+                if (br > 180 && random() > 0.97) {
+                    fill(r, g, b, alpha);
+                    noStroke();
+                    circle(random(-12, 12), random(-12, 12), random(0.5, 3));
+                }
+            }
+            pop();
+        }
+
+        class DripParticle {
+            constructor(x, y, customCol) {
+                this.pos = createVector(x, y);
+                this.vel = createVector(random(-0.8, 0.8), random(1, 3.5));
+                this.lifespan = random(120, 400);
+                this.thick = random(1.5, 6); // Gotas mais finas
+                
+                if (customCol) {
+                    this.color = customCol;
+                } else {
+                    let p = palettes[paletteIndex];
+                    this.color = color(p[floor(random(p.length))]);
+                }
+                this.history = [];
+            }
+
+            update() {
+                this.history.push(this.pos.copy());
+                if (this.history.length > 35) this.history.shift();
+
+                this.pos.add(this.vel);
+                this.vel.y += random(0.04, 0.12); // Gravidade viscosa
+                this.vel.limit(6);
+                // Oscilação mais subtil e orgânica
+                this.pos.x += sin(this.pos.y * 0.08 + this.lifespan * 0.01) * 0.6; 
+                this.lifespan -= 1.2;
+            }
+
+            display() {
+                noFill();
+                let r = red(this.color);
+                let g = green(this.color);
+                let b = blue(this.color);
+                
+                strokeWeight(this.thick);
+                beginShape();
+                for (let i = 0; i < this.history.length; i++) {
+                    let p = this.history[i];
+                    // Transparência baseada na vida e na posição do rasto
+                    let a = map(i, 0, this.history.length, 0, map(this.lifespan, 0, 400, 0, 255));
+                    stroke(r, g, b, a);
+                    vertex(p.x, p.y);
+                }
+                endShape();
+
+                // Cabeça da gota mais pequena e brilhante
+                if (this.lifespan > 0) {
+                    noStroke();
+                    fill(r, g, b, map(this.lifespan, 0, 400, 0, 255));
+                    ellipse(this.pos.x, this.pos.y, this.thick * 1.8);
+                    
+                    // Pequeno brilho especular para efeito de tinta fresca
+                    fill(255, 140);
+                    ellipse(this.pos.x - this.thick*0.3, this.pos.y - this.thick*0.3, this.thick*0.6);
+                }
+            }
+
+            isDead() { return this.lifespan < 0 || this.pos.y > height; }
+        }
+
+        function toggleMirror() { mirror = !mirror; }
+        function clearArt() { background(1, 1, 3); particles = []; }
+        function saveArt() { saveCanvas('alquimia-densa', 'png'); }
+        function windowResized() { resizeCanvas(windowWidth, windowHeight); background(1, 1, 3); }
+        function mousePressed() { 
+            // Permite mudar a paleta ao clicar fora dos botões
+            if (mouseX < width - 150) { 
+                paletteIndex = (paletteIndex + 1) % palettes.length; 
+                // Explosão concentrada no clique
+                for(let i=0; i<15; i++) particles.push(new DripParticle(mouseX, mouseY));
+            }
+        }
+    </script>
+</body>
+</html>
