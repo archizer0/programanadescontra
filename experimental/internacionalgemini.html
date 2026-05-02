@@ -3,11 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A Internacional - Construtivismo Digital</title>
+    <title>A Internacional - Construtivismo Digital & Gestos</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Utilização da fonte Oswald para um visual de poster construtivista forte e imponente -->
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- Bibliotecas MediaPipe para Visão Computacional (Rastreamento de Mãos) -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
     <style>
         body, html {
             margin: 0;
@@ -33,7 +37,6 @@
             display: block;
         }
 
-        /* Interface de Texto e Poema */
         #ui-layer {
             position: absolute;
             top: 0;
@@ -47,29 +50,54 @@
             align-items: flex-start;
             padding: 5%;
             box-sizing: border-box;
-            pointer-events: none; /* Permite que os cliques passem para o canvas */
+            pointer-events: none;
+            perspective: 1200px;
         }
 
         #poem-text {
-            color: #f2e8c9; /* Tom de papel envelhecido/bege */
-            font-size: clamp(2rem, 4vw, 5rem);
+            color: #f2e8c9;
+            font-size: clamp(2rem, 4.5vw, 5.5rem);
             font-weight: 700;
             text-transform: uppercase;
-            line-height: 1.2;
-            max-width: 800px;
-            text-shadow: 4px 4px 0px #8a0000, 8px 8px 0px #000000;
+            line-height: 1.1;
+            max-width: 900px;
             opacity: 0;
-            transform: translateY(20px) skewX(-5deg);
-            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transform-style: preserve-3d;
+            transition: opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
 
         #poem-text.visible {
             opacity: 1;
-            transform: translateY(0) skewX(-5deg);
+        }
+
+        .line-wrapper {
+            display: inline-block;
+            text-shadow: 4px 4px 0px #8a0000, 8px 8px 0px #000000;
+            animation: floatTremble 6s infinite alternate ease-in-out;
+            transform-origin: center left;
+        }
+
+        .line-wrapper:nth-child(even) {
+            animation-delay: -3s;
+            animation-duration: 7s;
+        }
+
+        @keyframes floatTremble {
+            0% { transform: translate3d(0px, 0px, 0px) skewX(-5deg) rotateY(0deg) rotateZ(0deg); }
+            33% { transform: translate3d(10px, -5px, 20px) skewX(-7deg) rotateY(5deg) rotateZ(-1deg); }
+            66% { transform: translate3d(-5px, 10px, -10px) skewX(-3deg) rotateY(-5deg) rotateZ(1deg); }
+            100% { transform: translate3d(5px, 0px, 10px) skewX(-6deg) rotateY(2deg) rotateZ(0deg); }
         }
 
         .highlight-red {
             color: #e60000;
+            display: inline-block;
+            animation: pulseColor 4s infinite alternate;
+        }
+
+        @keyframes pulseColor {
+            0% { color: #e60000; text-shadow: 4px 4px 0px #330000, 8px 8px 0px #000; }
+            100% { color: #ff1a1a; text-shadow: 6px 6px 0px #550000, 10px 10px 0px #000; }
         }
 
         #instruction {
@@ -84,15 +112,20 @@
             text-shadow: 2px 2px 0px #000;
             pointer-events: auto;
             cursor: pointer;
+            z-index: 4;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border: 1px solid #e60000;
+            text-align: right;
+            max-width: 400px;
         }
 
         @keyframes pulse {
-            0% { opacity: 0.5; }
-            50% { opacity: 1; }
-            100% { opacity: 0.5; }
+            0% { opacity: 0.5; box-shadow: 0 0 0 0 rgba(230,0,0,0.4); }
+            50% { opacity: 1; box-shadow: 0 0 15px 5px rgba(230,0,0,0); }
+            100% { opacity: 0.5; box-shadow: 0 0 0 0 rgba(230,0,0,0); }
         }
 
-        /* Ruído de fundo (textura) */
         .noise-overlay {
             position: absolute;
             top: 0;
@@ -116,11 +149,14 @@
         <div id="poem-text"></div>
     </div>
     
-    <div id="instruction" onclick="triggerClick(event)">CLIQUE PARA AVANÇAR E GERAR ENERGIA</div>
+    <div id="instruction" onclick="triggerInitialClick(event)">CLIQUE PARA INICIAR<br><span style="font-size:0.8rem; color:#f2e8c9;">(ATIVARÁ ÁUDIO E WEBCAM PARA GESTOS)</span></div>
     <div class="noise-overlay"></div>
 
+    <!-- Elemento de vídeo oculto para processamento do MediaPipe -->
+    <video id="webcam-video" playsinline autoplay style="display: none;"></video>
+
     <script>
-        // --- SISTEMA DE ÁUDIO (Drone Eletrónico & A Internacional) ---
+        // --- SISTEMA DE ÁUDIO RECONSTRUÍDO (Drone Suave e Etéreo) ---
         let audioCtx;
         let masterGain;
         let delay;
@@ -130,137 +166,99 @@
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             audioCtx = new AudioContext();
 
-            // Volume Principal Suave
             masterGain = audioCtx.createGain();
-            masterGain.gain.value = 0.15; // Drone ambiente muito suave
+            masterGain.gain.value = 0.2; 
             masterGain.connect(audioCtx.destination);
 
-            // Efeito de Delay/Eco para criar um ambiente vasto (caverna/fábrica)
+            // Aumento ligeiro no eco para maior fluidez ambiental
             delay = audioCtx.createDelay();
-            delay.delayTime.value = 0.85;
+            delay.delayTime.value = 0.8;
             const delayFeedback = audioCtx.createGain();
-            delayFeedback.gain.value = 0.65;
+            delayFeedback.gain.value = 0.5;
             delay.connect(delayFeedback);
             delayFeedback.connect(delay);
             delay.connect(masterGain);
 
-            // Função para criar camadas do Drone Base
-            function createDrone(freq, type, detune, filterBase, filterSweep) {
+            function createDrone(freq, type, vol) {
                 const osc = audioCtx.createOscillator();
                 osc.type = type;
                 osc.frequency.value = freq;
-                osc.detune.value = detune;
-
-                // LFO (Low Frequency Oscillator) para fazer o som "respirar"
-                const lfo = audioCtx.createOscillator();
-                lfo.type = 'sine';
-                lfo.frequency.value = 0.05 + Math.random() * 0.1;
-
+                
                 const filter = audioCtx.createBiquadFilter();
                 filter.type = 'lowpass';
-                filter.frequency.value = filterBase; 
+                filter.frequency.value = 150; // Muito fechado e profundo
 
-                const lfoGain = audioCtx.createGain();
-                lfoGain.gain.value = filterSweep; 
-                lfo.connect(lfoGain);
-                lfoGain.connect(filter.frequency);
-
-                const oscGain = audioCtx.createGain();
-                oscGain.gain.value = 0.4;
+                const gain = audioCtx.createGain();
+                gain.gain.value = vol;
 
                 osc.connect(filter);
-                filter.connect(oscGain);
-                oscGain.connect(masterGain);
-                oscGain.connect(delay); // Passa o drone no delay também
-
+                filter.connect(gain);
+                gain.connect(masterGain);
                 osc.start();
-                lfo.start();
             }
+            
+            // Drone de fundo profundo e purificado (sem sawtooth nem square)
+            createDrone(65.41, 'sine', 0.4); 
+            createDrone(98.00, 'triangle', 0.1);
 
-            // Camadas do Drone Base (Dissonância industrial, grave e profunda)
-            createDrone(65.41, 'sawtooth', 0, 150, 100);    // C2 (Nota Dó base)
-            createDrone(65.41, 'square', 15, 200, 150);     // C2 desafinado
-            createDrone(98.00, 'triangle', -10, 250, 100);  // G2 (Quinta, cria peso e tensão)
-
-            // Melodia Etérea (Pauta completa do refrão de "A Internacional")
-            const t = 750; // Tempo base (multiplicador de milissegundos)
+            const bpm = 100;
+            const t = 60000 / bpm;
+            
+            // Pauta Fiel da Melodia
             const melody = [
-                { f: 196.00, dur: t * 1 },     // (Sol) Bem...
-                { f: 261.63, dur: t * 1.5 },   // (Dó)  u-
-                { f: 261.63, dur: t * 0.5 },   // (Dó)  ni-
-                { f: 246.94, dur: t * 1 },     // (Si)  dos
-                { f: 220.00, dur: t * 1 },     // (Lá)  fa-
-                { f: 196.00, dur: t * 2 },     // (Sol) ça-
-                { f: 164.81, dur: t * 2 },     // (Mi)  mos
-                
-                { f: 220.00, dur: t * 1.5 },   // (Lá)  Nes-
-                { f: 220.00, dur: t * 0.5 },   // (Lá)  ta
-                { f: 196.00, dur: t * 1 },     // (Sol) lu-
-                { f: 174.61, dur: t * 1 },     // (Fá)  ta
-                { f: 164.81, dur: t * 2 },     // (Mi)  fi-
-                { f: 146.83, dur: t * 2 },     // (Ré)  nal
-                
-                { f: 196.00, dur: t * 1.5 },   // (Sol) Du-
-                { f: 220.00, dur: t * 0.5 },   // (Lá)  ma
-                { f: 246.94, dur: t * 1 },     // (Si)  Ter-
-                { f: 261.63, dur: t * 1 },     // (Dó)  ra
-                { f: 293.66, dur: t * 1.5 },   // (Ré)  sem
-                { f: 329.63, dur: t * 0.5 },   // (Mi)  a-
-                { f: 261.63, dur: t * 2 },     // (Dó)  mos
-                
-                { f: 293.66, dur: t * 1.5 },   // (Ré)  A
-                { f: 261.63, dur: t * 0.5 },   // (Dó)  In-
-                { f: 246.94, dur: t * 1 },     // (Si)  ter-
-                { f: 220.00, dur: t * 1 },     // (Lá)  na-
-                { f: 246.94, dur: t * 1 },     // (Si)  cio-
-                { f: 261.63, dur: t * 4 },     // (Dó)  nal...
-                
-                { f: 0, dur: t * 2 }           // Pausa dramática antes de repetir
+                { n: 196.00, d: t * 1 }, { n: 261.63, d: t * 1.5 }, { n: 261.63, d: t * 0.5 }, { n: 246.94, d: t * 1 }, { n: 220.00, d: t * 1 }, { n: 196.00, d: t * 2 }, { n: 164.81, d: t * 2 },
+                { n: 220.00, d: t * 1.5 }, { n: 220.00, d: t * 0.5 }, { n: 196.00, d: t * 1 }, { n: 174.61, d: t * 1 }, { n: 164.81, d: t * 2 }, { n: 146.83, d: t * 2 },
+                { n: 196.00, d: t * 1.5 }, { n: 220.00, d: t * 0.5 }, { n: 246.94, d: t * 1 }, { n: 261.63, d: t * 1 }, { n: 293.66, d: t * 1.5 }, { n: 329.63, d: t * 0.5 }, { n: 261.63, d: t * 2 },
+                { n: 293.66, d: t * 1.5 }, { n: 261.63, d: t * 0.5 }, { n: 246.94, d: t * 1 }, { n: 220.00, d: t * 1 }, { n: 246.94, d: t * 1 }, { n: 261.63, d: t * 3 },
+                { n: 0, d: t * 2 }
             ];
             
             let noteIndex = 0;
 
-            // Função para tocar cada nota com um Envelope (Ataque e Extinção suaves)
             function playNextNote() {
                 const nextNote = melody[noteIndex];
                 
-                if (nextNote.f > 0) {
-                    const osc = audioCtx.createOscillator();
-                    osc.type = 'triangle'; // Timbre mais claro que o sine para cortar o drone
-                    osc.frequency.value = nextNote.f;
-                    
-                    const noteGain = audioCtx.createGain();
+                if (nextNote.n > 0) {
                     const now = audioCtx.currentTime;
-                    const durationInSeconds = nextNote.dur / 1000;
-                    
-                    // Envelope ADSR para que as notas repetidas se distingam claramente
-                    noteGain.gain.setValueAtTime(0, now);
-                    noteGain.gain.linearRampToValueAtTime(0.25, now + 0.1); // Attack suave
-                    noteGain.gain.setValueAtTime(0.25, now + durationInSeconds - 0.2); // Sustain
-                    noteGain.gain.linearRampToValueAtTime(0, now + durationInSeconds); // Release
+                    const durationInSeconds = nextNote.d / 1000;
 
-                    osc.connect(noteGain);
-                    noteGain.connect(delay); // Adiciona o eco fantasmagórico
+                    // ONDA: Apenas onda "sine" (senoidal) para uma suavidade absoluta
+                    const osc1 = audioCtx.createOscillator();
+                    osc1.type = 'sine';
+                    osc1.frequency.value = nextNote.n;
+                    
+                    // FILTRO: Suave e fechado, sem nenhuma ressonância (Q)
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 600; 
+                    
+                    // ENVELOPE: Attack muito longo e lento (sobe devagar) e Release longo (desce devagar misturando-se)
+                    const noteGain = audioCtx.createGain();
+                    noteGain.gain.setValueAtTime(0, now);
+                    noteGain.gain.linearRampToValueAtTime(0.4, now + 0.2); 
+                    noteGain.gain.setValueAtTime(0.4, now + durationInSeconds - 0.2); 
+                    noteGain.gain.linearRampToValueAtTime(0, now + durationInSeconds + 0.5); 
+
+                    // Conexões simples
+                    osc1.connect(filter);
+                    filter.connect(noteGain);
+                    noteGain.connect(delay); 
                     noteGain.connect(masterGain);
                     
-                    osc.start(now);
-                    osc.stop(now + durationInSeconds);
+                    osc1.start(now);
+                    // O tempo de fim compensa o tempo do release longo
+                    osc1.stop(now + durationInSeconds + 0.6); 
                 }
 
                 noteIndex = (noteIndex + 1) % melody.length;
-                setTimeout(playNextNote, nextNote.dur);
+                setTimeout(playNextNote, nextNote.d);
             }
 
-            // Inicia o ciclo da melodia imediatamente
             playNextNote();
-
             audioInitialized = true;
-            
-            // Toca o primeiro impacto mal se inicia
             playThud();
         }
 
-        // Som de impacto sintético (bombo profundo) ao clicar
         function playThud() {
             if(!audioCtx) return;
             const t = audioCtx.currentTime;
@@ -281,24 +279,104 @@
             osc.stop(t + 0.8);
         }
 
-        // Divisão do poema em estrofes para impacto visual
+        // --- SISTEMA DE GESTOS (MEDIAPIPE) ---
+        const videoElement = document.getElementById('webcam-video');
+        let handDetected = false;
+        let lastGestureWasFist = false;
+        let gestureCooldown = 0;
+        let trackerInitialized = false;
+
+        function initWebcamTracker() {
+            if (trackerInitialized) return;
+            trackerInitialized = true;
+
+            const instructionEl = document.getElementById('instruction');
+            instructionEl.innerHTML = 'A INICIAR MODELO DE VISÃO...<br><span style="font-size:0.8rem; color:#f2e8c9;">POR FAVOR AGUARDE</span>';
+
+            const hands = new Hands({locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }});
+
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.6,
+                minTrackingConfidence: 0.6
+            });
+
+            function getDistance(p1, p2) {
+                return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2) + Math.pow(p1.z - p2.z, 2));
+            }
+
+            function isFist(landmarks) {
+                let foldedCount = 0;
+                const tips = [8, 12, 16, 20]; 
+                const pips = [6, 10, 14, 18]; 
+                const wrist = landmarks[0];
+                
+                for(let i=0; i<4; i++) {
+                    let dTip = getDistance(landmarks[tips[i]], wrist);
+                    let dPip = getDistance(landmarks[pips[i]], wrist);
+                    if(dTip < dPip) foldedCount++;
+                }
+                return foldedCount >= 3; 
+            }
+
+            hands.onResults((results) => {
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    handDetected = true;
+                    instructionEl.style.opacity = '0.2';
+                    instructionEl.innerHTML = 'MOVA O DEDO PARA ATRAIR<br><span style="font-size:0.8rem; color:#f2e8c9;">FECHE A MÃO PARA AVANÇAR</span>';
+
+                    const landmarks = results.multiHandLandmarks[0];
+                    const indexTip = landmarks[8];
+                    mouseX = (1 - indexTip.x) * width;
+                    mouseY = indexTip.y * height;
+
+                    const fist = isFist(landmarks);
+                    
+                    if (Date.now() - gestureCooldown > 1200) { 
+                        if (fist && !lastGestureWasFist) {
+                            handleInteraction(mouseX, mouseY);
+                            gestureCooldown = Date.now();
+                        }
+                    }
+                    lastGestureWasFist = fist;
+
+                } else {
+                    handDetected = false;
+                    mouseX = -1000;
+                    mouseY = -1000;
+                }
+            });
+
+            const camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({image: videoElement});
+                },
+                width: 640,
+                height: 480
+            });
+            camera.start();
+        }
+
+        // --- SISTEMA DE VISUALIZAÇÃO E POEMA ---
         const poemStanzas = [
-            "De pé, <span class='highlight-red'>ó vítimas da fome!</span><br>De pé, famélicos da terra!",
-            "Da ideia a chama já consome<br>A crosta bruta que a soterra.",
-            "<span class='highlight-red'>Cortai o mal</span> bem pelo fundo!<br>De pé, de pé, não mais senhores!",
-            "Se nada somos neste mundo,<br><span class='highlight-red'>Sejamos tudo</span>, oh produtores!",
-            "Bem unidos façamos,<br>Nesta luta final,",
-            "Duma Terra sem amos<br><span class='highlight-red'>A Internacional.</span>",
-            "Messias, Deus, chefes supremos,<br>Nada esperemos de nenhum!",
-            "Sejamos nós quem conquistemos<br><span class='highlight-red'>A Terra-Mãe</span> livre e comum!",
-            "Para não ter protestos vãos,<br>Para sair deste antro estreito,",
-            "Façamos nós <span class='highlight-red'>por nossas mãos</span>,<br>Tudo o que a nós diz respeito!"
+            "<span class='line-wrapper'>De pé, <span class='highlight-red'>ó vítimas da fome!</span></span><br><span class='line-wrapper'>De pé, famélicos da terra!</span>",
+            "<span class='line-wrapper'>Da ideia a chama já consome</span><br><span class='line-wrapper'>A crosta bruta que a soterra.</span>",
+            "<span class='line-wrapper'><span class='highlight-red'>Cortai o mal</span> bem pelo fundo!</span><br><span class='line-wrapper'>De pé, de pé, não mais senhores!</span>",
+            "<span class='line-wrapper'>Se nada somos neste mundo,</span><br><span class='line-wrapper'><span class='highlight-red'>Sejamos tudo</span>, oh produtores!</span>",
+            "<span class='line-wrapper'>Bem unidos façamos,</span><br><span class='line-wrapper'>Nesta luta final,</span>",
+            "<span class='line-wrapper'>Duma Terra sem amos</span><br><span class='line-wrapper'><span class='highlight-red'>A Internacional.</span></span>",
+            "<span class='line-wrapper'>Messias, Deus, chefes supremos,</span><br><span class='line-wrapper'>Nada esperemos de nenhum!</span>",
+            "<span class='line-wrapper'>Sejamos nós quem conquistemos</span><br><span class='line-wrapper'><span class='highlight-red'>A Terra-Mãe</span> livre e comum!</span>",
+            "<span class='line-wrapper'>Para não ter protestos vãos,</span><br><span class='line-wrapper'>Para sair deste antro estreito,</span>",
+            "<span class='line-wrapper'>Façamos nós <span class='highlight-red'>por nossas mãos</span>,</span><br><span class='line-wrapper'>Tudo o que a nós diz respeito!</span>"
         ];
 
         let currentStanza = 0;
         const poemElement = document.getElementById('poem-text');
 
-        // Configuração do Canvas
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
         let width, height;
@@ -308,23 +386,20 @@
         let mouseX = -1000;
         let mouseY = -1000;
 
-        // Ângulos permitidos para o movimento construtivista/circuito (múltiplos de 45 graus)
         const angles = [0, Math.PI/4, Math.PI/2, 3*Math.PI/4, Math.PI, 5*Math.PI/4, 3*Math.PI/2, 7*Math.PI/4];
         const colors = ['#e60000', '#f2e8c9', '#8a0000', '#ffffff'];
 
-        // Geometria estática de fundo gerada proceduralmente
         let backgroundShapes = [];
         let crowdSilhouettes = [];
+        let currentBackgroundTheme = 0;
 
         function resizeCanvas() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
             generateBackgroundGeometry();
         }
-
         window.addEventListener('resize', resizeCanvas);
 
-        // Classe representando os nós/eletrões da revolução
         class Electron {
             constructor(x, y, isBurst = false) {
                 this.x = x || Math.random() * width;
@@ -334,36 +409,26 @@
                 this.angle = angles[Math.floor(Math.random() * angles.length)];
                 this.color = colors[Math.floor(Math.random() * colors.length)];
                 this.radius = Math.random() * 2 + 1;
-                this.connections = 0;
                 this.life = isBurst ? 100 : Infinity;
             }
 
             update() {
-                // Diminui a velocidade extra da explosão ao longo do tempo
-                if (this.speed > this.baseSpeed) {
-                    this.speed *= 0.95;
-                }
+                if (this.speed > this.baseSpeed) this.speed *= 0.95;
 
                 this.x += Math.cos(this.angle) * this.speed;
                 this.y += Math.sin(this.angle) * this.speed;
 
-                // Probabilidade de mudar de direção abruptamente (estilo circuito)
                 if (Math.random() < 0.02) {
                     this.angle = angles[Math.floor(Math.random() * angles.length)];
                 }
 
-                // Efeito de atração/repulsão do rato
-                let dx = mouseX - this.x;
-                let dy = mouseY - this.y;
-                let dist = Math.sqrt(dx * dx + dy * dy);
-                
-                if (dist < 150) {
-                    // Adiciona uma perturbação baseada na proximidade (a chama da ideia atrai)
-                    this.x += dx * 0.02;
-                    this.y += dy * 0.02;
+                let dxM = mouseX - this.x;
+                let dyM = mouseY - this.y;
+                if (Math.sqrt(dxM*dxM + dyM*dyM) < 150) {
+                    this.x += dxM * 0.02;
+                    this.y += dyM * 0.02;
                 }
 
-                // Enrolar nos limites do ecrã
                 if (this.x < 0) this.x = width;
                 if (this.x > width) this.x = 0;
                 if (this.y < 0) this.y = height;
@@ -380,242 +445,216 @@
             }
         }
 
-        // Gera os elementos construtivistas do fundo
+        // --- SISTEMA DE FUNDOS CONSTRUTIVISTAS VARIÁVEIS ---
         function generateBackgroundGeometry() {
             backgroundShapes = [];
             crowdSilhouettes = [];
 
-            // Sol Vermelho Central (O ideal revolucionário)
-            backgroundShapes.push({
-                type: 'circle',
-                x: width * 0.5,
-                y: height * 0.4,
-                r: Math.min(width, height) * 0.35,
-                color: '#e60000'
-            });
+            // Existem 4 temas/composições abstratas diferentes
+            if (currentBackgroundTheme === 0) {
+                // Tema 0: O Sol Clássico e Raios Diagonais
+                backgroundShapes.push({ type: 'circle', x: width * 0.5, y: height * 0.4, r: Math.min(width, height) * 0.35, color: '#e60000', outline: true });
+                for (let i = 0; i < 4; i++) {
+                    backgroundShapes.push({
+                        type: 'polygon',
+                        points: [{x: Math.random() * width, y: 0}, {x: Math.random() * width, y: height}, {x: Math.random() * width + 200, y: height}, {x: Math.random() * width + 200, y: 0}],
+                        color: Math.random() > 0.5 ? 'rgba(138, 0, 0, 0.4)' : 'rgba(10, 10, 10, 0.8)'
+                    });
+                }
+                generateCrowd(0.4);
 
-            // Raios/Blocos Construtivistas Diagonais
-            for (let i = 0; i < 5; i++) {
+            } else if (currentBackgroundTheme === 1) {
+                // Tema 1: A Cunha Vermelha (Baseado em El Lissitzky)
+                backgroundShapes.push({ type: 'circle', x: width * 0.7, y: height * 0.6, r: Math.min(width, height) * 0.25, color: '#f2e8c9', outline: false }); // Círculo branco sujo
                 backgroundShapes.push({
-                    type: 'polygon',
-                    points: [
-                        {x: Math.random() * width, y: 0},
-                        {x: Math.random() * width, y: height},
-                        {x: Math.random() * width + 200, y: height},
-                        {x: Math.random() * width + 200, y: 0}
-                    ],
-                    color: Math.random() > 0.5 ? 'rgba(138, 0, 0, 0.4)' : 'rgba(10, 10, 10, 0.8)'
+                    type: 'polygon', // A grande cunha
+                    points: [{x: -100, y: -100}, {x: width * 0.75, y: height * 0.65}, {x: -100, y: height + 100}],
+                    color: '#e60000'
                 });
-            }
+                backgroundShapes.push({
+                    type: 'polygon', // Bloco escuro de contraste
+                    points: [{x: width * 0.5, y: height}, {x: width, y: 0}, {x: width, y: height}],
+                    color: '#0a0a0a'
+                });
+                generateCrowd(0.2); // Multidão mais pequena
 
-            // Gerar a silhueta da multidão/fábricas na base
+            } else if (currentBackgroundTheme === 2) {
+                // Tema 2: Linhas Fabris Pesadas e Ângulos Retos (A Máquina)
+                for (let i = 0; i < 6; i++) {
+                    const isVertical = Math.random() > 0.5;
+                    const w = isVertical ? (Math.random() * 150 + 50) : width * 1.5;
+                    const h = isVertical ? height * 1.5 : (Math.random() * 150 + 50);
+                    const x = isVertical ? (Math.random() * width) : -100;
+                    const y = isVertical ? -100 : (Math.random() * height);
+                    
+                    backgroundShapes.push({
+                        type: 'rect', x: x, y: y, w: w, h: h,
+                        color: ['#e60000', '#8a0000', '#0a0a0a', '#111'][Math.floor(Math.random() * 4)]
+                    });
+                }
+                backgroundShapes.push({ type: 'circle', x: width * 0.2, y: height * 0.2, r: 80, color: '#e60000', outline: true });
+                generateCrowd(0.5);
+
+            } else if (currentBackgroundTheme === 3) {
+                // Tema 3: Interseções Radicais e Círculos Suspensos
+                backgroundShapes.push({ type: 'circle', x: width * 0.8, y: height * 0.3, r: 150, color: '#8a0000', outline: false });
+                backgroundShapes.push({ type: 'circle', x: width * 0.3, y: height * 0.7, r: 200, color: '#e60000', outline: true });
+                
+                for (let i = 0; i < 5; i++) {
+                    backgroundShapes.push({
+                        type: 'polygon', // Lâminas diagonais cortantes
+                        points: [{x: Math.random() * width - 500, y: 0}, {x: Math.random() * width, y: height}, {x: Math.random() * width + 50, y: height}, {x: Math.random() * width - 450, y: 0}],
+                        color: 'rgba(242, 232, 201, 0.15)' // Linhas claras
+                    });
+                }
+                generateCrowd(0.3);
+            }
+        }
+
+        function generateCrowd(heightMultiplier) {
             let currentX = 0;
             while (currentX < width) {
                 let w = Math.random() * 40 + 10;
-                let h = Math.random() * (height * 0.4) + 50;
-                
-                // Algumas hastes/bandeiras erguidas
-                if(Math.random() < 0.1) {
-                    h += 100;
-                }
-
-                crowdSilhouettes.push({
-                    x: currentX,
-                    y: height - h,
-                    w: w,
-                    h: h
-                });
+                let h = Math.random() * (height * heightMultiplier) + 50;
+                if(Math.random() < 0.1) h += 100; // Mastros/Bandeiras
+                crowdSilhouettes.push({ x: currentX, y: height - h, w: w, h: h });
                 currentX += w;
             }
         }
 
         function drawBackground() {
-            // Fundo escuro base
             ctx.fillStyle = '#050505';
             ctx.fillRect(0, 0, width, height);
 
-            // Desenha as formas construtivistas
             backgroundShapes.forEach(shape => {
                 if (shape.type === 'circle') {
-                    ctx.beginPath();
-                    ctx.arc(shape.x, shape.y, shape.r, 0, Math.PI * 2);
-                    ctx.fillStyle = shape.color;
-                    ctx.fill();
-                    
-                    // Adiciona círculos de grelha cibernética
-                    ctx.beginPath();
-                    ctx.arc(shape.x, shape.y, shape.r * 1.2, 0, Math.PI * 2);
-                    ctx.strokeStyle = 'rgba(230, 0, 0, 0.3)';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                } else if (shape.type === 'polygon') {
-                    ctx.beginPath();
-                    ctx.moveTo(shape.points[0].x, shape.points[0].y);
-                    for (let i = 1; i < shape.points.length; i++) {
-                        ctx.lineTo(shape.points[i].x, shape.points[i].y);
+                    ctx.beginPath(); ctx.arc(shape.x, shape.y, shape.r, 0, Math.PI * 2); ctx.fillStyle = shape.color; ctx.fill();
+                    if(shape.outline) {
+                        ctx.beginPath(); ctx.arc(shape.x, shape.y, shape.r * 1.2, 0, Math.PI * 2); 
+                        ctx.strokeStyle = 'rgba(230, 0, 0, 0.3)'; ctx.lineWidth = 2; ctx.stroke();
                     }
-                    ctx.closePath();
+                } else if (shape.type === 'polygon') {
+                    ctx.beginPath(); ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                    for (let i = 1; i < shape.points.length; i++) ctx.lineTo(shape.points[i].x, shape.points[i].y);
+                    ctx.fillStyle = shape.color; ctx.fill();
+                } else if (shape.type === 'rect') {
                     ctx.fillStyle = shape.color;
-                    ctx.fill();
+                    ctx.fillRect(shape.x, shape.y, shape.w, shape.h);
                 }
             });
-
-            // Adiciona linhas de circuito estruturais fixas
-            ctx.strokeStyle = 'rgba(242, 232, 201, 0.1)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            for(let i=0; i<width; i+=100) {
-                ctx.moveTo(i, 0);
-                ctx.lineTo(i + height, height);
-                ctx.moveTo(i, height);
-                ctx.lineTo(i + height, 0);
-            }
-            ctx.stroke();
         }
 
         function drawCrowd() {
             ctx.fillStyle = '#000000';
             crowdSilhouettes.forEach(rect => {
                 ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-                // Detalhes construtivistas na silhueta (janelas/nós)
                 if(Math.random() < 0.05) {
                     ctx.fillStyle = '#e60000';
                     ctx.fillRect(rect.x + rect.w/2 - 2, rect.y + 10, 4, 4);
-                    ctx.fillStyle = '#000000'; // reset
+                    ctx.fillStyle = '#000000'; 
                 }
             });
         }
 
         function updateAndDrawNetwork() {
-            // Desenhar linhas de conexão (a união dos trabalhadores/nós)
             for (let i = 0; i < electrons.length; i++) {
                 let e1 = electrons[i];
-                e1.connections = 0;
-                
                 for (let j = i + 1; j < electrons.length; j++) {
                     let e2 = electrons[j];
-                    let dx = e1.x - e2.x;
-                    let dy = e1.y - e2.y;
+                    let dx = e1.x - e2.x; let dy = e1.y - e2.y;
                     let dist = Math.sqrt(dx * dx + dy * dy);
 
                     if (dist < 120) {
-                        e1.connections++;
-                        e2.connections++;
-                        ctx.beginPath();
-                        ctx.moveTo(e1.x, e1.y);
-                        ctx.lineTo(e2.x, e2.y);
-                        // A força da linha depende da proximidade
+                        ctx.beginPath(); ctx.moveTo(e1.x, e1.y); ctx.lineTo(e2.x, e2.y);
                         let opacity = 1 - (dist / 120);
-                        // Linhas vermelhas para energia, bege para estrutura
                         ctx.strokeStyle = (e1.color === '#e60000' || e2.color === '#e60000') 
-                            ? `rgba(230, 0, 0, ${opacity * 0.8})` 
-                            : `rgba(242, 232, 201, ${opacity * 0.3})`;
-                        ctx.lineWidth = opacity * 1.5;
-                        ctx.stroke();
+                            ? `rgba(230, 0, 0, ${opacity * 0.8})` : `rgba(242, 232, 201, ${opacity * 0.3})`;
+                        ctx.lineWidth = opacity * 1.5; ctx.stroke();
                     }
                 }
             }
 
-            // Atualizar e desenhar os eletrões
             for (let i = electrons.length - 1; i >= 0; i--) {
                 let e = electrons[i];
-                e.update();
-                e.draw();
+                e.update(); e.draw();
+                if (e.life <= 0) electrons.splice(i, 1);
+            }
 
-                // Remover eletrões de explosão antigos
-                if (e.life <= 0) {
-                    electrons.splice(i, 1);
-                }
+            if (handDetected && mouseX > 0) {
+                ctx.beginPath();
+                ctx.arc(mouseX, mouseY, 8, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(230, 0, 0, 0.4)';
+                ctx.fill();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = '#e60000';
+                ctx.stroke();
             }
         }
 
-        // Função de Animação Principal
         function animate() {
-            // Limpa o frame anterior redesenhando o fundo
             drawBackground();
-            
-            // Desenha a rede digital por cima do fundo
-            updateAndDrawNetwork();
-
-            // Desenha a multidão negra por cima de tudo
-            drawCrowd();
-
+            drawCrowd(); 
+            updateAndDrawNetwork(); 
             requestAnimationFrame(animate);
         }
 
-        // Interações
-        window.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
+        window.addEventListener('mousemove', (e) => { 
+            if(!handDetected) { 
+                mouseX = e.clientX; mouseY = e.clientY; 
+            }
+        });
+        window.addEventListener('mouseout', () => { 
+            if(!handDetected) { mouseX = -1000; mouseY = -1000; }
         });
 
-        window.addEventListener('mouseout', () => {
-            mouseX = -1000;
-            mouseY = -1000;
-        });
-
-        // Função para simular o clique através do overlay da instrução ou do ecrã inteiro
-        function triggerClick(e) {
-            handleInteraction(e.clientX || width/2, e.clientY || height/2);
+        function triggerInitialClick(e) { 
+            if(!audioInitialized) {
+                initAudio();
+                initWebcamTracker();
+                handleInteraction(e.clientX || width/2, e.clientY || height/2);
+            }
         }
 
         window.addEventListener('click', (e) => {
-            // Ignora o clique se for no botão de instrução para não duplicar eventos
-            if(e.target.id !== 'instruction') {
+            if(!audioInitialized) {
+                triggerInitialClick(e);
+            } else if (e.target.id !== 'instruction') {
                 handleInteraction(e.clientX, e.clientY);
             }
         });
         
         window.addEventListener('touchstart', (e) => {
             if(e.touches.length > 0) {
-                handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
+                if(!audioInitialized) {
+                    triggerInitialClick(e.touches[0]);
+                } else {
+                    handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
+                }
             }
         });
 
         function handleInteraction(x, y) {
-            // Inicializar áudio no primeiro clique, ou tocar impacto nos cliques seguintes
-            if (!audioInitialized) {
-                initAudio();
-            } else {
-                playThud();
-            }
+            if (audioInitialized) playThud();
 
-            // Explosão de eletrões revolucionários (A Chama da Ideia)
-            for (let i = 0; i < 30; i++) {
-                electrons.push(new Electron(x, y, true));
-            }
-
-            // Atualizar o Poema
+            for (let i = 0; i < 30; i++) electrons.push(new Electron(x, y, true));
             updatePoemText();
+            
+            // Avança para a próxima composição geométrica abstrata construtivista
+            currentBackgroundTheme = (currentBackgroundTheme + 1) % 4;
+            generateBackgroundGeometry();
         }
 
         function updatePoemText() {
-            // Esconde texto atual
             poemElement.classList.remove('visible');
-            
             setTimeout(() => {
-                // Atualiza o conteúdo
                 poemElement.innerHTML = poemStanzas[currentStanza];
-                // Mostra o novo texto
                 poemElement.classList.add('visible');
-                
-                // Avança o índice
                 currentStanza = (currentStanza + 1) % poemStanzas.length;
-                
-                // Se for a primeira vez, esconde a instrução base após o clique
-                document.getElementById('instruction').style.opacity = '0.3';
-                document.getElementById('instruction').innerText = "CLIQUE PARA CONTINUAR";
-
-            }, 400); // Tempo para a transição CSS de esconder
+            }, 400); 
         }
 
-        // Inicialização
         resizeCanvas();
-        for (let i = 0; i < numElectrons; i++) {
-            electrons.push(new Electron());
-        }
-        
-        // Iniciar poema e animação
+        for (let i = 0; i < numElectrons; i++) electrons.push(new Electron());
         updatePoemText();
         animate();
 
