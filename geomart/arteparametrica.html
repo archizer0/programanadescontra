@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratório de Arte Paramétrica - dDIESS</title>
+    <style>
+        :root {
+            --panel-bg: rgba(0, 12, 42, 0.85);
+            --accent: #4a9eff;
+            --record: #ff4a4a;
+            --text: #e0e0e0;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000c2a;
+            display: flex;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(74, 158, 255, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            color: var(--text);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        h2 { margin: 0 0 15px 0; font-size: 18px; color: var(--accent); border-bottom: 1px solid var(--accent); padding-bottom: 5px; }
+        h3 { margin: 15px 0 10px 0; font-size: 14px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-size: 12px; margin-bottom: 5px; opacity: 0.8; }
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+            accent-color: var(--accent);
+        }
+        input[type="color"] {
+            width: 100%;
+            height: 30px;
+            border: none;
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: var(--accent);
+            cursor: pointer;
+        }
+        .checkbox-group input { cursor: pointer; }
+        .value-display { font-family: monospace; font-size: 11px; float: right; color: var(--accent); }
+        .buttons { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+        .row-buttons { display: flex; gap: 8px; }
+        button {
+            flex: 1;
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        button:hover { background: var(--accent); color: white; }
+        button.recording {
+            border-color: var(--record);
+            color: var(--record);
+            animation: pulse 1.5s infinite;
+        }
+        button.recording:hover { background: var(--record); color: white; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .info { margin-top: 15px; font-size: 10px; opacity: 0.5; line-height: 1.4; }
+        
+        #ui-panel::-webkit-scrollbar { width: 4px; }
+        #ui-panel::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <h2>Laboratório dDIESS</h2>
+        
+        <h3>Geometria</h3>
+        <div class="control-group">
+            <label>Iterações (End K) <span class="value-display" id="v-endK">79.87</span></label>
+            <input type="range" id="endK" min="10" max="200" step="0.1" value="79.87">
+        </div>
+
+        <div class="control-group">
+            <label>Densidade (Step K) <span class="value-display" id="v-stepK">0.100</span></label>
+            <input type="range" id="stepK" min="0.01" max="0.5" step="0.001" value="0.100">
+        </div>
+
+        <div class="control-group">
+            <label>Frequência Senoidal <span class="value-display" id="v-freq">2.41</span></label>
+            <input type="range" id="freq" min="0.1" max="10" step="0.01" value="2.41">
+        </div>
+
+        <div class="control-group">
+            <label>Amplitude Visual <span class="value-display" id="v-zoom">5000</span></label>
+            <input type="range" id="zoom" min="1000" max="15000" step="100" value="5000">
+        </div>
+
+        <h3>Aparência</h3>
+        <div class="control-group">
+            <label>Cor do Fundo</label>
+            <input type="color" id="bgColor" value="#000c2a">
+        </div>
+
+        <label class="checkbox-group">
+            <input type="checkbox" id="rainbowMode"> Ativar Modo Multicolorido
+        </label>
+
+        <div id="color-sliders">
+            <div class="control-group">
+                <label>Vermelho <span class="value-display" id="v-cRed">106</span></label>
+                <input type="range" id="cRed" min="0" max="255" step="1" value="106">
+            </div>
+
+            <div class="control-group">
+                <label>Verde <span class="value-display" id="v-cGreen">179</span></label>
+                <input type="range" id="cGreen" min="0" max="255" step="1" value="179">
+            </div>
+
+            <div class="control-group">
+                <label>Azul <span class="value-display" id="v-cBlue">223</span></label>
+                <input type="range" id="cBlue" min="0" max="255" step="1" value="223">
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button id="btn-record" onclick="toggleRecording()">Iniciar Gravação Vídeo</button>
+            <div class="row-buttons">
+                <button onclick="resetValues()">Resetar</button>
+                <button onclick="downloadImage()">Salvar PNG</button>
+            </div>
+        </div>
+
+        <div class="info">
+            Inspirado nas equações originais de dDIESS.<br>
+            Use o seletor de cor para mudar o ambiente da cena.
+        </div>
+    </div>
+
+    <canvas id="artCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('artCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let mediaRecorder;
+        let recordedChunks = [];
+        let isRecording = false;
+
+        const defaults = {
+            endK: 79.8725,
+            stepK: 0.1001,
+            freq: 2.4133,
+            zoom: 5000,
+            cRed: 106,
+            cGreen: 179,
+            cBlue: 223,
+            rainbowMode: false,
+            bgColor: '#000c2a'
+        };
+
+        let params = { ...defaults };
+
+        const inputIds = ['endK', 'stepK', 'freq', 'zoom', 'cRed', 'cGreen', 'cBlue'];
+        const rainbowToggle = document.getElementById('rainbowMode');
+        const bgColorInput = document.getElementById('bgColor');
+        const colorSliders = document.getElementById('color-sliders');
+        const btnRecord = document.getElementById('btn-record');
+        
+        function updateParams() {
+            inputIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    params[id] = parseFloat(el.value);
+                    const display = document.getElementById(`v-${id}`);
+                    if (display) {
+                        display.innerText = params[id].toFixed(id === 'stepK' ? 3 : 2);
+                    }
+                }
+            });
+            params.rainbowMode = rainbowToggle.checked;
+            params.bgColor = bgColorInput.value;
+            
+            // Atualiza a cor do corpo para o fundo selecionado
+            document.body.style.backgroundColor = params.bgColor;
+
+            colorSliders.style.opacity = params.rainbowMode ? "0.3" : "1";
+            colorSliders.style.pointerEvents = params.rainbowMode ? "none" : "auto";
+
+            draw();
+        }
+
+        inputIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', updateParams);
+        });
+        rainbowToggle.addEventListener('change', updateParams);
+        bgColorInput.addEventListener('input', updateParams);
+
+        function resetValues() {
+            inputIds.forEach(key => {
+                const el = document.getElementById(key);
+                if (el) el.value = defaults[key];
+            });
+            rainbowToggle.checked = defaults.rainbowMode;
+            bgColorInput.value = defaults.bgColor;
+            updateParams();
+        }
+
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = 'arte-parametrica-ddiess.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        function toggleRecording() {
+            if (!isRecording) startRecording();
+            else stopRecording();
+        }
+
+        function startRecording() {
+            recordedChunks = [];
+            const stream = canvas.captureStream(30);
+            mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'video/webm;codecs=vp9',
+                videoBitsPerSecond: 5000000
+            });
+            mediaRecorder.ondataavailable = (e) => e.data.size > 0 && recordedChunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'manipulacao-parametrica.webm';
+                a.click();
+                window.URL.revokeObjectURL(url);
+            };
+            mediaRecorder.start();
+            isRecording = true;
+            btnRecord.innerText = "Parar e Guardar Vídeo";
+            btnRecord.classList.add('recording');
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            isRecording = false;
+            btnRecord.innerText = "Iniciar Gravação Vídeo";
+            btnRecord.classList.remove('recording');
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        }
+
+        const abs = Math.abs, trunc = Math.trunc, sin = Math.sin, cos = Math.cos, Int = Math.floor;
+
+        function draw() {
+            ctx.fillStyle = params.bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const screenScale = Math.min(canvas.width, canvas.height) / 1000;
+            const currentZoom = params.zoom * screenScale;
+
+            for (let k = 1; k <= params.endK; k += params.stepK) {
+                let x1k = 1100.923299 * sin((-params.freq * k) / 111.864932) / 1773.3420655;
+                let y1k = 182.67396 * cos((-10.430051625 * k) / -236.2566595) / 2121.463657;
+                let x2k = -236.2566595 * sin((-params.freq * k) / 111.864932) / 5723.6034565;
+                let y2k = 111.864932 * cos((-10.430051625 * k) / -236.2566595) / 4397.37733375;
+
+                let p1x = x1k * currentZoom, p1y = y1k * currentZoom;
+                let p2x = x2k * currentZoom, p2y = y2k * currentZoom;
+
+                let lw = 3.09739 + (abs(y2k) - abs(trunc(y2k))) / (abs(x2k) - abs(trunc(x2k) + 0.0001)) / 10;
+                ctx.lineWidth = Math.max(0.3, Math.min(lw, 2.5)) * screenScale;
+
+                if (params.rainbowMode) {
+                    const hue = (k * 10) % 360;
+                    ctx.strokeStyle = `hsla(${hue}, 80%, 60%, 0.8)`;
+                } else {
+                    let r = Int(params.cRed + (abs(y2k) - abs(trunc(y2k))) * 100 * (abs((x1k + y2k) / 2) - abs(trunc((x1k + y2k) / 2)))) % 255;
+                    let g = Int(params.cGreen + 100 * (abs(y2k) - abs(trunc(y2k)))) % 255;
+                    let b = Int(params.cBlue + (abs(y2k) - abs(trunc(y2k))) * 100 * (abs(x2k) - abs(trunc(x2k)))) % 255;
+                    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.8)`;
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(centerX - p1x, centerY - p1y);
+                ctx.lineTo(centerX - p2x, centerY + p2y);
+                ctx.moveTo(centerX - p1y, centerY - p1x);
+                ctx.lineTo(centerX + p2y, centerY + p2x);
+                ctx.stroke();
+            }
+
+            if (isRecording) requestAnimationFrame(draw);
+        }
+
+        window.addEventListener('resize', resize);
+        window.onload = resize;
+    </script>
+</body>
+</html>
