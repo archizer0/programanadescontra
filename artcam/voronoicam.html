@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="pt-PT" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espelho Voronoi Interativo</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0f172a',
+                        panelBg: '#1e293b',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- D3-Delaunay para cálculo ultra-rápido de Voronoi -->
+    <script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6"></script>
+    <style>
+        /* Estilos personalizados para sliders e barras de rolagem */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        input[type="range"] {
+            accent-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-slate-100 font-sans h-full overflow-hidden flex flex-col md:flex-row">
+
+    <!-- Painel Lateral de Controle -->
+    <aside class="w-full md:w-80 bg-panelBg border-b md:border-b-0 md:border-r border-slate-700/60 p-5 flex flex-col h-auto md:h-full z-10 shrink-0 overflow-y-auto">
+        <div class="mb-6">
+            <div class="flex items-center gap-2 mb-1">
+                <i data-lucide="camera" class="text-blue-500 w-6 h-6 animate-pulse"></i>
+                <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                    Voronoi Mirror
+                </h1>
+            </div>
+            <p class="text-xs text-slate-400">Transforma a tua webcam numa obra de arte generativa viva.</p>
+        </div>
+
+        <!-- Seção: Estado do Hardware -->
+        <div class="mb-6 p-3 bg-slate-900/60 rounded-xl border border-slate-700/50">
+            <div class="flex items-center justify-between text-xs mb-2">
+                <span class="text-slate-400 font-medium">Estado da Câmera:</span>
+                <span id="camera-status" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-bold border border-amber-500/20">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                    A inicializar...
+                </span>
+            </div>
+            <div class="flex items-center justify-between text-xs mb-2.5">
+                <span class="text-slate-400 font-medium">Resolução Interna:</span>
+                <span id="canvas-resolution" class="text-slate-300 font-mono">0 x 0</span>
+            </div>
+            <!-- Botão para Ativar Câmara -->
+            <button id="btn-activate-camera" class="w-full bg-emerald-600 hover:bg-emerald-500 transition-colors py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 hidden shadow-md shadow-emerald-950/30 active:scale-95">
+                <i data-lucide="video" class="w-3.5 h-3.5"></i>
+                Ativar Câmara / Dar Permissão
+            </button>
+        </div>
+
+        <!-- Controladores -->
+        <div class="space-y-5 flex-grow">
+            <!-- Densidade de Pontos -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center text-sm font-medium">
+                    <label for="point-count" class="text-slate-300">Número de Células</label>
+                    <span id="point-count-val" class="text-blue-400 font-mono">400</span>
+                </div>
+                <input type="range" id="point-count" min="50" max="1200" step="10" value="400" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                <p class="text-[10px] text-slate-400">Valores altos exigem mais processamento do CPU.</p>
+            </div>
+
+            <!-- Estilo de Movimento -->
+            <div class="space-y-2">
+                <label for="movement-style" class="text-sm font-medium text-slate-300">Estilo de Movimento</label>
+                <select id="movement-style" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="floating">Partículas Flutuantes</option>
+                    <option value="gravity">Atração Gravítica do Rato</option>
+                    <option value="jitter">Grelha com Vibração</option>
+                    <option value="static">Estático</option>
+                </select>
+            </div>
+
+            <!-- Velocidade de Animação -->
+            <div id="speed-control-container" class="space-y-2">
+                <div class="flex justify-between items-center text-sm font-medium">
+                    <label for="point-speed" class="text-slate-300">Velocidade</label>
+                    <span id="point-speed-val" class="text-blue-400 font-mono">1.5x</span>
+                </div>
+                <input type="range" id="point-speed" min="0.1" max="5.0" step="0.1" value="1.5" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <!-- Filtros de Cor -->
+            <div class="space-y-2">
+                <label for="color-filter" class="text-sm font-medium text-slate-300">Filtro de Cor</label>
+                <select id="color-filter" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="normal">Webcam Original</option>
+                    <option value="neon">Saturação Cibernética (Neon)</option>
+                    <option value="thermal">Espectro Térmico</option>
+                    <option value="monochrome">Preto e Branco Moderno</option>
+                    <option value="sepia">Sépia Artístico</option>
+                </select>
+            </div>
+
+            <!-- Fronteiras/Bordas das Células -->
+            <div class="space-y-3">
+                <h3 class="text-sm font-medium text-slate-300 border-b border-slate-800 pb-1">Visualização das Células</h3>
+                
+                <!-- Toggle de Linhas -->
+                <div class="flex items-center justify-between">
+                    <label for="toggle-borders" class="text-xs text-slate-400">Mostrar Bordas</label>
+                    <input type="checkbox" id="toggle-borders" checked class="w-4 h-4 text-blue-600 bg-slate-900 border-slate-700 rounded focus:ring-blue-500">
+                </div>
+
+                <!-- Cor das Bordas -->
+                <div id="border-style-container" class="space-y-2">
+                    <label for="border-color" class="text-xs text-slate-400 block">Estilo das Bordas</label>
+                    <select id="border-color" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="matching">Cor da Célula (Efeito Mesh)</option>
+                        <option value="dark">Escura (Definição)</option>
+                        <option value="neon">Neon Brilhante (Contraste)</option>
+                        <option value="white">Branca Suave</option>
+                    </select>
+                </div>
+
+                <!-- Mostrar Centro de Gravidade -->
+                <div class="flex items-center justify-between">
+                    <label for="toggle-seeds" class="text-xs text-slate-400">Mostrar Pontos Semente</label>
+                    <input type="checkbox" id="toggle-seeds" class="w-4 h-4 text-blue-600 bg-slate-900 border-slate-700 rounded focus:ring-blue-500">
+                </div>
+            </div>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="mt-6 pt-4 border-t border-slate-800 space-y-2">
+            <button id="btn-snapshot" class="w-full bg-blue-600 hover:bg-blue-500 transition-colors py-2.5 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20 active:scale-95">
+                <i data-lucide="camera"></i>
+                Capturar Obra
+            </button>
+            <button id="btn-switch-camera" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700/80 transition-colors py-2 px-4 rounded-xl text-xs font-medium text-slate-300 flex items-center justify-center gap-2">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                Mudar de Câmara
+            </button>
+        </div>
+    </aside>
+
+    <!-- Área de Visualização Principal -->
+    <main class="flex-grow relative bg-slate-950 flex items-center justify-center p-4 overflow-hidden h-[calc(100vh-280px)] md:h-full">
+        <!-- Canvas Dinâmico -->
+        <div class="relative w-full h-full flex items-center justify-center">
+            <canvas id="voronoi-canvas" class="max-w-full max-h-full rounded-2xl shadow-2xl object-contain border border-slate-800/80 bg-slate-900"></canvas>
+            
+            <!-- Mensagem de carregamento/Ajuda se não houver câmara -->
+            <div id="simulated-banner" class="absolute bottom-4 left-4 right-4 bg-slate-900/90 backdrop-blur-md border border-amber-500/30 p-3 rounded-xl flex items-center justify-between gap-3 hidden max-w-lg mx-auto">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-amber-500/15 text-amber-400 rounded-lg shrink-0">
+                        <i data-lucide="alert-circle" class="w-5 h-5"></i>
+                    </div>
+                    <div id="simulation-text" class="text-xs text-slate-300">
+                        <strong class="text-amber-400 block mb-0.5">Modo de Simulação Ativado</strong>
+                        Não conseguimos aceder à câmara (permissão negada ou indisponível). Estamos a simular uma imagem viva em movimento para poderes experimentar!
+                    </div>
+                </div>
+                <button id="btn-activate-banner" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 shrink-0 active:scale-95">
+                    <i data-lucide="video" class="w-3.5 h-3.5"></i>
+                    Ativar Câmara
+                </button>
+            </div>
+
+            <!-- Feedback de Snapshot tirado -->
+            <div id="toast-snapshot" class="absolute top-4 bg-emerald-500/90 text-white backdrop-blur-sm px-4 py-2.5 rounded-full shadow-lg text-xs font-semibold flex items-center gap-2 opacity-0 transform -translate-y-4 transition-all duration-300 pointer-events-none">
+                <i data-lucide="check" class="w-4 h-4"></i>
+                Captura descarregada com sucesso!
+            </div>
+        </div>
+    </main>
+
+    <!-- Elementos Ocultos e Auxiliares para Fluxo de Dados -->
+    <video id="webcam-source" class="hidden" autoplay playsinline></video>
+    <canvas id="offscreen-buffer" class="hidden"></canvas>
+
+    <script>
+        // Inicializar os Ícones
+        lucide.createIcons();
+
+        // Variáveis de Estado da Aplicação
+        const STATE = {
+            width: 800,
+            height: 600,
+            pointCount: 400,
+            movementStyle: 'floating',
+            speed: 1.5,
+            colorFilter: 'normal',
+            showBorders: true,
+            borderColorStyle: 'matching',
+            showSeeds: false,
+            points: [],
+            isSimulated: false,
+            activeVideoDeviceIndex: 0,
+            videoDevices: [],
+            hasUserInteracted: false
+        };
+
+        // Seletores de Elementos DOM
+        const elements = {
+            canvas: document.getElementById('voronoi-canvas'),
+            ctx: document.getElementById('voronoi-canvas').getContext('2d'),
+            offscreenCanvas: document.getElementById('offscreen-buffer'),
+            offscreenCtx: document.getElementById('offscreen-buffer').getContext('2d'),
+            video: document.getElementById('webcam-source'),
+            pointCountInput: document.getElementById('point-count'),
+            pointCountVal: document.getElementById('point-count-val'),
+            movementStyle: document.getElementById('movement-style'),
+            pointSpeed: document.getElementById('point-speed'),
+            pointSpeedVal: document.getElementById('point-speed-val'),
+            speedContainer: document.getElementById('speed-control-container'),
+            colorFilter: document.getElementById('color-filter'),
+            toggleBorders: document.getElementById('toggle-borders'),
+            borderColor: document.getElementById('border-color'),
+            borderContainer: document.getElementById('border-style-container'),
+            toggleSeeds: document.getElementById('toggle-seeds'),
+            cameraStatus: document.getElementById('camera-status'),
+            canvasResolution: document.getElementById('canvas-resolution'),
+            btnSnapshot: document.getElementById('btn-snapshot'),
+            btnSwitchCamera: document.getElementById('btn-switch-camera'),
+            btnActivateCamera: document.getElementById('btn-activate-camera'),
+            btnActivateBanner: document.getElementById('btn-activate-banner'),
+            simulatedBanner: document.getElementById('simulated-banner'),
+            simulationText: document.getElementById('simulation-text'),
+            toastSnapshot: document.getElementById('toast-snapshot')
+        };
+
+        // Vetores de simulação (para quando não há webcam operacional)
+        let simulationGrid = {
+            particles: [],
+            phase: 0
+        };
+
+        // --- INICIALIZAÇÃO DOS PONTOS ---
+        function initPoints() {
+            const tempPoints = [];
+            
+            if (STATE.movementStyle === 'jitter') {
+                // Dispor em grelha aproximada com jitter
+                const cols = Math.ceil(Math.sqrt(STATE.pointCount * (STATE.width / STATE.height)));
+                const rows = Math.ceil(STATE.pointCount / cols);
+                const cellW = STATE.width / cols;
+                const cellH = STATE.height / rows;
+
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        if (tempPoints.length >= STATE.pointCount) break;
+                        const x = (c + 0.5) * cellW;
+                        const y = (r + 0.5) * cellH;
+                        // Jitter inicial e posições originais para âncora
+                        tempPoints.push({
+                            x: x, y: y,
+                            baseX: x, baseY: y,
+                            vx: (Math.random() - 0.5) * 0.5,
+                            vy: (Math.random() - 0.5) * 0.5
+                        });
+                    }
+                }
+            } else {
+                // Dispersão aleatória
+                for (let i = 0; i < STATE.pointCount; i++) {
+                    tempPoints.push({
+                        x: Math.random() * STATE.width,
+                        y: Math.random() * STATE.height,
+                        vx: (Math.random() - 0.5) * 1.5,
+                        vy: (Math.random() - 0.5) * 1.5
+                    });
+                }
+            }
+
+            // Atribuição atómica para evitar que o loop aceda a um estado intermédio incompleto
+            STATE.points = tempPoints;
+        }
+
+        // --- SISTEMA DE WEBCAM ---
+        async function getCameraDevices() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                STATE.videoDevices = devices.filter(device => device.kind === 'videoinput');
+                if (STATE.videoDevices.length <= 1) {
+                    elements.btnSwitchCamera.classList.add('hidden');
+                } else {
+                    elements.btnSwitchCamera.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error("Falha ao listar dispositivos de vídeo:", err);
+            }
+        }
+
+        async function startCamera() {
+            elements.cameraStatus.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>A conectar...`;
+            elements.cameraStatus.className = "flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-bold border border-amber-500/20 text-xs";
+
+            const constraints = {
+                video: {
+                    width: { ideal: 800 },
+                    height: { ideal: 600 }
+                },
+                audio: false
+            };
+
+            // Se existirem múltiplas câmaras, selecionar a câmara correspondente ao índice ativo
+            if (STATE.videoDevices.length > 0) {
+                constraints.video.deviceId = { exact: STATE.videoDevices[STATE.activeVideoDeviceIndex].deviceId };
+            }
+
+            try {
+                // Terminar stream anterior se ativo
+                if (elements.video.srcObject) {
+                    elements.video.srcObject.getTracks().forEach(track => track.stop());
+                }
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                elements.video.srcObject = stream;
+                
+                elements.video.onloadedmetadata = () => {
+                    STATE.width = elements.video.videoWidth;
+                    STATE.height = elements.video.videoHeight;
+                    
+                    // Ajustar tamanhos dos canvas
+                    elements.canvas.width = STATE.width;
+                    elements.canvas.height = STATE.height;
+                    elements.offscreenCanvas.width = STATE.width;
+                    elements.offscreenCanvas.height = STATE.height;
+
+                    elements.canvasResolution.textContent = `${STATE.width} x ${STATE.height}`;
+                    elements.cameraStatus.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Ligado`;
+                    elements.cameraStatus.className = "flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 text-xs";
+                    
+                    STATE.isSimulated = false;
+                    elements.simulatedBanner.classList.add('hidden');
+                    elements.btnActivateCamera.classList.add('hidden');
+                    initPoints();
+                };
+            } catch (err) {
+                console.warn("Acesso à câmara falhou. Iniciando simulador interativo.", err);
+                
+                let customMsg = "Não conseguimos aceder à câmara (permissão negada ou indisponível). Estamos a simular uma imagem viva em movimento para poderes experimentar!";
+                if (window.location.protocol === 'file:') {
+                    customMsg = "<strong class='text-amber-400'>Aviso de Segurança do Navegador:</strong> A câmara está bloqueada porque abriste o ficheiro diretamente (file://). Para usar a webcam, deves correr este ficheiro num servidor local (ex: Live Server no VS Code) ou alojá-lo online (HTTPS).";
+                }
+                
+                activateSimulationMode(customMsg);
+            }
+        }
+
+        // Modo Alternativo se não houver câmara
+        function activateSimulationMode(message) {
+            STATE.isSimulated = true;
+            STATE.width = 640;
+            STATE.height = 480;
+            
+            elements.canvas.width = STATE.width;
+            elements.canvas.height = STATE.height;
+            elements.offscreenCanvas.width = STATE.width;
+            elements.offscreenCanvas.height = STATE.height;
+
+            elements.canvasResolution.textContent = `${STATE.width} x ${STATE.height}`;
+            elements.cameraStatus.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-violet-400"></span>Simulado`;
+            elements.cameraStatus.className = "flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 font-bold border border-violet-500/20 text-xs";
+            
+            if (message && elements.simulationText) {
+                elements.simulationText.innerHTML = `<strong class="text-amber-400 block mb-0.5">Modo de Simulação Ativado</strong>${message}`;
+            }
+
+            elements.simulatedBanner.classList.remove('hidden');
+            elements.btnActivateCamera.classList.remove('hidden');
+            
+            // Gerar formas geométricas animadas para a simulação
+            simulationGrid.particles = [];
+            for (let i = 0; i < 8; i++) {
+                simulationGrid.particles.push({
+                    x: Math.random() * STATE.width,
+                    y: Math.random() * STATE.height,
+                    radius: 80 + Math.random() * 120,
+                    color: `hsl(${(i * 45) % 360}, 85%, 55%)`,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: (Math.random() - 0.5) * 3
+                });
+            }
+
+            initPoints();
+        }
+
+        // --- CONTROLO DO RATO (PARA EFEITO DE GRAVIDADE) ---
+        let mousePosition = { x: -1000, y: -1000 };
+        elements.canvas.addEventListener('mousemove', (e) => {
+            const rect = elements.canvas.getBoundingClientRect();
+            // Mapear posição do rato tendo em conta a escala de visualização do CSS no canvas
+            const scaleX = STATE.width / rect.width;
+            const scaleY = STATE.height / rect.height;
+            mousePosition.x = (e.clientX - rect.left) * scaleX;
+            mousePosition.y = (e.clientY - rect.top) * scaleY;
+        });
+
+        elements.canvas.addEventListener('mouseleave', () => {
+            mousePosition.x = -1000;
+            mousePosition.y = -1000;
+        });
+
+        // Suporte para Ecrãs Táteis (Gestos de arrastar)
+        elements.canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                const rect = elements.canvas.getBoundingClientRect();
+                const scaleX = STATE.width / rect.width;
+                const scaleY = STATE.height / rect.height;
+                mousePosition.x = (e.touches[0].clientX - rect.left) * scaleX;
+                mousePosition.y = (e.touches[0].clientY - rect.top) * scaleY;
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        elements.canvas.addEventListener('touchend', () => {
+            mousePosition.x = -1000;
+            mousePosition.y = -1000;
+        });
+
+
+        // --- ANIMAÇÃO E ATUALIZAÇÃO DOS PONTOS SEMENTE ---
+        function updatePoints() {
+            const speedFactor = STATE.speed;
+            
+            if (STATE.movementStyle === 'floating') {
+                for (let p of STATE.points) {
+                    p.x += p.vx * speedFactor;
+                    p.y += p.vy * speedFactor;
+
+                    // Colisões com as margens
+                    if (p.x < 0 || p.x > STATE.width) p.vx *= -1;
+                    if (p.y < 0 || p.y > STATE.height) p.vy *= -1;
+                    
+                    // Manter dentro do quadrante
+                    p.x = Math.max(0, Math.min(STATE.width, p.x));
+                    p.y = Math.max(0, Math.min(STATE.height, p.y));
+                }
+            } 
+            else if (STATE.movementStyle === 'gravity') {
+                for (let p of STATE.points) {
+                    // Atualização flutuante base
+                    p.x += p.vx * speedFactor * 0.4;
+                    p.y += p.vy * speedFactor * 0.4;
+
+                    if (p.x < 0 || p.x > STATE.width) p.vx *= -1;
+                    if (p.y < 0 || p.y > STATE.height) p.vy *= -1;
+
+                    // Atração ao rato se estiver dentro do canvas
+                    if (mousePosition.x > 0 && mousePosition.y > 0) {
+                        const dx = mousePosition.x - p.x;
+                        const dy = mousePosition.y - p.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist < 250 && dist > 10) {
+                            const force = (250 - dist) / 250 * 0.08 * speedFactor;
+                            p.x += (dx / dist) * force * STATE.width * 0.05;
+                            p.y += (dy / dist) * force * STATE.height * 0.05;
+                        }
+                    }
+
+                    p.x = Math.max(0, Math.min(STATE.width, p.x));
+                    p.y = Math.max(0, Math.min(STATE.height, p.y));
+                }
+            } 
+            else if (STATE.movementStyle === 'jitter') {
+                for (let p of STATE.points) {
+                    // Pequenas oscilações em torno do ponto de origem da grelha
+                    const jitterAmount = 15;
+                    const noiseX = (Math.random() - 0.5) * speedFactor * 2;
+                    const noiseY = (Math.random() - 0.5) * speedFactor * 2;
+
+                    p.x += noiseX;
+                    p.y += noiseY;
+
+                    // Força elástica para manter perto da âncora
+                    const dx = p.baseX - p.x;
+                    const dy = p.baseY - p.y;
+                    p.x += dx * 0.05 * speedFactor;
+                    p.y += dy * 0.05 * speedFactor;
+
+                    p.x = Math.max(0, Math.min(STATE.width, p.x));
+                    p.y = Math.max(0, Math.min(STATE.height, p.y));
+                }
+            }
+        }
+
+
+        // --- MOTOR DE SIMULAÇÃO VISUAL ---
+        function renderSimulationFrame(ctx) {
+            // Desenhar fundo geométrico e degradés dinâmicos
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, STATE.width, STATE.height);
+
+            simulationGrid.phase += 0.015;
+
+            // Atualizar e renderizar partículas coloridas
+            for (let p of simulationGrid.particles) {
+                p.x += p.vx;
+                p.y += p.vy;
+
+                if (p.x - p.radius < 0 || p.x + p.radius > STATE.width) p.vx *= -1;
+                if (p.y - p.radius < 0 || p.y + p.radius > STATE.height) p.vy *= -1;
+
+                const grad = ctx.createRadialGradient(p.x, p.y, p.radius * 0.1, p.x, p.y, p.radius);
+                grad.addColorStop(0, p.color);
+                grad.addColorStop(1, 'transparent');
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Desenhar padrão em grelha cibernética flutuante para detalhar a imagem
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)';
+            ctx.lineWidth = 1.5;
+            const size = 60;
+            const offset = (simulationGrid.phase * 20) % size;
+            
+            for (let x = offset; x < STATE.width; x += size) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, STATE.height);
+                ctx.stroke();
+            }
+            for (let y = offset; y < STATE.height; y += size) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(STATE.width, y);
+                ctx.stroke();
+            }
+
+            // Escrever texto em movimento para simular rostos e formas reais
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 48px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText("VORONOI ART", STATE.width / 2, STATE.height / 2 + Math.sin(simulationGrid.phase) * 30);
+            
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.strokeText("VORONOI ART", STATE.width / 2, STATE.height / 2 + Math.sin(simulationGrid.phase) * 30);
+        }
+
+        // --- SISTEMA DE COR E EFEITOS ESPECIAIS ---
+        function applyColorFilter(r, g, b) {
+            switch (STATE.colorFilter) {
+                case 'neon':
+                    // Realce de canais digitais agressivos
+                    const max = Math.max(r, g, b);
+                    if (max === r) return `rgb(${Math.min(255, r * 1.5)}, 0, ${Math.min(255, b * 1.1)})`;
+                    if (max === g) return `rgb(0, ${Math.min(255, g * 1.5)}, ${Math.min(255, b * 1.4)})`;
+                    return `rgb(${Math.min(255, r * 1.2)}, 0, ${Math.min(255, b * 1.6)})`;
+
+                case 'thermal':
+                    // Mapeamento térmico artificial baseado em brilho
+                    const luma = (r * 0.299 + g * 0.587 + b * 0.114);
+                    if (luma < 50) return `rgb(0, 0, ${Math.floor(luma * 4)})`; // Frio (Azul)
+                    if (luma < 130) return `rgb(${Math.floor((luma - 50) * 3.1)}, ${Math.floor((luma - 50) * 1.5)}, 0)`; // Médio (Vermelho)
+                    return `rgb(255, ${Math.floor(200 + (luma - 130) * 0.5)}, ${Math.floor((luma - 130) * 2)})`; // Quente (Amarelo/Branco)
+
+                case 'monochrome':
+                    // Luminosidade em escala de cinza com alto contraste
+                    const gray = Math.floor(r * 0.299 + g * 0.587 + b * 0.114);
+                    const contrastGray = gray < 128 ? Math.max(0, gray - 20) : Math.min(255, gray + 20);
+                    return `rgb(${contrastGray}, ${contrastGray}, ${contrastGray})`;
+
+                case 'sepia':
+                    const sr = (r * .393) + (g *.769) + (b * .189);
+                    const sg = (r * .349) + (g *.686) + (b * .168);
+                    const sb = (r * .272) + (g *.534) + (b * .131);
+                    return `rgb(${Math.min(255, sr)}, ${Math.min(255, sg)}, ${Math.min(255, sb)})`;
+
+                case 'normal':
+                default:
+                    return `rgb(${r}, ${g}, ${b})`;
+            }
+        }
+
+
+        // --- CICLO DE DESENHO PRINCIPAL ---
+        function loop() {
+            // Guardrail de segurança: Se os pontos ainda não existirem ou estiverem incompletos, ignorar a frame atual
+            if (!STATE.points || STATE.points.length < STATE.pointCount) {
+                requestAnimationFrame(loop);
+                return;
+            }
+
+            // 1. Atualizar e amostrar dados do frame original
+            if (!STATE.isSimulated && elements.video.readyState === elements.video.HAVE_ENOUGH_DATA) {
+                // Desenhar a frame da webcam espelhada no buffer invisível
+                elements.offscreenCtx.save();
+                elements.offscreenCtx.translate(STATE.width, 0);
+                elements.offscreenCtx.scale(-1, 1); // Espelhar o vídeo para comportamento natural de espelho
+                elements.offscreenCtx.drawImage(elements.video, 0, 0, STATE.width, STATE.height);
+                elements.offscreenCtx.restore();
+            } else if (STATE.isSimulated) {
+                // Senão, rodar ciclo gerador de simulação
+                renderSimulationFrame(elements.offscreenCtx);
+            }
+
+            // 2. Mover posições dos pontos
+            updatePoints();
+
+            // Obter imagem plana para extração rápida de cor por coordenadas
+            let frameData;
+            try {
+                frameData = elements.offscreenCtx.getImageData(0, 0, STATE.width, STATE.height);
+            } catch (e) {
+                // Fail-safe caso o contexto esteja temporariamente inacessível
+                requestAnimationFrame(loop);
+                return;
+            }
+
+            // 3. Estruturar os dados de pontos para o D3-Delaunay
+            const flatPoints = new Float64Array(STATE.pointCount * 2);
+            for (let i = 0; i < STATE.pointCount; i++) {
+                flatPoints[i * 2] = STATE.points[i].x;
+                flatPoints[i * 2 + 1] = STATE.points[i].y;
+            }
+
+            // 4. Executar o cálculo matemático de Voronoi
+            const delaunay = d3.Delaunay.from(flatPoints);
+            const voronoi = delaunay.voronoi([0, 0, STATE.width, STATE.height]);
+
+            // Limpar o canvas principal
+            elements.ctx.clearRect(0, 0, STATE.width, STATE.height);
+
+            // Determinar estilo de borda
+            const showBorders = STATE.showBorders;
+            const borderStyle = STATE.borderColorStyle;
+
+            // 5. Desenhar cada célula Voronoi
+            for (let i = 0; i < STATE.pointCount; i++) {
+                const polygon = voronoi.cellPolygon(i);
+                if (!polygon) continue;
+
+                // Encontrar o ponto semente para determinar a cor do pixel correspondente
+                const seedX = Math.max(0, Math.min(STATE.width - 1, Math.floor(STATE.points[i].x)));
+                const seedY = Math.max(0, Math.min(STATE.height - 1, Math.floor(STATE.points[i].y)));
+                
+                // Mapear posição no array de píxeis unidimensional
+                const pixelIndex = (seedY * STATE.width + seedX) * 4;
+                const r = frameData.data[pixelIndex];
+                const g = frameData.data[pixelIndex + 1];
+                const b = frameData.data[pixelIndex + 2];
+
+                const color = applyColorFilter(r, g, b);
+
+                // Desenhar o polígono da célula
+                elements.ctx.beginPath();
+                elements.ctx.moveTo(polygon[0][0], polygon[0][1]);
+                for (let j = 1; j < polygon.length; j++) {
+                    elements.ctx.lineTo(polygon[j][0], polygon[j][1]);
+                }
+                elements.ctx.closePath();
+
+                // Pintar preenchimento
+                elements.ctx.fillStyle = color;
+                elements.ctx.fill();
+
+                // Desenhar as bordas
+                if (showBorders) {
+                    if (borderStyle === 'matching') {
+                        elements.ctx.strokeStyle = color;
+                        elements.ctx.lineWidth = 1.0;
+                    } else if (borderStyle === 'dark') {
+                        elements.ctx.strokeStyle = 'rgba(15, 23, 42, 0.4)';
+                        elements.ctx.lineWidth = 1.2;
+                    } else if (borderStyle === 'neon') {
+                        elements.ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+                        elements.ctx.lineWidth = 0.8;
+                    } else if (borderStyle === 'white') {
+                        elements.ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+                        elements.ctx.lineWidth = 0.6;
+                    }
+                    elements.ctx.stroke();
+                }
+            }
+
+            // 6. Desenhar os pontos semente caso esteja ativo
+            if (STATE.showSeeds) {
+                elements.ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                for (let i = 0; i < STATE.pointCount; i++) {
+                    elements.ctx.beginPath();
+                    elements.ctx.arc(STATE.points[i].x, STATE.points[i].y, 1.5, 0, Math.PI * 2);
+                    elements.ctx.fill();
+                }
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        // --- GESTÃO DOS EVENTOS DE CONTROLO ---
+
+        // Densidade de pontos
+        elements.pointCountInput.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            elements.pointCountVal.textContent = val;
+            STATE.pointCount = val;
+            initPoints();
+        });
+
+        // Modos de movimento
+        elements.movementStyle.addEventListener('change', (e) => {
+            STATE.movementStyle = e.target.value;
+            
+            // Ocultar velocidade se o movimento for estático
+            if (STATE.movementStyle === 'static') {
+                elements.speedContainer.classList.add('opacity-40', 'pointer-events-none');
+            } else {
+                elements.speedContainer.classList.remove('opacity-40', 'pointer-events-none');
+            }
+            initPoints();
+        });
+
+        // Slider de velocidade
+        elements.pointSpeed.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            elements.pointSpeedVal.textContent = `${val.toFixed(1)}x`;
+            STATE.speed = val;
+        });
+
+        // Filtro cromático
+        elements.colorFilter.addEventListener('change', (e) => {
+            STATE.colorFilter = e.target.value;
+        });
+
+        // Mostrar/Ocultar Fronteiras
+        elements.toggleBorders.addEventListener('change', (e) => {
+            STATE.showBorders = e.target.checked;
+            if (STATE.showBorders) {
+                elements.borderContainer.classList.remove('opacity-40', 'pointer-events-none');
+            } else {
+                elements.borderContainer.classList.add('opacity-40', 'pointer-events-none');
+            }
+        });
+
+        // Cor de Fronteira
+        elements.borderColor.addEventListener('change', (e) => {
+            STATE.borderColorStyle = e.target.value;
+        });
+
+        // Toggle do Centro das Células
+        elements.toggleSeeds.addEventListener('change', (e) => {
+            STATE.showSeeds = e.target.checked;
+        });
+
+        // Capturar snapshot do Canvas
+        elements.btnSnapshot.addEventListener('click', () => {
+            const imageURL = elements.canvas.toDataURL("image/png");
+            const link = document.createElement('a');
+            link.download = `voronoi_snapshot_${Date.now()}.png`;
+            link.href = imageURL;
+            link.click();
+
+            // Despoletar efeito de feedback (Toast)
+            elements.toastSnapshot.classList.remove('opacity-0', '-translate-y-4');
+            elements.toastSnapshot.classList.add('opacity-100', 'translate-y-0');
+            
+            setTimeout(() => {
+                elements.toastSnapshot.classList.remove('opacity-100', 'translate-y-0');
+                elements.toastSnapshot.classList.add('opacity-0', '-translate-y-4');
+            }, 3000);
+        });
+
+        // Botão para alternar entre câmaras
+        elements.btnSwitchCamera.addEventListener('click', () => {
+            if (STATE.videoDevices.length > 1) {
+                STATE.activeVideoDeviceIndex = (STATE.activeVideoDeviceIndex + 1) % STATE.videoDevices.length;
+                startCamera();
+            }
+        });
+
+        // Botão para ativar a câmara manualmente
+        const handleActivateCamera = async () => {
+            await getCameraDevices();
+            await startCamera();
+            lucide.createIcons();
+        };
+
+        elements.btnActivateCamera.addEventListener('click', handleActivateCamera);
+        if (elements.btnActivateBanner) {
+            elements.btnActivateBanner.addEventListener('click', handleActivateCamera);
+        }
+
+        // --- ARRANQUE GERAL DO FLUXO ---
+        window.onload = async () => {
+            await getCameraDevices();
+            await startCamera();
+            // Iniciar o loop principal da animação
+            loop();
+        };
+    </script>
+</body>
+</html>
