@@ -19,9 +19,20 @@
 </head>
 <body class="bg-black text-gray-800">
 
+    <!-- Botão para abrir o menu -->
+    <button id="btn-open-menu" class="absolute top-4 left-4 z-10 bg-gray-900/50 hover:bg-gray-900/80 backdrop-blur p-2 rounded-lg shadow-lg text-white transition-colors">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    </button>
+
     <!-- Sidebar de Controlos (Lateral) -->
-    <aside class="absolute top-0 left-0 h-full w-80 bg-white/95 backdrop-blur-md shadow-2xl p-6 flex flex-col gap-6 z-20 overflow-y-auto">
-        <header>
+    <aside id="sidebar" class="absolute top-0 left-0 h-full w-80 bg-white/95 backdrop-blur-md shadow-2xl p-6 flex flex-col gap-6 z-20 overflow-y-auto transition-transform duration-300 ease-in-out">
+        
+        <!-- Botão para fechar o menu -->
+        <button id="btn-close-menu" class="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+
+        <header class="pr-6">
             <p class="text-sm text-gray-600">Simulação direcional em tempo real.</p>
         </header>
 
@@ -109,6 +120,10 @@
         const btnSwitchCam = document.getElementById('btn-switch-cam');
         const statusMsg = document.getElementById('status-msg');
         const placeholder = document.getElementById('placeholder');
+        
+        const sidebar = document.getElementById('sidebar');
+        const btnOpenMenu = document.getElementById('btn-open-menu');
+        const btnCloseMenu = document.getElementById('btn-close-menu');
 
         // Controles de Input
         const inputs = {
@@ -156,6 +171,15 @@
                 if(key === 'length' || key === 'thickness') suffix = ' px';
                 values[key].innerText = e.target.value + suffix;
             });
+        });
+
+        // Alternar Menu
+        btnOpenMenu.addEventListener('click', () => {
+            sidebar.classList.remove('-translate-x-full');
+        });
+
+        btnCloseMenu.addEventListener('click', () => {
+            sidebar.classList.add('-translate-x-full');
         });
 
         // Iniciar/Parar Webcam
