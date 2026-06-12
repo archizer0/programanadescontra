@@ -19,21 +19,21 @@
 </head>
 <body class="bg-black text-gray-800">
 
-    <!-- Botão para abrir o menu -->
-    <button id="btn-open-menu" class="absolute top-4 left-4 z-10 bg-gray-900/50 hover:bg-gray-900/80 backdrop-blur p-2 rounded-lg shadow-lg text-white transition-colors">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    <!-- Botão para abrir o menu - SEMPRE VISÍVEL E POR CIMA -->
+    <button id="btn-open-menu" class="fixed top-4 left-4 z-50 bg-gray-900 hover:bg-gray-700 p-3 rounded-xl shadow-2xl text-white transition-all scale-100 opacity-100 border border-gray-700">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
     </button>
 
-    <!-- Sidebar de Controlos (Lateral) -->
-    <aside id="sidebar" class="absolute top-0 left-0 h-full w-80 bg-white/95 backdrop-blur-md shadow-2xl p-6 flex flex-col gap-6 z-20 overflow-y-auto transition-transform duration-300 ease-in-out">
+    <!-- Sidebar de Controlos (Lateral) - Inicia Fechada (-translate-x-full) -->
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-80 bg-white/95 backdrop-blur-md shadow-2xl p-6 pt-20 flex flex-col gap-6 z-40 overflow-y-auto transition-transform duration-300 ease-in-out -translate-x-full border-r border-gray-200">
         
-        <!-- Botão para fechar o menu -->
+        <!-- Botão para fechar o menu (X no topo) -->
         <button id="btn-close-menu" class="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
 
-        <header class="pr-6">
-            <p class="text-sm text-gray-600">Simulação direcional em tempo real.</p>
+        <header class="pr-6 border-b pb-4 mb-2">
+            <p class="text-sm text-gray-600">Simulação direcional em tempo real para telemóveis e desktop.</p>
         </header>
 
         <div>
@@ -44,9 +44,9 @@
         </div>
 
         <div>
-            <button id="btn-switch-cam" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm">
+            <button id="btn-switch-cam" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm border border-gray-300">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                <span>Alternar Câmara</span>
+                <span>Alternar Traseira/Frontal</span>
             </button>
         </div>
 
@@ -91,14 +91,14 @@
         </div>
         
         <div id="status-msg" class="mt-auto text-sm text-center text-amber-600 hidden bg-amber-50 p-3 rounded border border-amber-200">
-            A aguardar permissão da câmara...
+            A aguardar permissão...
         </div>
     </aside>
 
     <!-- Área Principal de Visualização (Ecrã Inteiro) -->
     <div id="placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 bg-gray-900 z-0">
         <svg class="w-24 h-24 mb-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-        <p class="text-xl font-light">A visualização ocupará todo o ecrã</p>
+        <p class="text-xl font-light">Abra o menu para iniciar a câmara</p>
     </div>
 
     <canvas id="output-canvas" class="absolute inset-0 w-full h-full z-10"></canvas>
@@ -176,10 +176,14 @@
         // Alternar Menu
         btnOpenMenu.addEventListener('click', () => {
             sidebar.classList.remove('-translate-x-full');
+            // Ocultar o botão "abrir" quando o menu está aberto para não sobrepor
+            btnOpenMenu.classList.add('opacity-0', 'pointer-events-none');
         });
 
         btnCloseMenu.addEventListener('click', () => {
             sidebar.classList.add('-translate-x-full');
+            // Reexibir o botão "abrir" quando o menu está fechado
+            btnOpenMenu.classList.remove('opacity-0', 'pointer-events-none');
         });
 
         // Iniciar/Parar Webcam
@@ -200,6 +204,8 @@
                 setTimeout(() => {
                     startWebcam();
                 }, 300);
+            } else {
+                startWebcam(); // Se estiver desligada, liga diretamente na orientação correta
             }
         });
 
@@ -246,7 +252,7 @@
                         renderLoop();
                     } catch (playError) {
                         console.error("Erro ao reproduzir vídeo: ", playError);
-                        statusMsg.innerText = "Erro ao iniciar o feed de vídeo automaticamente. Tente clicar novamente.";
+                        statusMsg.innerText = "Erro ao iniciar o feed automaticamente. Clique novamente.";
                         statusMsg.classList.remove('hidden');
                     }
                 };
@@ -256,7 +262,7 @@
                 statusMsg.classList.replace('text-amber-600', 'text-red-600');
                 statusMsg.classList.replace('bg-amber-50', 'bg-red-50');
                 statusMsg.classList.replace('border-amber-200', 'border-red-200');
-                statusMsg.innerText = "Erro: Não foi possível aceder à câmara. Verifique as permissões do navegador.";
+                statusMsg.innerText = "Erro: Permissão negada ou câmara indisponível.";
             }
         }
 
