@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filtro de Emaranhado de Fios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            overflow: hidden; /* Evita barras de scroll para o ecrã inteiro */
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-black text-gray-800">
+
+    <!-- Sidebar de Controlos (Lateral) -->
+    <aside class="absolute top-0 left-0 h-full w-80 bg-white/95 backdrop-blur-md shadow-2xl p-6 flex flex-col gap-6 z-20 overflow-y-auto">
+        <header>
+            <p class="text-sm text-gray-600">Simulação direcional em tempo real.</p>
+        </header>
+
+        <div>
+            <button id="btn-toggle" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                <span id="btn-text">Iniciar Câmara</span>
+            </button>
+        </div>
+
+        <div>
+            <button id="btn-switch-cam" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <span>Alternar Câmara</span>
+            </button>
+        </div>
+
+        <div class="space-y-4">
+            <h3 class="text-md font-semibold text-gray-700 border-b pb-1">Ajustes do Emaranhado</h3>
+            
+            <!-- Densidade -->
+            <div>
+                <div class="flex justify-between text-sm mb-1 text-gray-600">
+                    <label for="density">Densidade</label>
+                    <span id="val-density">15000</span>
+                </div>
+                <input type="range" id="density" min="1000" max="40000" step="1000" value="15000" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <!-- Comprimento do Segmento -->
+            <div>
+                <div class="flex justify-between text-sm mb-1 text-gray-600">
+                    <label for="length">Comprimento</label>
+                    <span id="val-length">8 px</span>
+                </div>
+                <input type="range" id="length" min="2" max="40" step="1" value="8" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <!-- Espessura -->
+            <div>
+                <div class="flex justify-between text-sm mb-1 text-gray-600">
+                    <label for="thickness">Espessura</label>
+                    <span id="val-thickness">1.5 px</span>
+                </div>
+                <input type="range" id="thickness" min="0.5" max="5" step="0.5" value="1.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <!-- Acumulação / Fade -->
+            <div>
+                <div class="flex justify-between text-sm mb-1 text-gray-600">
+                    <label for="fade">Limpeza do Fundo</label>
+                    <span id="val-fade">5%</span>
+                </div>
+                <input type="range" id="fade" min="0" max="100" step="1" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+        </div>
+        
+        <div id="status-msg" class="mt-auto text-sm text-center text-amber-600 hidden bg-amber-50 p-3 rounded border border-amber-200">
+            A aguardar permissão da câmara...
+        </div>
+    </aside>
+
+    <!-- Área Principal de Visualização (Ecrã Inteiro) -->
+    <div id="placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 bg-gray-900 z-0">
+        <svg class="w-24 h-24 mb-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        <p class="text-xl font-light">A visualização ocupará todo o ecrã</p>
+    </div>
+
+    <canvas id="output-canvas" class="absolute inset-0 w-full h-full z-10"></canvas>
+
+    <!-- Elementos de processamento ocultos -->
+    <video id="webcam" autoplay playsinline class="hidden"></video>
+    <canvas id="processing-canvas" class="hidden"></canvas>
+
+    <script>
+        // DOM Elements
+        const video = document.getElementById('webcam');
+        const outputCanvas = document.getElementById('output-canvas');
+        const outputCtx = outputCanvas.getContext('2d', { alpha: false });
+        const procCanvas = document.getElementById('processing-canvas');
+        const procCtx = procCanvas.getContext('2d', { willReadFrequently: true });
+        
+        const btnToggle = document.getElementById('btn-toggle');
+        const btnText = document.getElementById('btn-text');
+        const btnSwitchCam = document.getElementById('btn-switch-cam');
+        const statusMsg = document.getElementById('status-msg');
+        const placeholder = document.getElementById('placeholder');
+
+        // Controles de Input
+        const inputs = {
+            density: document.getElementById('density'),
+            length: document.getElementById('length'),
+            thickness: document.getElementById('thickness'),
+            fade: document.getElementById('fade')
+        };
+        const values = {
+            density: document.getElementById('val-density'),
+            length: document.getElementById('val-length'),
+            thickness: document.getElementById('val-thickness'),
+            fade: document.getElementById('val-fade')
+        };
+
+        // Estado
+        let isPlaying = false;
+        let stream = null;
+        let animationFrameId = null;
+        let useFrontCamera = true;
+
+        // Resolução interna para processamento (Manter baixo para performance de 60fps)
+        const PROC_WIDTH = 320;
+        const PROC_HEIGHT = 240;
+        procCanvas.width = PROC_WIDTH;
+        procCanvas.height = PROC_HEIGHT;
+
+        // Ajustar visualização para ecrã inteiro
+        function resizeCanvas() {
+            outputCanvas.width = window.innerWidth * (window.devicePixelRatio || 1);
+            outputCanvas.height = window.innerHeight * (window.devicePixelRatio || 1);
+            
+            // Preencher com branco ao redimensionar
+            outputCtx.fillStyle = '#ffffff';
+            outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Atualizar Labels
+        Object.keys(inputs).forEach(key => {
+            inputs[key].addEventListener('input', (e) => {
+                let suffix = '';
+                if(key === 'fade') suffix = '%';
+                if(key === 'length' || key === 'thickness') suffix = ' px';
+                values[key].innerText = e.target.value + suffix;
+            });
+        });
+
+        // Iniciar/Parar Webcam
+        btnToggle.addEventListener('click', async () => {
+            if (isPlaying) {
+                stopWebcam();
+            } else {
+                startWebcam();
+            }
+        });
+
+        // Alternar entre câmara frontal e traseira
+        btnSwitchCam.addEventListener('click', () => {
+            useFrontCamera = !useFrontCamera;
+            if (isPlaying) {
+                stopWebcam();
+                // Pequeno atraso para garantir que o hardware da câmara é libertado antes de reiniciar
+                setTimeout(() => {
+                    startWebcam();
+                }, 300);
+            }
+        });
+
+        async function startWebcam() {
+            // Verificação crítica de suporte à API da câmara
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                statusMsg.classList.remove('hidden');
+                statusMsg.classList.replace('text-amber-600', 'text-red-600');
+                statusMsg.classList.replace('bg-amber-50', 'bg-red-50');
+                statusMsg.classList.replace('border-amber-200', 'border-red-200');
+                statusMsg.innerText = "Erro: A câmara não é suportada ou o site não está num ambiente seguro (HTTPS).";
+                return;
+            }
+
+            statusMsg.classList.remove('hidden');
+            statusMsg.classList.replace('text-red-600', 'text-amber-600');
+            statusMsg.classList.replace('bg-red-50', 'bg-amber-50');
+            statusMsg.classList.replace('border-red-200', 'border-amber-200');
+            statusMsg.innerText = "A aguardar permissão da câmara...";
+            
+            try {
+                // Resolução mais alta (720p) para que a qualidade em fullscreen seja melhor
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: useFrontCamera ? 'user' : 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, 
+                    audio: false 
+                });
+                video.srcObject = stream;
+                
+                // Correção: Uso de 'onloadeddata' e await play() para prevenir falhas no início
+                video.onloadeddata = async () => {
+                    try {
+                        await video.play();
+                        isPlaying = true;
+                        btnToggle.classList.replace('bg-blue-600', 'bg-red-600');
+                        btnToggle.classList.replace('hover:bg-blue-700', 'hover:bg-red-700');
+                        btnText.innerText = "Desativar Câmara";
+                        statusMsg.classList.add('hidden');
+                        placeholder.classList.add('hidden');
+                        
+                        // Limpar canvas inicial
+                        outputCtx.fillStyle = '#ffffff';
+                        outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+                        
+                        renderLoop();
+                    } catch (playError) {
+                        console.error("Erro ao reproduzir vídeo: ", playError);
+                        statusMsg.innerText = "Erro ao iniciar o feed de vídeo automaticamente. Tente clicar novamente.";
+                        statusMsg.classList.remove('hidden');
+                    }
+                };
+            } catch (err) {
+                console.error("Erro ao aceder à câmara: ", err);
+                statusMsg.classList.remove('hidden');
+                statusMsg.classList.replace('text-amber-600', 'text-red-600');
+                statusMsg.classList.replace('bg-amber-50', 'bg-red-50');
+                statusMsg.classList.replace('border-amber-200', 'border-red-200');
+                statusMsg.innerText = "Erro: Não foi possível aceder à câmara. Verifique as permissões do navegador.";
+            }
+        }
+
+        function stopWebcam() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            video.srcObject = null;
+            isPlaying = false;
+            cancelAnimationFrame(animationFrameId);
+            
+            btnToggle.classList.replace('bg-red-600', 'bg-blue-600');
+            btnToggle.classList.replace('hover:bg-red-700', 'hover:bg-blue-700');
+            btnText.innerText = "Iniciar Câmara";
+            placeholder.classList.remove('hidden');
+        }
+
+        // --- Funções de Processamento de Imagem ---
+
+        // Converte RGB para HSL (útil para criar cores vibrantes)
+        function rgbToHsl(r, g, b) {
+            r /= 255, g /= 255, b /= 255;
+            let max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max == min) {
+                h = s = 0; 
+            } else {
+                let d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            return [h * 360, s * 100, l * 100];
+        }
+
+        // Pega na cor original e "simplifica" para tons vivos e fortes
+        function getVividColor(r, g, b) {
+            // Se for muito escuro, desenhar como "fio preto/sombra"
+            if (r < 50 && g < 50 && b < 50) {
+                return 'rgba(20, 20, 30, 0.8)';
+            }
+            // Se for muito claro, ignorar ou desenhar fio cinza claro
+            if (r > 220 && g > 220 && b > 220) {
+                 return 'rgba(200, 200, 200, 0.3)';
+            }
+
+            const [h, s, l] = rgbToHsl(r, g, b);
+            
+            // Quantizar a matriz de cor (hue) para simplificar a paleta (degraus de 20 graus)
+            const simplifiedHue = Math.floor(h / 20) * 20;
+            
+            // Forçar alta saturação para "cores vivas"
+            const vividSaturation = Math.min(100, s * 1.5 + 40); 
+            
+            // Manter a luminosidade próxima, mas aumentar o contraste
+            const enhancedLightness = l < 50 ? Math.max(10, l - 10) : Math.min(90, l + 10);
+
+            return `hsla(${simplifiedHue}, ${vividSaturation}%, ${enhancedLightness}%, 0.8)`;
+        }
+
+        function renderLoop() {
+            if (!isPlaying) return;
+
+            // 1. Capturar frame redimensionado para processamento rápido
+            procCtx.drawImage(video, 0, 0, PROC_WIDTH, PROC_HEIGHT);
+            const imgData = procCtx.getImageData(0, 0, PROC_WIDTH, PROC_HEIGHT);
+            const data = imgData.data;
+
+            // 2. Efeito de desvanecimento (Fade) no Canvas de Saída
+            // Isto permite que as linhas se acumulem, criando densidade
+            const fadeVal = parseInt(inputs.fade.value) / 100;
+            if (fadeVal > 0) {
+                outputCtx.fillStyle = `rgba(255, 255, 255, ${fadeVal})`;
+                outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+            }
+
+            // Parâmetros do utilizador
+            const density = parseInt(inputs.density.value);
+            const baseLength = parseFloat(inputs.length.value) * (window.devicePixelRatio || 1);
+            outputCtx.lineWidth = parseFloat(inputs.thickness.value) * (window.devicePixelRatio || 1);
+            outputCtx.lineCap = 'round';
+
+            // Escala entre o processamento e a saída
+            const scaleX = outputCanvas.width / PROC_WIDTH;
+            const scaleY = outputCanvas.height / PROC_HEIGHT;
+
+            outputCtx.beginPath();
+
+            // 3. Amostragem em massa (desenhar N segmentos por frame)
+            for (let i = 0; i < density; i++) {
+                // Escolher um ponto aleatório
+                const rx = Math.floor(Math.random() * (PROC_WIDTH - 2)) + 1;
+                const ry = Math.floor(Math.random() * (PROC_HEIGHT - 2)) + 1;
+
+                const idx = (ry * PROC_WIDTH + rx) * 4;
+                const r = data[idx];
+                const g = data[idx+1];
+                const b = data[idx+2];
+
+                // Função auxiliar para luminosidade de um vizinho
+                const getLum = (offset) => {
+                    return 0.299 * data[idx + offset] + 0.587 * data[idx + offset + 1] + 0.114 * data[idx + offset + 2];
+                };
+
+                // Calcular o Gradiente (Sobel simplificado)
+                // Usado para saber a inclinação da borda e alinhar o segmento
+                const lumLeft = getLum(-4);
+                const lumRight = getLum(4);
+                const lumTop = getLum(-PROC_WIDTH * 4);
+                const lumBottom = getLum(PROC_WIDTH * 4);
+
+                const dx = lumRight - lumLeft;
+                const dy = lumBottom - lumTop;
+                
+                // Força da borda (se for zona lisa, force é perto de 0)
+                const magnitude = Math.sqrt(dx*dx + dy*dy);
+
+                // O ângulo perpendicular ao gradiente (abraça a forma)
+                let angle = Math.atan2(dy, dx) + Math.PI / 2;
+
+                // Para criar o efeito de emaranhado, adicionamos um pequeno desvio (jitter)
+                // Zonas de borda forte (magnitude alta) seguem mais rigorosamente a forma
+                // Zonas planas (magnitude baixa) são mais caóticas/espalhadas
+                if (magnitude < 15) {
+                    angle += (Math.random() - 0.5) * Math.PI; // Caos total em zonas planas
+                } else {
+                    angle += (Math.random() - 0.5) * 0.3;     // Ligeiro tremor nas bordas
+                }
+
+                // Variação orgânica no comprimento
+                const length = baseLength * (0.5 + Math.random());
+
+                // Obter Cor
+                outputCtx.strokeStyle = getVividColor(r, g, b);
+
+                // Posição no canvas final
+                const outX = rx * scaleX;
+                const outY = ry * scaleY;
+
+                // Desenhar o segmento
+                const startX = outX - Math.cos(angle) * (length / 2);
+                const startY = outY - Math.sin(angle) * (length / 2);
+                const endX = outX + Math.cos(angle) * (length / 2);
+                const endY = outY + Math.sin(angle) * (length / 2);
+
+                outputCtx.beginPath();
+                outputCtx.moveTo(startX, startY);
+                outputCtx.lineTo(endX, endY);
+                outputCtx.stroke();
+            }
+
+            animationFrameId = requestAnimationFrame(renderLoop);
+        }
+    </script>
+</body>
+</html>
