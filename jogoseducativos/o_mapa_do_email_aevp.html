@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O Mapa do Email (AEVP)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #e0f2fe;
+            background-image: radial-gradient(#bae6fd 20%, transparent 20%), radial-gradient(#bae6fd 20%, transparent 20%);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.8); }
+            70% { transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .pop-in {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .email-part {
+            transition: all 0.2s;
+            box-shadow: 0 8px 0px rgba(0,0,0,0.2);
+        }
+        .email-part:active {
+            transform: translateY(8px);
+            box-shadow: 0 0px 0px rgba(0,0,0,0.2);
+        }
+        .email-part.active {
+            transform: translateY(4px) scale(1.05);
+            box-shadow: 0 4px 0px rgba(0,0,0,0.2);
+            filter: brightness(1.1);
+        }
+
+        /* Novas animações para o jogo */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+        .animate-shake {
+            animation: shake 0.5s;
+        }
+
+        @keyframes tada {
+            0% { transform: scale(1); }
+            10%, 20% { transform: scale(0.9) rotate(-3deg); }
+            30%, 50%, 70%, 90% { transform: scale(1.1) rotate(3deg); }
+            40%, 60%, 80% { transform: scale(1.1) rotate(-3deg); }
+            100% { transform: scale(1); }
+        }
+        .animate-tada {
+            animation: tada 1s;
+        }
+
+        .game-piece {
+            transition: all 0.2s;
+            box-shadow: 0 6px 0px rgba(0,0,0,0.2);
+        }
+        .game-piece:active {
+            transform: translateY(6px);
+            box-shadow: 0 0px 0px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-10 px-4">
+
+    <header class="text-center max-w-3xl mb-12">
+        <div class="text-6xl mb-4 animate-float inline-block">✉️🚀</div>
+        <h1 class="text-4xl md:text-5xl font-black text-sky-800 mb-6 drop-shadow-md">
+            O Mapa do Email!
+        </h1>
+        <p class="text-xl md:text-2xl text-sky-900 font-bold bg-white/60 p-6 rounded-3xl shadow-sm border-4 border-white backdrop-blur-sm">
+            Imagina que um email é uma carta voadora super rápida! O endereço de email é o mapa secreto que diz ao nosso carteiro digital exatamente onde tem de entregar a tua mensagem.
+        </p>
+    </header>
+
+    <main class="w-full max-w-4xl flex flex-col items-center gap-8">
+        
+        <div class="text-center w-full">
+            <h2 class="text-2xl font-bold text-sky-800 mb-4 animate-pulse">
+                👉 Clica nas partes do email abaixo para descobrires os seus superpoderes! 👈
+            </h2>
+            
+            <div class="flex flex-wrap justify-center gap-3 md:gap-4 text-3xl md:text-5xl font-black">
+                <button id="btn-user" onclick="showExplanation('user')" class="email-part bg-orange-400 text-white px-4 py-3 md:px-6 md:py-4 rounded-2xl border-4 border-orange-500 cursor-pointer hover:bg-orange-500 transition-colors">
+                    a1234
+                </button>
+                <button id="btn-at" onclick="showExplanation('at')" class="email-part bg-purple-500 text-white px-4 py-3 md:px-6 md:py-4 rounded-2xl border-4 border-purple-600 cursor-pointer hover:bg-purple-600 transition-colors">
+                    @
+                </button>
+                <button id="btn-server" onclick="showExplanation('server')" class="email-part bg-emerald-400 text-white px-4 py-3 md:px-6 md:py-4 rounded-2xl border-4 border-emerald-500 cursor-pointer hover:bg-emerald-500 transition-colors">
+                    aevp
+                </button>
+                <button id="btn-domain" onclick="showExplanation('domain')" class="email-part bg-pink-500 text-white px-4 py-3 md:px-6 md:py-4 rounded-2xl border-4 border-pink-600 cursor-pointer hover:bg-pink-600 transition-colors">
+                    .net
+                </button>
+            </div>
+        </div>
+
+        <div id="explanation-container" class="w-full mt-6">
+            <div id="welcome-box" class="bg-white rounded-3xl p-8 border-8 border-sky-300 shadow-2xl text-center flex flex-col items-center justify-center min-h-[300px]">
+                <div class="text-6xl mb-4">🕵️‍♂️</div>
+                <h3 class="text-3xl font-black text-sky-700 mb-2">Desvenda o mistério!</h3>
+                <p class="text-xl text-sky-600 font-bold">Clica nas palavras coloridas lá em cima para veres o que cada pedacinho significa.</p>
+            </div>
+
+            <div id="info-box" class="hidden bg-white rounded-3xl p-8 border-8 shadow-2xl relative min-h-[300px] flex-col md:flex-row items-center gap-8">
+                <div id="info-icon" class="text-8xl flex-shrink-0 bg-gray-100 p-6 rounded-full shadow-inner">
+                </div>
+                <div class="text-center md:text-left flex-1">
+                    <h3 id="info-title" class="text-4xl font-black mb-4 uppercase tracking-wide">
+                    </h3>
+                    <p id="info-text" class="text-2xl text-gray-700 font-bold leading-relaxed">
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <section class="mt-12 w-full max-w-3xl bg-amber-100 rounded-3xl p-8 border-4 border-amber-300 shadow-lg relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 text-9xl opacity-20 transform rotate-12">📦</div>
+            <h3 class="text-2xl font-black text-amber-800 mb-4">Juntando tudo...</h3>
+            <p class="text-xl text-amber-900 font-bold italic z-10 relative">
+                "a1234@aevp.net" significa:<br><br>
+                <span class="bg-white p-2 rounded block mt-2">"Entreguem esta carta na caixa do <strong class="text-orange-500">aluno número 1234</strong>, 
+                que fica na estação de correios do <strong class="text-emerald-500">Agrupamento de Escolas Venda do Pinheiro</strong>, 
+                na zona das <strong class="text-pink-500">Redes de Internet</strong>!"</span>
+            </p>
+        </section>
+
+        <!-- NOVO JOGO -->
+        <section id="jogo-email" class="mt-12 w-full max-w-4xl bg-white rounded-3xl p-8 border-4 border-sky-300 shadow-lg text-center flex flex-col items-center">
+            <div class="text-5xl mb-4">🧩</div>
+            <h3 class="text-3xl font-black text-sky-800 mb-2">Desafio Final: Constrói o Email!</h3>
+            <p class="text-xl text-sky-600 font-bold mb-8">Clica nas peças em baixo pela ordem correta para formares o endereço de email.</p>
+
+            <!-- Espaços para o email -->
+            <div id="game-slots" class="flex flex-wrap justify-center gap-2 md:gap-4 mb-8 min-h-[80px]">
+                <!-- Estes espaços são preenchidos por JavaScript -->
+            </div>
+
+            <!-- Peças soltas para clicar -->
+            <div id="game-pieces" class="flex flex-wrap justify-center gap-3 md:gap-4 min-h-[80px]">
+                <!-- Peças geradas via JS -->
+            </div>
+
+            <!-- Mensagem de Feedback -->
+            <div id="game-feedback" class="hidden mt-8 text-xl md:text-2xl font-black p-4 rounded-xl w-full max-w-2xl mx-auto">
+            </div>
+
+            <button id="btn-reset-game" onclick="initGame()" class="hidden mt-6 bg-sky-500 text-white font-bold px-6 py-3 rounded-xl border-4 border-sky-600 hover:bg-sky-400 transition-colors cursor-pointer shadow-md active:translate-y-1 active:shadow-none">
+                🔄 Jogar Outra Vez
+            </button>
+        </section>
+
+    </main>
+
+    <script>
+        const emailData = {
+            user: {
+                title: "O Utilizador (O Aluno)",
+                text: "És tu! Neste caso, 'a' significa aluno, e '1234' é o teu número de processo na escola. É como um número de agente secreto só teu, para ninguém te confundir com outro colega!",
+                icon: "🕵️‍♂️",
+                color: "border-orange-400",
+                textColor: "text-orange-500"
+            },
+            at: {
+                title: "O Arroba",
+                text: "A ponte mágica! Esta cobrinha ( @ ) lê-se 'arroba'. Na internet, significa 'EM'. Basicamente, diz: 'Esta é a caixa do aluno 1234 *EM* algum lugar'.",
+                icon: "🌀",
+                color: "border-purple-500",
+                textColor: "text-purple-600"
+            },
+            server: {
+                title: "O Servidor (A Escola)",
+                text: "O edifício dos correios! Aqui, 'aevp' significa <strong>Agrupamento de Escolas Venda do Pinheiro</strong>. É o computador gigante da escola que toma conta da tua caixa de mensagens.",
+                icon: "🏫",
+                color: "border-emerald-400",
+                textColor: "text-emerald-500"
+            },
+            domain: {
+                title: "O Domínio (O Bairro)",
+                text: "O 'bairro' na internet! O <strong>.net</strong> significa 'network' (rede). Existem também os <strong>TLDs</strong> (Top-Level Domains) como o <strong>.com</strong> (comercial) e os domínios de país, como <strong>.pt</strong> para Portugal ou <strong>.es</strong> para Espanha. Ajudam a organizar o mundo digital!",
+                icon: "🌍",
+                color: "border-pink-500",
+                textColor: "text-pink-600"
+            }
+        };
+
+        function showExplanation(partId) {
+            const data = emailData[partId];
+            
+            // Esconder a caixa de boas-vindas
+            const welcomeBox = document.getElementById('welcome-box');
+            if (welcomeBox) welcomeBox.classList.add('hidden');
+            
+            // Mostrar a caixa de info
+            const infoBox = document.getElementById('info-box');
+            if (infoBox) {
+                infoBox.classList.remove('hidden');
+                infoBox.classList.add('flex');
+                
+                // Reiniciar animação pop-in
+                infoBox.classList.remove('pop-in');
+                void infoBox.offsetWidth; // Reflow
+                infoBox.classList.add('pop-in');
+
+                // Preencher conteúdos
+                document.getElementById('info-icon').innerText = data.icon;
+                
+                const titleEl = document.getElementById('info-title');
+                titleEl.innerText = data.title;
+                titleEl.className = `text-4xl font-black mb-4 uppercase tracking-wide ${data.textColor}`;
+                
+                document.getElementById('info-text').innerHTML = data.text;
+
+                // Atualizar estilos e cor da caixa
+                infoBox.className = `bg-white rounded-3xl p-8 border-8 shadow-2xl relative min-h-[300px] flex-col md:flex-row items-center gap-8 pop-in ${data.color}`;
+            }
+
+            // Ativar visualmente o botão correto
+            document.querySelectorAll('.email-part').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            const activeBtn = document.getElementById(`btn-${partId}`);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        // --- LÓGICA DO JOGO ---
+        const correctOrder = ['user', 'at', 'server', 'domain'];
+        const pieceData = {
+            user: { text: "a1234", class: "bg-orange-400 border-orange-500" },
+            at: { text: "@", class: "bg-purple-500 border-purple-600" },
+            server: { text: "aevp", class: "bg-emerald-400 border-emerald-500" },
+            domain: { text: ".net", class: "bg-pink-500 border-pink-600" }
+        };
+
+        let currentSlots = [];
+        let availablePieces = [];
+
+        function initGame() {
+            currentSlots = [];
+            // Baralhar as peças garantindo que ficam numa ordem aleatória
+            availablePieces = [...correctOrder].sort(() => Math.random() - 0.5);
+            
+            // Esconder feedback e botão de reset
+            document.getElementById('game-feedback').classList.add('hidden');
+            document.getElementById('game-feedback').className = 'hidden mt-8 text-xl md:text-2xl font-black p-4 rounded-xl w-full max-w-2xl mx-auto';
+            document.getElementById('btn-reset-game').classList.add('hidden');
+            document.getElementById('game-slots').classList.remove('animate-shake', 'animate-tada');
+            
+            renderGame();
+        }
+
+        function renderGame() {
+            const slotsContainer = document.getElementById('game-slots');
+            const piecesContainer = document.getElementById('game-pieces');
+            
+            // 1. Renderizar os 4 espaços e as peças que já lá estão colocadas
+            slotsContainer.innerHTML = '';
+            for (let i = 0; i < 4; i++) {
+                if (currentSlots[i]) {
+                    const partId = currentSlots[i];
+                    const pData = pieceData[partId];
+                    slotsContainer.innerHTML += `
+                        <button onclick="removeFromSlot(${i})" title="Clica para retirar" class="game-piece text-white px-2 py-3 md:px-4 md:py-4 rounded-2xl border-4 cursor-pointer text-xl md:text-3xl font-black min-w-[70px] md:min-w-[100px] ${pData.class} hover:brightness-110">
+                            ${pData.text}
+                        </button>
+                    `;
+                } else {
+                    slotsContainer.innerHTML += `
+                        <div class="slot border-4 border-dashed border-sky-300 bg-sky-50 rounded-2xl w-16 h-16 md:w-28 md:h-20 flex items-center justify-center text-3xl font-black text-sky-200">${i + 1}</div>
+                    `;
+                }
+            }
+
+            // 2. Renderizar as peças disponíveis (em baixo)
+            piecesContainer.innerHTML = '';
+            availablePieces.forEach((partId) => {
+                const pData = pieceData[partId];
+                piecesContainer.innerHTML += `
+                    <button onclick="addToSlot('${partId}')" class="game-piece text-white px-4 py-3 md:px-6 md:py-4 rounded-2xl border-4 cursor-pointer text-2xl md:text-4xl font-black ${pData.class} hover:brightness-110">
+                        ${pData.text}
+                    </button>
+                `;
+            });
+
+            // 3. Verificar se o jogador preencheu os 4 buracos
+            if (currentSlots.length === 4) {
+                checkWin();
+            }
+        }
+
+        function addToSlot(partId) {
+            if (currentSlots.length < 4) {
+                // Tira das peças disponíveis e põe na caixa
+                availablePieces = availablePieces.filter(p => p !== partId);
+                currentSlots.push(partId);
+                renderGame();
+            }
+        }
+
+        function removeFromSlot(index) {
+            // Tira da caixa e devolve às peças disponíveis
+            const partId = currentSlots[index];
+            currentSlots.splice(index, 1);
+            availablePieces.push(partId);
+            
+            // Limpa mensagens caso estejam visíveis
+            document.getElementById('game-feedback').classList.add('hidden');
+            document.getElementById('game-slots').classList.remove('animate-shake', 'animate-tada');
+            
+            renderGame();
+        }
+
+        function checkWin() {
+            const isCorrect = currentSlots.every((val, index) => val === correctOrder[index]);
+            const feedbackEl = document.getElementById('game-feedback');
+            const resetBtn = document.getElementById('btn-reset-game');
+            const slotsContainer = document.getElementById('game-slots');
+
+            feedbackEl.classList.remove('hidden');
+            slotsContainer.classList.remove('animate-shake', 'animate-tada');
+            void slotsContainer.offsetWidth; // Reflow para reiniciar animação
+
+            if (isCorrect) {
+                feedbackEl.innerHTML = "🎉 Fantástico! Acertaste na ordem do mapa do email! 🎉";
+                feedbackEl.classList.add('bg-green-100', 'text-green-700', 'border-4', 'border-green-400');
+                slotsContainer.classList.add('animate-tada');
+                document.getElementById('game-pieces').innerHTML = ''; // Limpar zona de baixo
+            } else {
+                feedbackEl.innerHTML = "🤔 Quase! Mas a ordem não está certa. Clica numa peça para a devolveres para baixo e tenta outra vez.";
+                feedbackEl.classList.add('bg-red-100', 'text-red-700', 'border-4', 'border-red-400');
+                slotsContainer.classList.add('animate-shake');
+            }
+            
+            // Mostrar botão de recomeçar mesmo se falhar (opcional) ou se ganhar
+            if(isCorrect) resetBtn.classList.remove('hidden');
+        }
+
+        // Iniciar jogo quando a página carrega
+        window.addEventListener('DOMContentLoaded', (event) => {
+            initGame();
+        });
+
+    </script>
+</body>
+</html>
