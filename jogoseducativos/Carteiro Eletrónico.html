@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carteiro Eletrónico</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg1:#ffe9a8;--bg2:#ffc8e6;--card:#fff;--ink:#2b2350;--soft:#625c8a;--line:#e0d7f8;--hl:#fff3a0;--pink:#ff5fa2;--blue:#2f95f5;--green:#18b877;--yellow:#ffc928;--purple:#8b5cf6;--orange:#ff8a3d;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#251c55;--bg2:#3a1a52;--card:#2d2766;--ink:#fff7e0;--soft:#c5bdf2;--line:#51479a;--hl:#6b5a00}}
+:root[data-theme="dark"]{--bg1:#251c55;--bg2:#3a1a52;--card:#2d2766;--ink:#fff7e0;--soft:#c5bdf2;--line:#51479a;--hl:#6b5a00}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg1) linear-gradient(160deg,var(--bg1),var(--bg2)) fixed;color:var(--ink);font-family:'Baloo 2','Trebuchet MS','Comic Sans MS',system-ui,sans-serif;font-size:18px;line-height:1.35}
+.wrap{max-width:960px;margin:0 auto;padding:14px}
+h1{margin:4px 0 10px;font-size:clamp(1.7rem,6vw,2.6rem);font-weight:800;line-height:1.05;background:linear-gradient(90deg,var(--pink),var(--orange),var(--purple),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{margin:0 0 4px;font-size:1.4rem}
+.hero{display:flex;gap:12px;align-items:center}
+.robot{width:132px;flex:none;animation:bob 3s ease-in-out infinite;filter:drop-shadow(0 6px 0 rgba(43,35,80,.2))}
+.bubble{position:relative;flex:1;background:var(--card);border:4px solid var(--ink);border-radius:24px;padding:12px 16px;font-weight:700}
+.bubble:before{content:"";position:absolute;left:-15px;top:38px;border:10px solid transparent;border-left:0;border-right:14px solid var(--ink)}
+.tabs{display:flex;gap:10px;margin:18px 0 16px}
+.tab{flex:1;font:inherit;font-weight:800;font-size:1.05rem;padding:10px 8px;border:4px solid var(--ink);border-radius:20px;background:var(--card);color:var(--ink);cursor:pointer;box-shadow:0 5px 0 var(--ink)}
+.tab[aria-selected=true]{background:var(--pink);color:#fff;transform:translateY(3px);box-shadow:0 2px 0 var(--ink)}
+:focus-visible{outline:4px solid var(--purple);outline-offset:3px}
+.win{background:var(--card);border:4px solid var(--ink);border-radius:22px;overflow:hidden;box-shadow:0 8px 0 var(--ink)}
+.top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:var(--blue);color:#fff;font-weight:800}
+.search{flex:1;min-width:150px;display:flex;gap:6px;align-items:center;background:#fff;color:#2b2350;border-radius:999px;padding:2px 12px}
+.search input{flex:1;min-width:0;font:inherit;border:0;outline:0;background:none;color:inherit}
+.grid{display:grid;grid-template-columns:210px 1fr}
+@media(max-width:620px){.grid{grid-template-columns:1fr}.robot{width:96px}}
+aside{padding:12px;border-right:3px dashed var(--line);display:flex;flex-direction:column;gap:6px}
+.compose{font:inherit;font-weight:800;font-size:1.1rem;padding:10px;border:3px solid var(--ink);border-radius:16px;background:var(--orange);color:#fff;cursor:pointer;margin-bottom:6px;box-shadow:0 4px 0 var(--ink)}
+.f{display:flex;gap:8px;align-items:center;font:inherit;font-weight:700;text-align:left;padding:7px 10px;border:3px solid transparent;border-radius:14px;background:none;color:var(--ink);cursor:pointer}
+.f:hover{background:var(--line)}
+.f.sel{background:var(--c);color:#fff}
+.msg{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:center;padding:8px 12px;border-bottom:2px solid var(--line)}
+.msg .av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;background:var(--pink)}
+.msg:nth-child(3n+2) .av{background:var(--green)}.msg:nth-child(3n) .av{background:var(--purple)}
+.msg div{flex:1;min-width:150px;display:flex;flex-direction:column;line-height:1.15}
+.msg span{color:var(--soft);font-size:.92rem}
+.msg.new b{font-weight:800}.msg:not(.new) b{font-weight:600}
+.empty{padding:16px;color:var(--soft)}
+.on{outline:5px solid var(--yellow);outline-offset:2px;animation:pulse 1.2s ease-in-out infinite}
+.info{margin-top:20px;background:var(--card);border:4px solid var(--ink);border-radius:22px;padding:14px 16px;display:flex;gap:14px;align-items:flex-start}
+.em{font-size:2.8rem;line-height:1}
+.info p{margin:0}
+.tip{background:var(--hl);border-radius:14px;padding:6px 12px;margin-top:8px;font-size:.95rem}
+.prog{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px;font-weight:800}
+.go{font:inherit;font-weight:800;padding:8px 18px;border:4px solid var(--ink);border-radius:999px;background:var(--green);color:#fff;cursor:pointer;box-shadow:0 4px 0 var(--ink);animation:pulse 1.2s infinite}
+.go[hidden]{display:none}
+.row{display:flex;align-items:center;gap:8px;padding:5px 14px;border-bottom:2px solid var(--line)}
+.row label{width:72px;font-weight:800;color:var(--soft)}
+.row input{flex:1;min-width:0;font:inherit;border:0;outline:0;background:none;color:var(--ink);padding:4px 0}
+textarea{display:block;width:100%;height:92px;font:inherit;padding:10px 14px;border:0;outline:0;resize:none;background:none;color:var(--ink)}
+.chip{display:inline-flex;gap:8px;align-items:center;background:var(--hl);border:3px solid var(--ink);border-radius:999px;padding:0 6px 0 12px;margin:0 0 8px 14px;font-weight:700}
+.chip button{border:0;background:none;font:inherit;cursor:pointer;color:var(--ink)}
+.act{position:relative;display:flex;gap:10px;align-items:center;padding:10px 14px;background:var(--line)}
+.btn{font:inherit;font-weight:800;padding:8px 18px;border:3px solid var(--ink);border-radius:999px;color:#fff;cursor:pointer;box-shadow:0 4px 0 var(--ink)}
+.send{background:var(--green)}.clip{background:var(--purple)}
+.fly{position:absolute;left:60px;font-size:2rem;animation:fly 1.2s ease-in forwards;pointer-events:none}
+.who{margin-top:20px;background:var(--card);border:4px solid var(--ink);border-radius:22px;padding:14px 16px}
+.who .b{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.who .b button{font:inherit;font-weight:700;padding:5px 12px;border:3px solid var(--ink);border-radius:999px;background:var(--card);color:var(--ink);cursor:pointer}
+.who .b button[aria-pressed=true]{background:var(--blue);color:#fff}
+#seen{background:var(--bg1);border:3px dashed var(--ink);border-radius:14px;padding:8px 14px}
+#seen .no{color:var(--soft)}#seen .hot{font-weight:800;color:var(--pink)}
+.win2 .top{background:var(--purple)}
+.fin{margin-top:16px;text-align:center;background:var(--yellow);color:#2b2350;border:4px solid var(--ink);border-radius:22px;padding:12px;font-weight:800;font-size:1.3rem}
+@keyframes bob{50%{transform:translateY(-8px)}}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+@keyframes glow{50%{transform:scale(1.3)}}
+@keyframes pulse{50%{outline-color:var(--pink)}}
+@keyframes fly{to{transform:translate(220px,-150px) rotate(25deg) scale(.4);opacity:0}}
+.eyes{transform-box:fill-box;transform-origin:center;animation:blink 4s infinite}
+.bulb{transform-box:fill-box;transform-origin:center;animation:glow 1.5s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+@media (min-width:821px){
+body{font-size:clamp(14px,2.3vh,21px)}
+.wrap{max-width:1500px;min-height:100dvh;padding:10px 18px 14px;display:grid;grid-template-columns:1.2fr 1fr;grid-template-rows:auto auto auto auto 1fr;column-gap:20px;align-items:start}
+section{display:contents}
+section[hidden]{display:none}
+h1{grid-column:1;grid-row:1;margin:0;align-self:center;font-size:clamp(1.5rem,4.4vh,2.5rem)}
+.tabs{grid-column:2;grid-row:1;margin:0;align-self:center}
+.tab{font-size:.9em;padding:.45em .3em;white-space:nowrap;border-width:3px;box-shadow:0 4px 0 var(--ink)}
+.hero{grid-column:2;grid-row:2;margin-top:14px}
+.robot{width:clamp(80px,16vh,180px)}
+.win{grid-column:1;grid-row:2/6;align-self:stretch;margin:14px 0 8px;display:flex;flex-direction:column}
+.mail .grid{flex:1;min-height:0;grid-template-columns:clamp(170px,24%,240px) 1fr}
+.f{padding:.45em .7em}
+.compose{font-size:1.05em}
+.msg{padding:.6em 1em}
+.msg span,.tip{font-size:.9em}
+.win2 textarea{flex:1;height:auto;min-height:56px}
+.row{padding:.3em 1em}
+.info{grid-column:2;grid-row:3;margin-top:12px;padding:.7em 1em}
+.em{font-size:2.2em}
+.info h2{font-size:1.25em}
+.who{grid-column:2;grid-row:4;margin-top:12px;padding:.5em 1em;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.who h2{margin:0;font-size:1.1em}
+.who .b{margin:0}
+.who .b button{padding:.1em .7em;font-size:.9em}
+#seen{flex-basis:100%;display:flex;flex-wrap:wrap;gap:0 14px;padding:.3em .8em}
+#seen .no,#seen .hot{flex-basis:100%}
+.prog{grid-column:2;grid-row:5;margin-top:10px}
+.fin{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);margin:0;z-index:9;font-size:1.2em}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Carteiro Eletrónico</h1>
+<div class="hero">
+<svg class="robot" viewBox="0 0 200 220" role="img" aria-label="Carteiro Eletrónico, um robot simpático a segurar uma carta"><g id="mailo">
+<g stroke="#2b2350" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+<path d="M100 40V22"/><circle class="bulb" cx="100" cy="14" r="9" fill="#ff5fa2"/>
+<rect x="26" y="72" width="16" height="30" rx="8" fill="#ffc928"/><rect x="158" y="72" width="16" height="30" rx="8" fill="#ffc928"/>
+<rect x="38" y="38" width="124" height="90" rx="36" fill="#5cc8ff"/>
+<rect x="52" y="52" width="96" height="62" rx="26" fill="#fff" stroke-width="4"/>
+<rect x="58" y="130" width="84" height="66" rx="26" fill="#ffc928"/>
+<rect x="70" y="194" width="22" height="16" rx="8" fill="#ff8a3d"/><rect x="108" y="194" width="22" height="16" rx="8" fill="#ff8a3d"/>
+<path d="M62 146q-28 12 4 28M138 146q28 12-4 28" fill="none" stroke-width="16"/>
+</g>
+<path d="M62 146q-28 12 4 28M138 146q28 12-4 28" fill="none" stroke="#ff8a3d" stroke-width="7" stroke-linecap="round"/>
+<g class="eyes"><circle cx="80" cy="80" r="10" fill="#2b2350"/><circle cx="120" cy="80" r="10" fill="#2b2350"/><circle cx="84" cy="76" r="3.5" fill="#fff"/><circle cx="124" cy="76" r="3.5" fill="#fff"/></g>
+<ellipse cx="66" cy="98" rx="8" ry="5" fill="#ff5fa2" opacity=".6"/><ellipse cx="134" cy="98" rx="8" ry="5" fill="#ff5fa2" opacity=".6"/>
+<path d="M90 96q10 11 20 0" fill="none" stroke="#2b2350" stroke-width="5" stroke-linecap="round"/>
+<g transform="rotate(-6 100 168)" stroke="#2b2350" stroke-width="5" stroke-linejoin="round"><rect x="68" y="146" width="64" height="44" rx="8" fill="#fff"/><path d="M70 150l30 22 30-22" fill="none"/><path d="M100 188c-9-5-11-10-7-13 3-2 6 0 7 2 1-2 4-4 7-2 4 3 2 8-7 13z" fill="#ff5fa2" stroke-width="3"/></g>
+<circle cx="66" cy="174" r="9" fill="#ff8a3d" stroke="#2b2350" stroke-width="5"/><circle cx="134" cy="174" r="9" fill="#ff8a3d" stroke="#2b2350" stroke-width="5"/>
+</g></svg>
+<div class="bubble" id="say" aria-live="polite"></div>
+</div>
+
+<div class="tabs" role="tablist">
+<button class="tab" role="tab" id="t1" aria-selected="true">📬 Fase 1: Caixa de correio</button>
+<button class="tab" role="tab" id="t2" aria-selected="false">✏️ Fase 2: Escrever mensagem</button>
+<div class='score' id='score'>⭐ 0 pts</div>
+</div>
+
+<section id="p1" data-p="1">
+<div class="win mail">
+<div class="top"><span>✉️ CarteiroMail</span><div class="search" data-k="search">🔍<input id="q" placeholder="Pesquisar mensagens…" aria-label="Pesquisar mensagens"></div></div>
+<div class="grid">
+<aside>
+<button class="compose" data-k="compose">✏️ Escrever</button>
+<button class="f sel" data-k="inbox" data-f style="--c:var(--blue)">📥 Caixa de entrada</button>
+<button class="f" data-k="sent" data-f style="--c:var(--green)">📤 Enviados</button>
+<button class="f" data-k="drafts" data-f style="--c:var(--orange)">📝 Rascunhos</button>
+<button class="f" data-k="spam" data-f style="--c:var(--pink)">🚫 Spam</button>
+<button class="f" data-k="trash" data-f style="--c:var(--purple)">🗑️ Lixo</button>
+</aside>
+<main id="list"></main>
+</div></div>
+<div class="info" id="i1"></div>
+<div class="prog"><span id="pg1"></span><button class="go" id="go2" hidden>Ir para a Fase 2 🚀</button></div>
+</section>
+
+<section id="p2" data-p="2" hidden>
+<div class="win win2">
+<div class="top">✏️ Nova mensagem</div>
+<div class="row" data-k="to"><label for="to">Para</label><input id="to" value="avo@exemplo.pt"></div>
+<div class="row" data-k="cc"><label for="cc">Cc</label><input id="cc" value="pai@exemplo.pt"></div>
+<div class="row" data-k="bcc"><label for="bcc">Cco</label><input id="bcc" value="tio@exemplo.pt"></div>
+<div class="row" data-k="subj"><label for="subj">Assunto</label><input id="subj" value="Os meus desenhos"></div>
+<textarea data-k="body" aria-label="Texto da mensagem">Olá, avó! Fiz estes desenhos para ti. Beijinhos!</textarea>
+<div id="atts"></div>
+<div class="act"><button class="btn send" data-k="send">Enviar 🚀</button><button class="btn clip" data-k="attach">📎 Anexar</button></div>
+</div>
+<div class="info" id="i2"></div>
+<div class="who">
+<h2>🕵️ Quem vê o quê?</h2>
+<div class="b" id="wb"><button data-v="a" aria-pressed="true">🎯 Quem está em Para</button><button data-v="c" aria-pressed="false">👥 Quem está em Cc</button><button data-v="b" aria-pressed="false">🙈 Quem está em Cco</button></div>
+<div id="seen"></div>
+</div>
+<div class='prog'><span id='pg2'></span><button class='go' id='gor' hidden>Ver resultados 🏆</button></div>
+</section>
+<div class="fin" id="fin" hidden>🏆 Parabéns! Já és um Carteiro Digital!</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const I={
+1:{
+compose:['✏️','Escrever','Este é o botão mais importante! Quando queres mandar uma mensagem nova a alguém, carregas aqui e abre-se uma janela para escreveres a tua carta digital.','Noutros programas pode chamar-se «Nova mensagem» ou «Compor».'],
+search:['🔍','Pesquisa','Tens muitas mensagens e não encontras a da avó? Escreve o nome ou uma palavra e o computador procura por ti. Experimenta escrever «avó» ou «robô»!','Nos programas a sério, a pesquisa procura em todas as pastas.'],
+inbox:['📥','Caixa de entrada','É a tua caixa do correio! Todas as mensagens que os outros te enviam chegam primeiro aqui. As que estão a negrito ainda não foram lidas.','Quando chega uma mensagem nova, aparece sempre aqui.'],
+sent:['📤','Enviados','Aqui ficam as cópias de todas as mensagens que já mandaste. Assim podes ver o que escreveste e a quem.','É como guardar uma fotocópia de cada carta.'],
+drafts:['📝','Rascunhos','Começaste a escrever mas ainda não acabaste? A mensagem fica guardada aqui, à espera. Só segue quando carregares em Enviar.','É como um caderno de apontamentos.'],
+spam:['🚫','Spam','Spam é correio que ninguém pediu: publicidade, truques e prémios falsos. O computador separa-o aqui. Nunca cliques em ligações nem abras anexos de mensagens estranhas!','Se receberes algo esquisito, mostra a um adulto de confiança.'],
+trash:['🗑️','Lixo','As mensagens apagadas vão para aqui, como para um caixote do lixo. Se apagaste sem querer, ainda podes resgatá-las. Passado algum tempo, desaparecem para sempre.','Alguns programas chamam-lhe «Caixote do lixo» ou «Eliminados».']},
+2:{
+to:['👤','Para','Aqui escreves o endereço de email de quem vai receber a mensagem: a pessoa principal. Um endereço tem sempre um arroba @ no meio, por exemplo avo@exemplo.pt.','Se te enganares numa letra, a mensagem vai parar a outra pessoa!'],
+cc:['👥','Cc: com cópia','Queres que mais alguém leia a mensagem? Põe o endereço aqui. Essa pessoa recebe uma cópia e todos veem que ela também a recebeu.','Imagina que dás a carta à avó e mostras uma fotocópia ao pai, à vista de todos.'],
+bcc:['🙈','Cco: cópia oculta (em inglês, Bcc)','É uma cópia secreta! A pessoa recebe a mensagem, mas as outras não sabem que ela lá está. Serve para proteger endereços privados.','Experimenta os botões «Quem vê o quê?» aqui em baixo!'],
+subj:['🏷️','Assunto','É o título da mensagem. Deve dizer, em poucas palavras, de que se trata. «Os meus desenhos» é melhor do que só «Olá».','Um bom assunto ajuda quem recebe a perceber logo do que fala a mensagem.'],
+body:['💬','Mensagem','O espaço grande é onde escreves o texto, como numa carta. Começa com um cumprimento, escreve com cuidado e despede-te com simpatia.','Ser simpático também vale no mundo digital!'],
+attach:['📎','Anexar','O clipe serve para juntar ficheiros à mensagem: fotos, desenhos, documentos. Viajam agarrados à mensagem, como um postal dentro do envelope. Carrega outra vez para juntar mais um!','Só abras anexos de pessoas que conheces. Podes tirar um anexo carregando no ✕.'],
+send:['🚀','Enviar','Quando estiver tudo certo, carrega aqui e a mensagem voa até ao destino em segundos! Antes de enviar, confirma o endereço, o assunto e o texto.','Depois de enviada, é difícil voltar atrás. Revê primeiro!']}};
+const M={inbox:[['Avó Lurdes','Os bolinhos estão prontos! 🍪',1],['Professora Marta','Trabalho de casa de Ciências',1],['Clube de Robótica','Convite para o torneio de robôs!']],sent:[['Para: Avó Lurdes','Obrigado pela prenda!']],drafts:[['(sem destinatário)','Ainda estou a escrever…']],spam:[['Prémio Gigante!!!','Clica já aqui para ganhares 1000 €'],['Oferta secreta','Só hoje! Não percas!']],trash:[['Mensagem antiga','Foi apagada ontem']]};
+const say={1:'Olá! Eu sou o Mailo 🤖 Carrega nas partes da caixa de correio e eu explico para que servem!',2:'Agora vamos escrever uma mensagem! Carrega em cada parte da janela e descobre o que faz.'};
+const cheer=['Boa!','Fantástico!','Muito bem!','Uau!','Descobriste!'];
+const seen={1:new Set(),2:new Set()};let cur='inbox',n=0,atts=[];
+const files=['🖼️ desenho.png','📄 trabalho.pdf','🎵 musica.mp3'];
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function list(){const q=$('q').value.toLowerCase();$('list').innerHTML=M[cur].filter(m=>(m[0]+m[1]).toLowerCase().includes(q)).map(m=>`<div class="msg${m[2]?' new':''}"><i class="av">${esc(m[0].replace('Para: ','')[0])}</i><div><b>${esc(m[0])}</b><span>${esc(m[1])}</span></div></div>`).join('')||'<p class="empty">Nenhuma mensagem encontrada 🕵️ Experimenta outra palavra.</p>'}
+function show(p,k,el){
+ const [e,t,d,tip]=I[p][k];
+ $('i'+p).innerHTML=`<div class="em">${e}</div><div><h2>${t}</h2><p>${d}</p><div class="tip">💡 ${tip}</div></div>`;
+ $('say').textContent=cheer[n++%cheer.length]+' Isto é: '+t+'!';
+ document.querySelectorAll('#p'+p+' .on').forEach(x=>x.classList.remove('on'));
+ el.classList.add('on');
+ seen[p].add(k);
+ const c=seen[p].size,tot=Object.keys(I[p]).length;
+ $('pg'+p).textContent='⭐'.repeat(c)+'☆'.repeat(tot-c)+'  '+c+' de '+tot+' descobertas';
+ if(p==1)$('go2').hidden=c<tot;
+ $('fin').hidden=!(seen[1].size==7&&seen[2].size==7);
+}
+function who(v){
+ const t=esc($('to').value||'—'),c=esc($('cc').value||'—');
+ const h={a:'Quem está em Para',c:'Quem está em Cc',b:'Quem está em Cco'}[v];
+ $('seen').innerHTML=`<b>${h} vê:</b><div>De: Tu</div><div>Para: ${t}</div><div>Cc: ${c}</div>`+(v=='b'?'<div class="hot">🤫 Recebeste em segredo! Os outros não sabem.</div>':'<div class="no">🙈 Não há linha «Cco»: nunca sabes quem recebeu em segredo.</div>');
+ document.querySelectorAll('#wb button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v==v));
+}
+function chips(){$('atts').innerHTML=atts.map((a,i)=>`<span class="chip">${a}<button data-rm="${i}" aria-label="Retirar anexo">✕</button></span>`).join('')}
+function tab(p){
+ for(const x of [1,2]){$('p'+x).hidden=x!=p;$('t'+x).setAttribute('aria-selected',x==p)}
+ $('say').textContent=say[p];
+ if(!$('i'+p).innerHTML)$('i'+p).innerHTML='<div class="em">👆</div><div><h2>Carrega numa parte do desenho</h2><p>Eu explico-te para que serve!</p></div>';
+}
+function act(e){
+ if(e.target.dataset.rm){atts.splice(+e.target.dataset.rm,1);chips();return}
+ if(e.target.dataset.v){who(e.target.dataset.v);return}
+ const el=e.target.closest('[data-k]');if(!el)return;
+ const p=el.closest('[data-p]').dataset.p,k=el.dataset.k;
+ if(el.hasAttribute('data-f')){cur=k;document.querySelectorAll('[data-f]').forEach(b=>b.classList.toggle('sel',b==el));list()}
+ if(k=='attach'&&atts.length<3){atts.push(files[atts.length]);chips()}
+ if(k=='send'){const f=document.createElement('span');f.className='fly';f.textContent='✉️';el.parentNode.appendChild(f);setTimeout(()=>f.remove(),1300)}
+ show(p,k,el);
+}
+document.addEventListener('click',act);
+document.addEventListener('focusin',e=>{if(/INPUT|TEXTAREA/.test(e.target.tagName)&&e.target.closest('[data-k]'))act(e)});
+$('q').addEventListener('input',list);
+['to','cc'].forEach(i=>$(i).addEventListener('input',()=>who(document.querySelector('#wb [aria-pressed=true]').dataset.v)));
+$('t1').onclick=()=>tab(1);$('t2').onclick=()=>tab(2);$('go2').onclick=()=>tab(2);
+list();who('a');tab(1);
+</script>
+<div class='scr' id='intro'><div class='card'><svg viewBox='0 0 200 220' aria-hidden='true'><use href='#mailo'/></svg><h1>Carteiro Eletrónico</h1><p>Preciso da tua ajuda para entregar o correio! Cumpre <b>14 missões</b> em 2 fases e ganha pontos e estrelas.</p><ul><li>🎯 Encontra o que eu pedir</li><li>⭐ À primeira: 20 pontos. À segunda: 10. Depois: 5</li><li>💡 Se errares, aprendes na mesma!</li></ul><br><button class='go' id='start'>Começar a missão 🚀</button></div></div>
+<div class='scr' id='res' hidden><div class='card'><svg viewBox='0 0 200 220' aria-hidden='true'><use href='#mailo'/></svg><h2>Missão cumprida!</h2><div class='pts' id='rs'></div><div class='stars' id='rst'></div><h2 id='rb'></h2><p id='rm'></p><p id='rd'></p><button class='go' id='again'>Jogar outra vez 🔁</button></div></div>
+<style>.scr{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;overflow:auto;background:var(--bg1) linear-gradient(160deg,var(--bg1),var(--bg2))}.scr[hidden]{display:none}.card{max-width:580px;text-align:center;background:var(--card);border:4px solid var(--ink);border-radius:28px;padding:16px 26px 22px;box-shadow:0 8px 0 var(--ink)}.card svg{width:clamp(90px,24vh,170px);animation:bob 3s ease-in-out infinite;filter:drop-shadow(0 6px 0 rgba(43,35,80,.2))}.card h1{margin:0 0 6px;font-size:clamp(2rem,6vh,3rem)}.card h2{font-size:1.6em}.card ul{list-style:none;padding:0;margin:10px 0 0;text-align:left;display:inline-block}.card li{margin:4px 0;font-weight:700}.pts{font-size:2.4em;font-weight:800;color:var(--pink);line-height:1.1}.stars{font-size:2.2em;letter-spacing:.1em}.score{display:grid;place-items:center;white-space:nowrap;font-weight:800;background:var(--yellow);color:#2b2350;border:3px solid var(--ink);border-radius:20px;padding:0 .8em;box-shadow:0 4px 0 var(--ink)}.hint{outline:5px dashed var(--orange);outline-offset:3px;animation:pulse 1s ease-in-out infinite}.tab:disabled{color:var(--ink);cursor:default}.tab[aria-selected=true]:disabled{color:#fff}</style>
+<script>
+const G={i:0,miss:0,score:0,ps:{1:0,2:0},on:false,lk:'',lt:0};
+const Q={1:[['compose','Encontra o botão para escrever uma mensagem nova.'],['inbox','Onde chegam as mensagens novas?'],['sent','Onde ficam as mensagens que já enviaste?'],['drafts','Onde ficam guardadas as mensagens por acabar?'],['spam','Que pasta guarda o correio indesejado?'],['trash','Onde vão parar as mensagens apagadas?'],['search','Queres encontrar uma mensagem pelo nome. Onde procuras?']],2:[['to','Onde escreves quem recebe a mensagem?'],['cc','Qual é o campo para uma cópia que todos veem?'],['bcc','E para uma cópia secreta?'],['subj','Onde escreves o título da mensagem?'],['body','Onde escreves o texto da carta?'],['attach','Como juntas uma fotografia à mensagem?'],['send','Está tudo pronto! Faz a mensagem voar!']]};
+const hud=()=>{$('score').textContent='⭐ '+G.score+' pts'};
+const prog=p=>{const n=G.i,t=Q[p].length;$('pg'+p).textContent='⭐'.repeat(n)+'☆'.repeat(t-n)+'  '+n+' de '+t+' missões'};
+const ask=p=>'<br>🎯 <b>Missão '+(G.i+1)+'/'+Q[p].length+':</b> '+Q[p][G.i][1];
+function show(p,k,el){
+ if(!G.on)return;
+ const now=Date.now();if(k==G.lk&&now-G.lt<500)return;G.lk=k;G.lt=now;
+ const [e,t,d,tip]=I[p][k],m=Q[p][G.i];let fb='👀 Podes explorar à vontade!';
+ $('i'+p).innerHTML=`<div class="em">${e}</div><div><h2>${t}</h2><p>${d}</p><div class="tip">💡 ${tip}</div></div>`;
+ document.querySelectorAll('#p'+p+' .on,#p'+p+' .hint').forEach(x=>x.classList.remove('on','hint'));
+ el.classList.add('on');
+ if(m){
+  if(k==m[0]){const x=[20,10,5][Math.min(G.miss,2)];G.score+=x;G.ps[p]+=x;G.i++;G.miss=0;fb='✅ Boa! +'+x+' pontos!'}
+  else{G.miss++;fb='🤔 Isso é «'+t+'». Não é bem o que procuro. Tenta outra vez!';if(G.miss>1)document.querySelector('#p'+p+' [data-k='+m[0]+']').classList.add('hint')}
+ }
+ const end=G.i>=Q[p].length;
+ $('say').innerHTML=fb+(end?(p==1?' 🎉 Fase 1 completa! Carrega em «Ir para a Fase 2».':' 🎉 Missões completas! Vê os teus resultados.'):ask(p));
+ hud();prog(p);
+ if(end)$(p==1?'go2':'gor').hidden=false;
+}
+function tab(p){
+ G.i=0;G.miss=0;G.lk='';
+ for(const x of [1,2]){$('p'+x).hidden=x!=p;$('t'+x).setAttribute('aria-selected',x==p);$('t'+x).disabled=true}
+ $('go2').hidden=$('gor').hidden=true;
+ document.querySelectorAll('.on,.hint').forEach(x=>x.classList.remove('on','hint'));
+ $('i'+p).innerHTML='<div class="em">👆</div><div><h2>Carrega na parte certa</h2><p>Eu digo-te o que procurar. Depois explico para que serve!</p></div>';
+ $('say').innerHTML=(p==1?'Olá! Eu sou o Carteiro Eletrónico 📮 Vamos entregar o correio!':'Fase 2: vamos escrever uma mensagem!')+ask(p);
+ hud();prog(p);
+}
+function results(){
+ const s=G.score,st=s>=238?3:s>=168?2:1;
+ $('rs').textContent=s+' / 280 pontos';
+ $('rst').textContent='⭐'.repeat(st)+'☆'.repeat(3-st);
+ $('rb').textContent=['🥉 Carteiro Aprendiz','🥈 Carteiro Esperto','🏆 Carteiro Mestre'][st-1];
+ $('rm').textContent=['Continua a praticar e vais chegar lá!','Muito bem! Estás quase a ser mestre!','Fantástico! Sabes tudo sobre correio eletrónico!'][st-1];
+ $('rd').textContent='Fase 1: '+G.ps[1]+' / 140 · Fase 2: '+G.ps[2]+' / 140';
+ $('res').hidden=false;
+}
+$('start').onclick=()=>{$('intro').hidden=true;G.on=true};
+$('gor').onclick=results;
+$('again').onclick=()=>{Object.assign(G,{score:0,ps:{1:0,2:0},on:true});$('res').hidden=true;cur='inbox';$('q').value='';list();document.querySelectorAll('[data-f]').forEach(b=>b.classList.toggle('sel',b.dataset.k=='inbox'));atts.length=0;chips();tab(1)};
+tab(1);
+</script>
+</body>
+</html>
