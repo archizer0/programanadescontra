@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Caixa Mágica das Variáveis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #f0f9ff;
+            background-image: radial-gradient(#bae6fd 2px, transparent 2px);
+            background-size: 30px 30px;
+        }
+        
+        /* Animações divertidas */
+        @keyframes bounce-in {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes drop-in {
+            0% { transform: translateY(-100px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        .animate-bounce-in { animation: bounce-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-drop-in { animation: drop-in 0.5s ease-out forwards; }
+        
+        /* Esconder elementos inicialmente */
+        .hidden-step { display: none; }
+        
+        /* Estilo da caixa de papelão em CSS */
+        .cardboard-box {
+            position: relative;
+            width: 160px;
+            height: 120px;
+            background-color: #d97706; /* amber-600 */
+            border-radius: 8px 8px 16px 16px;
+            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.2), 0 10px 15px rgba(0,0,0,0.1);
+        }
+        .box-flap-back {
+            position: absolute;
+            top: -30px; left: 0; right: 0; height: 40px;
+            background-color: #b45309; /* amber-700 */
+            border-radius: 8px 8px 0 0;
+            transform: perspective(200px) rotateX(40deg);
+            transform-origin: bottom;
+            z-index: 1;
+        }
+        .box-flap-front {
+            position: absolute;
+            top: 0px; left: 0; right: 0; height: 40px;
+            background-color: #f59e0b; /* amber-500 */
+            border-radius: 0 0 8px 8px;
+            transform: perspective(200px) rotateX(-40deg);
+            transform-origin: top;
+            z-index: 10;
+        }
+        .box-inside {
+            position: absolute;
+            top: 0; left: 10px; right: 10px; bottom: 10px;
+            background-color: #78350f; /* amber-900 */
+            z-index: 2;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+            overflow: hidden;
+        }
+        
+        /* O valor que fica dentro da caixa */
+        .box-value-item {
+            background: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: bold;
+            color: #4f46e5;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 5;
+            font-size: 1.2rem;
+            word-break: break-all;
+            max-width: 90%;
+            text-align: center;
+            border: 2px solid #818cf8;
+        }
+
+        .tamagotchi-console {
+            background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+            border-radius: 40px;
+            box-shadow: 
+                inset 10px 10px 20px rgba(255,255,255,0.8), 
+                inset -10px -10px 20px rgba(0,0,0,0.1), 
+                15px 15px 30px rgba(0,0,0,0.2),
+                0 0 0 10px #a5b4fc;
+            padding: 24px;
+            transform: perspective(800px) rotateX(5deg);
+            transform-style: preserve-3d;
+        }
+
+        .tamagotchi-screen {
+            background-color: #9bc400;
+            border-radius: 16px;
+            box-shadow: inset 4px 4px 10px rgba(0,0,0,0.3), inset -4px -4px 10px rgba(255,255,255,0.2), 0 0 0 4px #4f46e5;
+            position: relative;
+            overflow: hidden;
+            border: 4px solid #3730a3;
+        }
+
+        .tamagotchi-screen::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 40%);
+            pointer-events: none;
+        }
+
+        .btn-3d {
+            transition: all 0.1s;
+            transform: translateY(0);
+            box-shadow: 0 8px 0 rgba(0,0,0,0.2), 0 15px 20px rgba(0,0,0,0.2);
+        }
+        
+        .btn-3d:active {
+            transform: translateY(8px);
+            box-shadow: 0 0 0 rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.2);
+        }
+        
+        /* Oficina Background Kawaii */
+        .workshop-bg {
+            background-color: #2e1065; /* violeta escuro, ambiente de laboratório sci-fi */
+            background-image: 
+                radial-gradient(circle at 50% 120%, #7e22ce 0%, transparent 60%),
+                linear-gradient(0deg, #1e1b4b 0%, transparent 50%),
+                repeating-linear-gradient(45deg, rgba(139, 92, 246, 0.05) 0px, rgba(139, 92, 246, 0.05) 2px, transparent 2px, transparent 20px),
+                repeating-linear-gradient(-45deg, rgba(139, 92, 246, 0.05) 0px, rgba(139, 92, 246, 0.05) 2px, transparent 2px, transparent 20px);
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 1s;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+        }
+        
+        /* Mesa da Oficina */
+        .workshop-desk {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 25%;
+            background: linear-gradient(to bottom, #4c1d95, #312e81);
+            border-top: 4px solid #8b5cf6;
+            box-shadow: 0 -10px 30px rgba(139, 92, 246, 0.3);
+        }
+        
+        /* Ecrã de Computador no Fundo */
+        .workshop-screen {
+            position: absolute;
+            top: 15%;
+            left: 10%;
+            width: 80px;
+            height: 60px;
+            background: #064e3b;
+            border: 3px solid #10b981;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .workshop-screen::after {
+            content: '>';
+            color: #34d399;
+            font-family: monospace;
+            font-size: 24px;
+            animation: float 2s infinite; /* Usa a animação já existente para piscar */
+        }
+        
+        /* Blueprint (Projeto) na Parede */
+        .workshop-blueprint {
+            position: absolute;
+            top: 20%;
+            right: 15%;
+            width: 70px;
+            height: 90px;
+            background: #1e3a8a;
+            border: 2px solid #60a5fa;
+            border-radius: 4px;
+            transform: rotate(5deg);
+            opacity: 0.8;
+        }
+        .workshop-blueprint::before {
+            content: '';
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            border: 1px dashed #93c5fd;
+            border-radius: 50%;
+        }
+
+        /* Animações SVG Robot Kawaii */
+        .robot-sad .mouth { d: path("M85,110 Q100,95 115,110"); stroke: #ef4444; }
+        .robot-happy .mouth { d: path("M80,100 Q100,125 120,100"); stroke: #22c55e; }
+        .robot-normal .mouth { d: path("M85,105 Q100,115 115,105"); stroke: #3b82f6; }
+        
+        .robot-dead .eye-group { display: none; }
+        .robot-dead .eye-dead { display: block; stroke: #ef4444; }
+        .robot-dead .mouth { d: path("M85,105 L115,105"); stroke: #ef4444; }
+        .eye-dead { display: none; fill: none; stroke-width: 5; stroke-linecap: round; }
+        
+        .arm-left, .arm-right { transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .animate-arms .arm-left { transform: rotate(130deg); transform-origin: 65px 160px; }
+        .animate-arms .arm-right { transform: rotate(-130deg); transform-origin: 135px 160px; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 sm:p-8 text-slate-800">
+
+    <div class="max-w-5xl w-full bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border-4 border-sky-200">
+        
+        <!-- Cabeçalho -->
+        <div class="bg-sky-400 text-white p-6 text-center shadow-md relative z-20">
+            <h1 class="text-3xl sm:text-4xl font-bold flex items-center justify-center gap-3">
+                <span>📦</span> A Caixa Mágica das Variáveis! <span>✨</span>
+            </h1>
+            <p class="mt-2 text-sky-100 text-lg">Aprende programação a brincar com caixas!</p>
+        </div>
+
+        <div class="flex flex-col md:flex-row h-full min-h-[500px]">
+            
+            <div class="w-full md:w-1/2 p-6 sm:p-10 bg-white flex flex-col border-r-2 border-sky-100">
+                
+                <!-- Progresso -->
+                <div class="flex justify-between mb-8 px-2 relative">
+                    <div class="absolute top-1/2 left-0 w-full h-1 bg-gray-200 -z-10 rounded-full transform -translate-y-1/2"></div>
+                    <div id="progress-bar" class="absolute top-1/2 left-0 w-0 h-1 bg-sky-500 -z-10 rounded-full transform -translate-y-1/2 transition-all duration-500"></div>
+                    
+                    <div class="w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center font-bold shadow-md step-dot" id="dot-1">1</div>
+                    <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold shadow-md step-dot" id="dot-2">2</div>
+                    <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold shadow-md step-dot" id="dot-3">3</div>
+                    <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold shadow-md step-dot" id="dot-4">4</div>
+                    <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold shadow-md step-dot" id="dot-5" title="Minijogo">🎮</div>
+                </div>
+
+                <!-- Conteúdo dos Passos -->
+                <div class="flex-grow flex flex-col justify-center">
+                    
+                    <!-- PASSO 1: Dar nome -->
+                    <div id="step-1" class="transition-opacity duration-300">
+                        <h2 class="text-2xl font-bold text-sky-600 mb-4">O que é uma variável?</h2>
+                        <p class="text-lg mb-6 leading-relaxed">Na programação, uma <strong>variável</strong> é como uma caixa onde guardamos uma informação para usar mais tarde.<br><br>Para não perdermos a nossa caixa, precisamos de colocar uma etiqueta com um <strong>nome</strong> nela.</p>
+                        
+                        <div class="bg-sky-50 p-5 rounded-xl border-2 border-sky-200 mb-4">
+                            <label class="block text-sky-800 font-bold mb-2">Qual será o nome da tua caixa?</label>
+                            <input type="text" id="input-var-name" placeholder="Ex: pontuacao, nomeHeroi, idade..." class="w-full p-3 rounded-lg border-2 border-sky-300 focus:outline-none focus:border-sky-500 text-lg">
+                            <p class="text-xs text-sky-600 mt-2">*Dica: os nomes das variáveis não costumam ter espaços!</p>
+                        </div>
+                        <button onclick="completarPasso1()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold text-xl py-3 px-6 rounded-xl shadow-[0_4px_0_rgb(21,128,61)] active:shadow-[0_0px_0_rgb(21,128,61)] active:translate-y-1 transition-all">Criar a minha Caixa!</button>
+                    </div>
+
+                    <!-- PASSO 2: Colocar valor -->
+                    <div id="step-2" class="hidden-step transition-opacity duration-300">
+                        <h2 class="text-2xl font-bold text-sky-600 mb-4">Muito bem!</h2>
+                        <p class="text-lg mb-6 leading-relaxed">Agora temos uma caixa chamada <strong id="display-name-1" class="text-purple-600 bg-purple-100 px-2 py-1 rounded"></strong>.<br><br>Mas está vazia! Vamos guardar um <strong>valor</strong> lá dentro. Pode ser um número ou uma palavra.</p>
+                        
+                        <div class="bg-purple-50 p-5 rounded-xl border-2 border-purple-200 mb-4">
+                            <label class="block text-purple-800 font-bold mb-2">O que vamos guardar na caixa?</label>
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono text-lg font-bold text-purple-700" id="display-name-code">var</span>
+                                <span class="font-mono text-lg font-bold text-gray-500">=</span>
+                                <input type="text" id="input-var-value" placeholder="Escreve aqui..." class="w-full p-3 rounded-lg border-2 border-purple-300 focus:outline-none focus:border-purple-500 text-lg flex-grow">
+                            </div>
+                        </div>
+                        <button onclick="completarPasso2()" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold text-xl py-3 px-6 rounded-xl shadow-[0_4px_0_rgb(109,40,217)] active:shadow-[0_0px_0_rgb(109,40,217)] active:translate-y-1 transition-all">Guardar Valor!</button>
+                    </div>
+
+                    <!-- PASSO 3: Usar o valor -->
+                    <div id="step-3" class="hidden-step transition-opacity duration-300">
+                        <h2 class="text-2xl font-bold text-sky-600 mb-4">Incrível!</h2>
+                        <p class="text-lg mb-6 leading-relaxed">Guardaste o valor <strong id="display-value-1" class="bg-yellow-100 px-2 py-1 rounded text-yellow-800"></strong> na variável <strong class="text-purple-600 bg-purple-100 px-2 py-1 rounded var-name-display"></strong>.<br><br>O nosso Robô assistente quer saber o que está na caixa. Clica no botão para ele a "ler"!</p>
+                        
+                        <div class="bg-yellow-50 p-5 rounded-xl border-2 border-yellow-200 mb-4 text-center">
+                            <code class="text-xl font-bold text-gray-700 bg-white p-2 rounded block mb-2 border">robo.ler(<span class="text-purple-600 var-name-display"></span>);</code>
+                        </div>
+                        <button onclick="completarPasso3()" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-xl py-3 px-6 rounded-xl shadow-[0_4px_0_rgb(180,83,9)] active:shadow-[0_0px_0_rgb(180,83,9)] active:translate-y-1 transition-all text-yellow-900">Fazer o Robô ler!</button>
+                    </div>
+
+                    <!-- PASSO 4: Mudar valor (Variar) -->
+                    <div id="step-4" class="hidden-step transition-opacity duration-300">
+                        <h2 class="text-2xl font-bold text-sky-600 mb-4">O segredo das Variáveis!</h2>
+                        <p class="text-lg mb-6 leading-relaxed">Sabes porque se chamam <strong>variáveis</strong>? Porque o seu valor pode <em>variar</em> (mudar) a qualquer momento!<br><br>Tenta trocar o valor da caixa por outra coisa:</p>
+                        
+                        <div class="bg-green-50 p-5 rounded-xl border-2 border-green-200 mb-4">
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono text-lg font-bold text-purple-700 var-name-display"></span>
+                                <span class="font-mono text-lg font-bold text-gray-500">=</span>
+                                <input type="text" id="input-new-value" placeholder="Novo valor..." class="w-full p-3 rounded-lg border-2 border-green-300 focus:outline-none focus:border-green-500 text-lg flex-grow">
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="mudarValor()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-[0_4px_0_rgb(21,128,61)] active:shadow-[0_0px_0_rgb(21,128,61)] active:translate-y-1 transition-all">Mudar e Ler!</button>
+                            <button onclick="iniciarMinigame()" class="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-4 rounded-xl shadow-[0_4px_0_rgb(67,56,202)] active:shadow-[0_0px_0_rgb(67,56,202)] active:translate-y-1 transition-all">Desafio! 🎮</button>
+                            <button onclick="reiniciar()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-4 rounded-xl shadow-[0_4px_0_rgb(156,163,175)] active:shadow-[0_0px_0_rgb(156,163,175)] active:translate-y-1 transition-all" title="Recomeçar do zero">🔄</button>
+                        </div>
+                    </div>
+
+                    <!-- PASSO 5: Minigame Tamagotchi -->
+                    <div id="step-5" class="hidden-step transition-opacity duration-300">
+                        <h2 class="text-2xl font-bold text-indigo-600 mb-4">Minijogo: Oficina do Robô!</h2>
+                        <p class="text-md mb-4 leading-relaxed">As variáveis <strong class="text-yellow-600">bateria</strong>, <strong class="text-pink-600">alegria</strong> e <strong class="text-teal-600">limpeza</strong> diminuem com o tempo. Mantém-nas altas para o teu robô não avariar!</p>
+                        
+                        <div class="bg-indigo-50 p-4 rounded-xl border-2 border-indigo-200 mb-6 font-mono text-sm sm:text-base">
+                            <div class="text-indigo-800">var <span class="font-bold text-yellow-600">bateria</span> = <span id="code-bateria">100</span>;</div>
+                            <div class="text-indigo-800 mt-1">var <span class="font-bold text-pink-600">alegria</span> = <span id="code-alegria">100</span>;</div>
+                            <div class="text-indigo-800 mt-1">var <span class="font-bold text-teal-600">limpeza</span> = <span id="code-limpeza">100</span>;</div>
+                        </div>
+
+                        <div class="flex flex-col gap-3">
+                            <button onclick="darEnergia()" class="btn-3d w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold text-lg py-3 px-6 rounded-2xl flex justify-between items-center border-2 border-yellow-500">
+                                <span class="flex items-center gap-2"><span class="text-2xl">⚡</span> Dar Energia</span>
+                                <span class="text-sm bg-yellow-600 text-white px-2 py-1 rounded-full">+20</span>
+                            </button>
+                            <button onclick="brincar()" class="btn-3d w-full bg-pink-400 hover:bg-pink-500 text-pink-900 font-bold text-lg py-3 px-6 rounded-2xl flex justify-between items-center border-2 border-pink-500">
+                                <span class="flex items-center gap-2"><span class="text-2xl">🎮</span> Brincar</span>
+                                <span class="text-sm bg-pink-600 text-white px-2 py-1 rounded-full">+20</span>
+                            </button>
+                            <button onclick="limparOlear()" class="btn-3d w-full bg-teal-400 hover:bg-teal-500 text-teal-900 font-bold text-lg py-3 px-6 rounded-2xl flex justify-between items-center border-2 border-teal-500">
+                                <span class="flex items-center gap-2"><span class="text-2xl">🧼</span> Limpar & Olear</span>
+                                <span class="text-sm bg-teal-600 text-white px-2 py-1 rounded-full">+20</span>
+                            </button>
+                            <button onclick="reiniciar()" class="mt-2 text-gray-500 underline text-sm hover:text-gray-700 text-center">Desistir e voltar ao início</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Área Visual (A Caixa e o Robô) -->
+            <div class="w-full md:w-1/2 bg-sky-50 p-6 flex flex-col items-center justify-center relative overflow-hidden rounded-r-2xl">
+                
+                <!-- Ambiente de Oficina -->
+                <div id="workshop-environment" class="workshop-bg rounded-r-2xl overflow-hidden">
+                    <div class="workshop-screen"></div>
+                    <div class="workshop-blueprint"></div>
+                    <div class="workshop-desk"></div>
+                </div>
+
+                <!-- Balão de fala do robô (escondido inicialmente) -->
+                <div id="speech-bubble" class="opacity-0 transition-opacity duration-300 absolute top-10 sm:top-20 bg-white border-4 border-gray-200 p-4 rounded-2xl shadow-xl max-w-[250px] z-30">
+                    <div class="text-xl font-bold text-center text-gray-700" id="robot-text">...</div>
+                    <!-- Triângulo do balão -->
+                    <div class="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[20px] border-t-gray-200"></div>
+                    <div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[15px] border-t-white"></div>
+                </div>
+
+                <!-- Robô de Corpo Inteiro (SVG Kawaii) -->
+                <div id="robot-container" class="mb-12 animate-float z-20 transition-transform duration-300">
+                    <svg id="robot-svg" viewBox="0 0 200 260" width="160" height="200" class="robot-normal">
+                        <!-- Antena (Bolinha fofa) -->
+                        <line x1="100" y1="40" x2="100" y2="15" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="100" cy="15" r="8" fill="#f43f5e" class="antenna-bulb animate-pulse"/>
+                        
+                        <!-- Cabeça (Redondinha) -->
+                        <rect x="40" y="40" width="120" height="95" rx="45" fill="#f8fafc" stroke="#94a3b8" stroke-width="5"/>
+                        
+                        <!-- Bochechas Kawaii -->
+                        <circle cx="65" cy="100" r="10" fill="#fbcfe8" opacity="0.8"/>
+                        <circle cx="135" cy="100" r="10" fill="#fbcfe8" opacity="0.8"/>
+                        
+                        <!-- Olhos -->
+                        <g class="eye-group">
+                            <circle cx="75" cy="85" r="12" fill="#1e293b" class="eye"/>
+                            <circle cx="72" cy="81" r="4" fill="#ffffff" class="pupil"/>
+                            <circle cx="78" cy="88" r="2" fill="#ffffff" class="pupil"/>
+                            
+                            <circle cx="125" cy="85" r="12" fill="#1e293b" class="eye"/>
+                            <circle cx="122" cy="81" r="4" fill="#ffffff" class="pupil"/>
+                            <circle cx="128" cy="88" r="2" fill="#ffffff" class="pupil"/>
+                        </g>
+                        
+                        <!-- Olhos de morto (X) escondidos por defeito -->
+                        <g class="eye-dead">
+                            <path d="M65,75 L85,95 M85,75 L65,95"/>
+                            <path d="M115,75 L135,95 M135,75 L115,95"/>
+                        </g>
+                        
+                        <!-- Boca -->
+                        <path d="M85,105 Q100,115 115,105" fill="none" stroke="#3b82f6" stroke-width="5" stroke-linecap="round" class="mouth transition-all duration-300"/>
+                        
+                        <!-- Corpo (Pill shape gordinho) -->
+                        <rect x="55" y="140" width="90" height="85" rx="40" fill="#38bdf8" stroke="#0284c7" stroke-width="5"/>
+                        
+                        <!-- Ecrã da barriga com coração -->
+                        <circle cx="100" cy="182" r="22" fill="#0f172a" stroke="#1e293b" stroke-width="3"/>
+                        <path d="M93,178 A 5 5 0 0 1 100 178 A 5 5 0 0 1 107 178 Q 107 185 100 190 Q 93 185 93 178 Z" fill="#22c55e" class="heartbeat"/>
+                        
+                        <!-- Braços Kawaii -->
+                        <g class="arm-left">
+                            <rect x="25" y="150" width="40" height="20" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-width="4"/>
+                        </g>
+                        <g class="arm-right">
+                            <rect x="135" y="150" width="40" height="20" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-width="4"/>
+                        </g>
+                        
+                        <!-- Base/Rodinhas (Redondinhas) -->
+                        <rect x="70" y="225" width="60" height="25" rx="12.5" fill="#475569" stroke="#1e293b" stroke-width="4"/>
+                        <circle cx="85" cy="250" r="10" fill="#0f172a"/>
+                        <circle cx="115" cy="250" r="10" fill="#0f172a"/>
+                    </svg>
+                </div>
+
+                <!-- Status do Tamagotchi (Minigame 3D) -->
+                <div id="tamagotchi-status" class="hidden-step w-full max-w-xs z-20 mb-8 opacity-0 transition-opacity duration-500 tamagotchi-console">
+                    <div class="tamagotchi-screen p-4 flex flex-col gap-3">
+                        <!-- Bateria -->
+                        <div>
+                            <div class="flex justify-between text-xs sm:text-sm font-bold text-indigo-900 mb-1">
+                                <span>Bateria ⚡</span>
+                                <span id="bar-text-bateria">100%</span>
+                            </div>
+                            <div class="w-full bg-black/20 rounded-full h-5 overflow-hidden border-2 border-black/40 shadow-inner p-1">
+                                <div id="bar-fill-bateria" class="bg-yellow-400 h-full rounded-full transition-all duration-300 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.3)]" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <!-- Alegria -->
+                        <div>
+                            <div class="flex justify-between text-xs sm:text-sm font-bold text-indigo-900 mb-1">
+                                <span>Alegria 🎮</span>
+                                <span id="bar-text-alegria">100%</span>
+                            </div>
+                            <div class="w-full bg-black/20 rounded-full h-5 overflow-hidden border-2 border-black/40 shadow-inner p-1">
+                                <div id="bar-fill-alegria" class="bg-pink-400 h-full rounded-full transition-all duration-300 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.3)]" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <!-- Limpeza -->
+                        <div>
+                            <div class="flex justify-between text-xs sm:text-sm font-bold text-indigo-900 mb-1">
+                                <span>Limpeza 🧼</span>
+                                <span id="bar-text-limpeza">100%</span>
+                            </div>
+                            <div class="w-full bg-black/20 rounded-full h-5 overflow-hidden border-2 border-black/40 shadow-inner p-1">
+                                <div id="bar-fill-limpeza" class="bg-teal-400 h-full rounded-full transition-all duration-300 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.3)]" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- A Caixa Visual -->
+                <div id="visual-box-container" class="opacity-0 transition-opacity duration-1000 mt-10 relative">
+                    <!-- Etiqueta da caixa -->
+                    <div id="box-label-tag" class="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-yellow-300 border-2 border-yellow-500 font-bold px-4 py-1 rounded shadow-sm z-30 text-yellow-900 shadow-md whitespace-nowrap">
+                        ?
+                    </div>
+                    
+                    <div class="cardboard-box">
+                        <div class="box-flap-back"></div>
+                        <div class="box-inside">
+                            <!-- O valor será inserido aqui pelo JS -->
+                            <div id="box-content-visual" class="box-value-item hidden-step"></div>
+                        </div>
+                        <div class="box-flap-front flex items-center justify-center">
+                            <span class="text-amber-800 opacity-50 font-bold text-sm">VAR</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chão simulado -->
+                <div class="w-[120%] h-12 bg-sky-100 rounded-[100%] absolute -bottom-6 blur-sm"></div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        // Estado da aplicação
+        let variavelNome = "";
+        let variavelValor = "";
+
+        // Referências do DOM
+        const steps = [
+            document.getElementById('step-1'),
+            document.getElementById('step-2'),
+            document.getElementById('step-3'),
+            document.getElementById('step-4'),
+            document.getElementById('step-5')
+        ];
+        const dots = [
+            document.getElementById('dot-1'),
+            document.getElementById('dot-2'),
+            document.getElementById('dot-3'),
+            document.getElementById('dot-4'),
+            document.getElementById('dot-5')
+        ];
+        const progressBar = document.getElementById('progress-bar');
+        const visualBoxContainer = document.getElementById('visual-box-container');
+        const boxLabelTag = document.getElementById('box-label-tag');
+        const boxContentVisual = document.getElementById('box-content-visual');
+        const speechBubble = document.getElementById('speech-bubble');
+        const robotText = document.getElementById('robot-text');
+        const robotContainer = document.getElementById('robot-container');
+        const robotSvg = document.getElementById('robot-svg');
+        const workshopBg = document.getElementById('workshop-environment');
+
+        // Função utilitária para mudar de passo
+        function irParaPasso(numeroPasso) {
+            // Esconder todos os passos
+            steps.forEach((step, index) => {
+                if (index === numeroPasso - 1) {
+                    step.classList.remove('hidden-step');
+                    // Pequeno atraso para a animação de fade in do tailwind funcionar
+                    setTimeout(() => step.style.opacity = '1', 50);
+                } else {
+                    step.style.opacity = '0';
+                    setTimeout(() => step.classList.add('hidden-step'), 300);
+                }
+            });
+
+            // Atualizar barra de progresso e bolinhas
+            progressBar.style.width = `${((numeroPasso - 1) / 4) * 100}%`;
+            
+            dots.forEach((dot, index) => {
+                if (index < numeroPasso) {
+                    dot.classList.remove('bg-gray-200', 'text-gray-500');
+                    if (index === 4) {
+                        dot.classList.add('bg-indigo-500', 'text-white');
+                    } else {
+                        dot.classList.add('bg-sky-500', 'text-white');
+                    }
+                } else {
+                    dot.classList.add('bg-gray-200', 'text-gray-500');
+                    dot.classList.remove('bg-sky-500', 'text-white', 'bg-indigo-500');
+                }
+            });
+        }
+
+        // Ações do Passo 1: Criar a caixa (Declarar variável)
+        function completarPasso1() {
+            let input = document.getElementById('input-var-name').value.trim();
+            
+            // Remover espaços para simular nome de variável real
+            input = input.replace(/\s+/g, '');
+            
+            if (input === "") {
+                alert("Por favor, dá um nome à tua caixa!");
+                return;
+            }
+
+            variavelNome = input;
+            
+            // Atualizar textos na interface
+            document.getElementById('display-name-1').innerText = variavelNome;
+            document.getElementById('display-name-code').innerText = variavelNome;
+            document.querySelectorAll('.var-name-display').forEach(el => el.innerText = variavelNome);
+            
+            // Animar o aparecimento da caixa
+            visualBoxContainer.classList.remove('opacity-0');
+            visualBoxContainer.classList.add('animate-bounce-in');
+            boxLabelTag.innerText = variavelNome;
+
+            irParaPasso(2);
+            document.getElementById('input-var-value').focus();
+        }
+
+        // Ações do Passo 2: Colocar valor (Atribuição)
+        function completarPasso2() {
+            let input = document.getElementById('input-var-value').value;
+            
+            if (input.trim() === "") {
+                alert("A caixa não pode ficar vazia! Coloca um número ou uma palavra.");
+                return;
+            }
+
+            variavelValor = input;
+            
+            // Atualizar textos na interface
+            document.getElementById('display-value-1').innerText = variavelValor;
+
+            // Animar a "queda" do valor dentro da caixa
+            boxContentVisual.innerText = variavelValor;
+            boxContentVisual.classList.remove('hidden-step');
+            
+            // Reiniciar animação caso esteja repetindo
+            boxContentVisual.classList.remove('animate-drop-in');
+            void boxContentVisual.offsetWidth; // Trigger reflow
+            boxContentVisual.classList.add('animate-drop-in');
+
+            irParaPasso(3);
+        }
+
+        // Ações do Passo 3: O Robô lê a caixa
+        function completarPasso3() {
+            // Animação do Robô lendo
+            robotContainer.style.transform = "scale(1.1) rotate(5deg)";
+            robotSvg.classList.add('animate-arms');
+            setTimeout(() => {
+                robotContainer.style.transform = "scale(1) rotate(0deg)";
+                robotSvg.classList.remove('animate-arms');
+            }, 500);
+
+            // Mostrar balão de fala
+            robotText.innerHTML = `O valor da variável <strong>${variavelNome}</strong> é:<br><span class="text-3xl text-purple-600 mt-2 block">${variavelValor}</span>`;
+            speechBubble.classList.remove('opacity-0');
+
+            setTimeout(() => {
+                irParaPasso(4);
+            }, 1500);
+        }
+
+        // Ações do Passo 4: Mudar a Variável (Reatribuição)
+        function mudarValor() {
+            let novoValor = document.getElementById('input-new-value').value;
+            
+            if (novoValor.trim() === "") {
+                alert("Escreve um novo valor para a variável!");
+                return;
+            }
+
+            variavelValor = novoValor;
+
+            // Animar o novo valor caindo na caixa
+            boxContentVisual.innerText = variavelValor;
+            boxContentVisual.classList.remove('animate-drop-in');
+            void boxContentVisual.offsetWidth;
+            boxContentVisual.classList.add('animate-drop-in');
+
+            // Fazer o robô reagir e ler imediatamente
+            robotSvg.className = "robot-happy";
+            robotSvg.classList.add('animate-arms');
+            robotContainer.style.transform = "scale(1.1) translateY(-20px)";
+            
+            robotText.innerHTML = `Novo valor atualizado!<br><span class="text-3xl text-green-600 mt-2 block">${variavelValor}</span>`;
+            
+            setTimeout(() => {
+                robotContainer.style.transform = "scale(1) translateY(0)";
+                robotSvg.className = "robot-normal";
+                robotSvg.classList.remove('animate-arms');
+            }, 500);
+
+            // Limpar input
+            document.getElementById('input-new-value').value = "";
+        }
+
+        // Função para recomeçar o processo
+        function reiniciar() {
+            variavelNome = "";
+            variavelValor = "";
+            
+            if (gameLoopInterval) clearInterval(gameLoopInterval);
+            
+            document.getElementById('input-var-name').value = "";
+            document.getElementById('input-var-value').value = "";
+            document.getElementById('input-new-value').value = "";
+            
+            document.getElementById('tamagotchi-status').classList.add('hidden-step');
+            document.getElementById('tamagotchi-status').classList.remove('opacity-100');
+            
+            workshopBg.style.opacity = '0';
+            
+            visualBoxContainer.classList.remove('hidden-step');
+            visualBoxContainer.classList.add('opacity-0');
+            visualBoxContainer.classList.remove('animate-bounce-in');
+            boxContentVisual.classList.add('hidden-step');
+            speechBubble.classList.add('opacity-0');
+            
+            robotContainer.style.transform = "rotate(0deg) translateY(0px) scale(1)";
+            robotSvg.className = "robot-normal";
+            robotSvg.classList.remove('animate-arms');
+            
+            irParaPasso(1);
+        }
+
+        // Permitir uso do "Enter" nos inputs
+        document.getElementById('input-var-name').addEventListener('keypress', function(e) {
+            if(e.key === 'Enter') completarPasso1();
+        });
+        document.getElementById('input-var-value').addEventListener('keypress', function(e) {
+            if(e.key === 'Enter') completarPasso2();
+        });
+        document.getElementById('input-new-value').addEventListener('keypress', function(e) {
+            if(e.key === 'Enter') mudarValor();
+        });
+
+        // --- LÓGICA DO MINIJOGO TAMAGOTCHI ---
+        let tamagotchiBateria = 100;
+        let tamagotchiAlegria = 100;
+        let tamagotchiLimpeza = 100;
+        let gameLoopInterval = null;
+
+        function iniciarMinigame() {
+            irParaPasso(5);
+            
+            // Esconder a caixa mágica
+            visualBoxContainer.classList.add('opacity-0');
+            setTimeout(() => visualBoxContainer.classList.add('hidden-step'), 300);
+            speechBubble.classList.add('opacity-0');
+            
+            // Mostrar ambiente de Oficina
+            workshopBg.style.opacity = '1';
+            
+            // Mostrar Status do Tamagotchi
+            const statusUI = document.getElementById('tamagotchi-status');
+            statusUI.classList.remove('hidden-step');
+            setTimeout(() => statusUI.classList.add('opacity-100'), 50);
+
+            // Reiniciar variáveis
+            tamagotchiBateria = 100;
+            tamagotchiAlegria = 100;
+            tamagotchiLimpeza = 100;
+            atualizarInterfaceMinigame();
+            robotContainer.style.transform = "rotate(0deg) translateY(0px) scale(1)";
+            robotSvg.className = "robot-normal";
+            robotSvg.classList.remove('animate-arms');
+
+            // Loop principal do tempo (desafiando o jogador)
+            if (gameLoopInterval) clearInterval(gameLoopInterval);
+            gameLoopInterval = setInterval(() => {
+                tamagotchiBateria = Math.max(0, tamagotchiBateria - 3);
+                tamagotchiAlegria = Math.max(0, tamagotchiAlegria - 4);
+                tamagotchiLimpeza = Math.max(0, tamagotchiLimpeza - 2);
+                atualizarInterfaceMinigame();
+                
+                if (tamagotchiBateria === 0 || tamagotchiAlegria === 0 || tamagotchiLimpeza === 0) {
+                    robotText.innerHTML = "<span class='text-red-600 font-bold'>Avaria Crítica!</span><br><span class='text-sm text-gray-600 mt-2 block'>Uma das variáveis chegou a 0. O robô desligou-se!</span>";
+                    speechBubble.classList.remove('opacity-0');
+                    
+                    robotSvg.className = "robot-dead";
+                    robotSvg.classList.remove('animate-arms');
+                    robotContainer.style.transform = "rotate(90deg) translateY(50px)";
+                    
+                    clearInterval(gameLoopInterval);
+                }
+            }, 1000); // Roda a cada 1 segundo
+        }
+
+        function atualizarInterfaceMinigame() {
+            if (tamagotchiBateria === 0 || tamagotchiAlegria === 0 || tamagotchiLimpeza === 0) return; 
+            
+            // Textos que simulam código
+            document.getElementById('code-bateria').innerText = tamagotchiBateria;
+            document.getElementById('code-alegria').innerText = tamagotchiAlegria;
+            document.getElementById('code-limpeza').innerText = tamagotchiLimpeza;
+
+            // Barras visuais
+            document.getElementById('bar-fill-bateria').style.width = tamagotchiBateria + '%';
+            document.getElementById('bar-text-bateria').innerText = tamagotchiBateria + '%';
+            
+            document.getElementById('bar-fill-alegria').style.width = tamagotchiAlegria + '%';
+            document.getElementById('bar-text-alegria').innerText = tamagotchiAlegria + '%';
+
+            document.getElementById('bar-fill-limpeza').style.width = tamagotchiLimpeza + '%';
+            document.getElementById('bar-text-limpeza').innerText = tamagotchiLimpeza + '%';
+
+            // Cores de alerta
+            const fillBateria = document.getElementById('bar-fill-bateria');
+            if(tamagotchiBateria < 30) fillBateria.className = "bg-red-500 h-full rounded-full transition-all duration-300";
+            else fillBateria.className = "bg-yellow-400 h-full rounded-full transition-all duration-300";
+
+            const fillAlegria = document.getElementById('bar-fill-alegria');
+            if(tamagotchiAlegria < 30) fillAlegria.className = "bg-red-500 h-full rounded-full transition-all duration-300";
+            else fillAlegria.className = "bg-pink-400 h-full rounded-full transition-all duration-300";
+
+            const fillLimpeza = document.getElementById('bar-fill-limpeza');
+            if(tamagotchiLimpeza < 30) fillLimpeza.className = "bg-red-500 h-full rounded-full transition-all duration-300";
+            else fillLimpeza.className = "bg-teal-400 h-full rounded-full transition-all duration-300";
+
+            // Reações do Robô
+            if (tamagotchiBateria < 30 || tamagotchiAlegria < 30 || tamagotchiLimpeza < 30) {
+                robotSvg.className = "robot-sad";
+            } else if (tamagotchiAlegria > 80 && tamagotchiBateria > 80 && tamagotchiLimpeza > 80) {
+                robotSvg.className = "robot-happy";
+            } else {
+                robotSvg.className = "robot-normal";
+            }
+        }
+
+        function darEnergia() {
+            if(tamagotchiBateria === 0 || tamagotchiAlegria === 0 || tamagotchiLimpeza === 0) return;
+            tamagotchiBateria = Math.min(100, tamagotchiBateria + 20);
+            atualizarInterfaceMinigame();
+            
+            robotContainer.style.transform = "scale(1.1) translateY(-10px)";
+            setTimeout(() => robotContainer.style.transform = "scale(1) translateY(0)", 200);
+        }
+
+        function brincar() {
+            if(tamagotchiBateria === 0 || tamagotchiAlegria === 0 || tamagotchiLimpeza === 0) return;
+            tamagotchiAlegria = Math.min(100, tamagotchiAlegria + 20);
+            // Brincar gasta um pouco de energia e suja o robô
+            tamagotchiBateria = Math.max(0, tamagotchiBateria - 5);
+            tamagotchiLimpeza = Math.max(0, tamagotchiLimpeza - 10);
+            atualizarInterfaceMinigame();
+
+            robotContainer.style.transform = "scale(1.1) rotate(10deg)";
+            robotSvg.classList.add('animate-arms');
+            setTimeout(() => {
+                robotContainer.style.transform = "scale(1) rotate(0)";
+                robotSvg.classList.remove('animate-arms');
+            }, 300);
+        }
+
+        function limparOlear() {
+            if(tamagotchiBateria === 0 || tamagotchiAlegria === 0 || tamagotchiLimpeza === 0) return;
+            tamagotchiLimpeza = Math.min(100, tamagotchiLimpeza + 25);
+            atualizarInterfaceMinigame();
+
+            robotContainer.style.transform = "rotate(-10deg) scale(1.1)";
+            setTimeout(() => robotContainer.style.transform = "rotate(0) scale(1)", 200);
+        }
+    </script>
+</body>
+</html>
