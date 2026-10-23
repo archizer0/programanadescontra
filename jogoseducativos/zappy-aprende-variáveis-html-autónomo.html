@@ -1,0 +1,1065 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zappy — Aprende Variáveis com um Robot 3D</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      [hidden] { display: none !important; }
+
+      body {
+        font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(to bottom, #e0f2fe, #eef2ff 40%, #ede9fe);
+        color: #1e293b;
+        min-height: 100vh;
+      }
+
+      .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+
+      /* ---------- Cabeçalho ---------- */
+      header {
+        background: linear-gradient(90deg, #4f46e5, #9333ea, #ec4899);
+        color: #fff;
+        box-shadow: 0 4px 20px rgba(79, 70, 229, 0.4);
+      }
+      .header-inner {
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+        gap: 12px; padding: 22px 0;
+      }
+      .brand { display: flex; align-items: center; gap: 12px; }
+      .brand .logo { font-size: 44px; }
+      .brand h1 { font-size: 28px; font-weight: 900; letter-spacing: 0.5px; }
+      .brand p { font-size: 13px; opacity: 0.85; }
+      .tabs { display: flex; gap: 6px; background: rgba(255,255,255,0.15); padding: 4px; border-radius: 999px; }
+      .tab-btn {
+        border: none; background: transparent; color: #fff; font-weight: 700; font-size: 15px;
+        padding: 9px 18px; border-radius: 999px; cursor: pointer; transition: background 0.2s;
+      }
+      .tab-btn:hover { background: rgba(255,255,255,0.2); }
+      .tab-btn.active { background: #fff; color: #4338ca; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+
+      footer { text-align: center; padding: 24px 0; color: #94a3b8; font-size: 14px; }
+
+      /* ---------- Cartões ---------- */
+      .cards { max-width: 760px; margin: 0 auto; padding: 28px 16px; display: flex; flex-direction: column; gap: 22px; }
+      .card {
+        background: #fff; border: 4px solid #c7d2fe; border-radius: 24px;
+        padding: 24px; box-shadow: 0 8px 24px rgba(79, 70, 229, 0.1);
+      }
+      .card.note { border-color: #fde68a; background: #fffbeb; }
+      .card h2 { color: #4338ca; font-size: 22px; font-weight: 900; margin-bottom: 10px; }
+      .card h3 { color: #b45309; font-size: 17px; font-weight: 900; margin-bottom: 8px; }
+      .card p, .card li { font-size: 17px; line-height: 1.55; }
+      .card ul { margin: 8px 0 0 2px; list-style: none; }
+      .center { text-align: center; }
+      .mt { margin-top: 14px; }
+
+      code.inline {
+        background: #f1f5f9; border-radius: 6px; padding: 1px 6px;
+        font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace; font-size: 15px;
+      }
+
+      .code-line {
+        display: inline-block; background: #0f172a; color: #6ee7b7; border-radius: 10px;
+        padding: 9px 16px; font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 15px; box-shadow: 0 4px 12px rgba(15,23,42,0.25); margin-top: 6px;
+      }
+      .c-name { color: #7dd3fc; }
+      .c-val { color: #fde047; }
+
+      /* Caixa-variável (metáfora) */
+      .vbox {
+        position: relative; width: fit-content; margin: 20px auto 0; background: #fff;
+        border: 4px dashed #818cf8; border-radius: 18px; padding: 24px 40px;
+        text-align: center; box-shadow: 0 10px 30px rgba(79,70,229,0.15);
+      }
+      .vbox .label {
+        position: absolute; top: -16px; left: 18px; background: #6366f1; color: #fff;
+        font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 14px;
+        padding: 4px 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      }
+      .vbox .emoji { font-size: 52px; }
+      .vbox .value {
+        font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 44px;
+        font-weight: 900; color: #4338ca; margin-top: 6px;
+      }
+
+      /* Entradas */
+      .lab-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 14px; }
+      .field label { display: block; font-weight: 700; margin-bottom: 6px; font-size: 15px; }
+      .text-input {
+        width: 100%; border: 2px solid #c7d2fe; border-radius: 12px; padding: 10px 14px;
+        font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 17px; outline: none;
+      }
+      .text-input:focus { border-color: #6366f1; }
+      .hint-small { font-size: 12px; color: #64748b; margin-top: 5px; }
+      input[type="range"] { width: 100%; margin-top: 8px; }
+
+      .bubble {
+        display: inline-block; background: #e0e7ff; border-radius: 18px;
+        padding: 12px 20px; font-weight: 600; font-size: 17px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      }
+      .robot-face { font-size: 46px; display: inline-block; vertical-align: middle; margin-right: 12px; }
+
+      .btn {
+        display: inline-block; border: none; cursor: pointer; font-weight: 700; font-size: 16px;
+        padding: 13px 22px; border-radius: 18px; color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+        transition: transform 0.15s, background 0.2s;
+      }
+      .btn:hover { transform: scale(1.05); }
+      .btn:active { transform: scale(0.95); }
+      .btn-green { background: #10b981; }
+      .btn-green:hover { background: #34d399; }
+      .btn-gray { background: #64748b; }
+      .btn-gray:hover { background: #94a3b8; }
+      .btn-indigo { background: #4f46e5; }
+      .btn-indigo:hover { background: #6366f1; }
+      .btn-gradient { background: linear-gradient(90deg, #4f46e5, #ec4899); }
+      .btn-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 18px; }
+      .btn-recharge {
+        background: linear-gradient(90deg, #fbbf24, #f97316); color: #1e293b; font-weight: 900;
+        font-size: 17px; border: none; border-radius: 18px; padding: 14px 24px; cursor: pointer;
+        box-shadow: 0 6px 20px rgba(249,115,22,0.4); transition: transform 0.15s; margin-top: 8px;
+      }
+      .btn-recharge:hover { transform: scale(1.05); }
+
+      .balloon { font-size: 64px; text-align: center; margin-top: 16px; transition: transform 0.3s; }
+      .last-code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px; color: #4f46e5; margin-top: 8px; }
+
+      /* Quiz */
+      .q-progress { font-weight: 700; color: #94a3b8; font-size: 14px; margin-top: 4px; }
+      .q-text { font-size: 19px; font-weight: 800; margin: 12px 0 16px; }
+      .q-options { display: grid; gap: 10px; }
+      .q-opt {
+        text-align: left; border: 2px solid #c7d2fe; background: #fff; border-radius: 16px;
+        padding: 13px 16px; font-size: 16px; font-weight: 600; cursor: pointer; color: #1e293b;
+        transition: background 0.15s;
+      }
+      .q-opt:hover:enabled { background: #eef2ff; }
+      .q-opt:disabled { cursor: default; }
+      .q-opt.correct { border-color: #4ade80; background: #dcfce7; }
+      .q-opt.wrong { border-color: #f87171; background: #fee2e2; }
+      .q-opt.dim { border-color: #e2e8f0; background: #f8fafc; opacity: 0.6; }
+      .q-feedback { margin-top: 16px; background: #eef2ff; border-radius: 16px; padding: 16px; }
+      .q-verdict { font-size: 16px; font-weight: 700; line-height: 1.5; }
+      .q-feedback .btn { margin-top: 12px; font-size: 15px; padding: 10px 18px; }
+      .q-result { text-align: center; padding-top: 10px; }
+      .q-stars { font-size: 42px; }
+      .q-score { font-size: 20px; font-weight: 800; margin-top: 10px; }
+
+      /* ---------- Jogo ---------- */
+      .mission {
+        background: #fff; border: 4px solid #c7d2fe; border-radius: 18px; padding: 14px 18px;
+        font-size: 16px; line-height: 1.5; margin: 20px 0 16px;
+      }
+      .game-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 16px; }
+      @media (max-width: 980px) { .game-grid { grid-template-columns: 1fr; } }
+
+      /* Palco 3D */
+      .stage {
+        position: relative; height: 540px; border-radius: 18px; border: 4px solid #a5b4fc;
+        background: radial-gradient(ellipse at 50% 35%, #101735 0%, #070b1e 75%);
+        overflow: hidden; perspective: 1100px; perspective-origin: 50% 42%;
+        cursor: grab; touch-action: none;
+      }
+      .stage.dragging { cursor: grabbing; }
+      #stars { position: absolute; inset: 0; }
+      #stars span {
+        position: absolute; background: #fff; border-radius: 50%;
+        animation: twinkle 3s ease-in-out infinite;
+      }
+      @keyframes twinkle { 0%, 100% { opacity: 0.12; } 50% { opacity: 0.9; } }
+
+      #scene3d { position: absolute; inset: 0; transform-style: preserve-3d; }
+
+      .floor {
+        position: absolute; left: 50%; top: 57%; width: 560px; height: 560px;
+        margin: -280px 0 0 -280px; border-radius: 50%;
+        transform: translateY(103px) rotateX(90deg);
+        background: radial-gradient(circle, #1a2342 0%, #101735 55%, rgba(7,11,30,0) 72%);
+      }
+      .ring {
+        position: absolute; left: 50%; top: 57%; width: 340px; height: 340px;
+        margin: -170px 0 0 -170px; border-radius: 50%;
+        border: 6px solid var(--ring-glow, #4ade80);
+        transform: translateY(107px) rotateX(90deg);
+        box-shadow: 0 0 34px var(--ring-glow, #4ade80); opacity: 0.85;
+      }
+      .sparkle {
+        position: absolute; width: 7px; height: 7px; border-radius: 50%;
+        background: var(--eye-glow, #4ade80); box-shadow: 0 0 12px 4px var(--eye-glow, #4ade80);
+        animation: spk 3.2s ease-in-out infinite;
+      }
+      @keyframes spk { 0%, 100% { transform: translateY(0); opacity: 0.15; } 50% { transform: translateY(-26px); opacity: 1; } }
+
+      /* Robot */
+      .robot { position: absolute; left: 50%; top: 57%; }
+      .eye {
+        position: absolute; width: 20px; height: 20px; border-radius: 50%;
+        background: #0b1220; top: 24px;
+        box-shadow: 0 0 14px 4px var(--eye-glow, #4ade80);
+      }
+      .eye-l { left: 26px; }
+      .eye-r { left: 49px; }
+      .mouth { position: absolute; left: 50%; top: 46px; width: 36px; height: 16px; margin-left: -18px; }
+      .mouth.smile { border-bottom: 6px solid #0f172a; border-radius: 0 0 40px 40px; }
+      .mouth.frown { border-top: 6px solid #0f172a; border-radius: 40px 40px 0 0; }
+      .mouth.flat { height: 6px; margin-top: 5px; border-radius: 3px; background: #334155; }
+      .cheek { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #f9a8d4; top: 44px; opacity: 0; transition: opacity 0.4s; }
+      .cheek-l { left: 10px; }
+      .cheek-r { left: 73px; }
+      .chest {
+        position: absolute; left: 50%; top: 50%; width: 40px; height: 28px;
+        margin: -14px 0 0 -20px; border-radius: 6px;
+        background: var(--panel-glow, #22d3ee); box-shadow: 0 0 16px 3px var(--panel-glow, #22d3ee);
+      }
+      .chest-ring {
+        position: absolute; left: 50%; top: 50%; width: 56px; height: 56px;
+        margin: -28px 0 0 -28px; border: 4px solid #0f172a; border-radius: 50%;
+      }
+      .antenna-ball {
+        position: absolute; left: -10px; top: -88px; width: 20px; height: 20px; border-radius: 50%;
+        background: var(--eye-glow, #4ade80); box-shadow: 0 0 18px 6px var(--eye-glow, #4ade80);
+      }
+      .stage.critico .eye, .stage.critico .antenna-ball { animation: rb-flash 0.5s steps(1, end) infinite; }
+      @keyframes rb-flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+      /* Sobreposições do palco */
+      .toast {
+        position: absolute; left: 50%; top: 38%; transform: translate(-50%, 0);
+        background: rgba(15,23,42,0.88); color: #fff; font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 14px; font-weight: 700; padding: 7px 16px; border-radius: 999px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.4); pointer-events: none;
+        animation: rb-up 1.7s ease-out forwards; white-space: nowrap;
+      }
+      @keyframes rb-up {
+        0% { opacity: 0; transform: translate(-50%, 14px) scale(0.7); }
+        25% { opacity: 1; }
+        100% { opacity: 0; transform: translate(-50%, -84px) scale(1.08); }
+      }
+      .hint {
+        position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+        background: rgba(15,23,42,0.7); color: #fff; font-size: 12px;
+        padding: 5px 16px; border-radius: 999px; pointer-events: none; text-align: center;
+      }
+      .overlay {
+        position: absolute; inset: 0; z-index: 10; display: flex; align-items: center;
+        justify-content: center; background: rgba(15,23,42,0.75); border-radius: 14px;
+      }
+      .overlay-card { text-align: center; color: #fff; padding: 20px; }
+      .overlay-emoji { font-size: 64px; }
+      .overlay-card h3 { font-size: 22px; font-weight: 900; margin-top: 6px; }
+      .overlay-card p { font-size: 14px; opacity: 0.85; max-width: 320px; margin: 8px auto 0; line-height: 1.5; }
+      .overlay-card code { background: rgba(255,255,255,0.12); padding: 1px 6px; border-radius: 6px; }
+
+      /* Painel lateral */
+      .panel { display: flex; flex-direction: column; gap: 12px; }
+      .mood-card {
+        display: flex; align-items: center; gap: 14px; background: #fff;
+        border: 4px solid #c7d2fe; border-radius: 18px; padding: 14px 16px; box-shadow: 0 6px 18px rgba(79,70,229,0.1);
+      }
+      #moodEmoji { font-size: 44px; }
+      #moodLabel { font-size: 19px; font-weight: 900; }
+      #moodTip { font-size: 13px; color: #64748b; margin-top: 2px; }
+
+      .code-panel { background: #0f172a; border-radius: 18px; padding: 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+      .code-title { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: #94a3b8; margin-bottom: 12px; }
+      .stat { margin-bottom: 12px; }
+      .stat-line {
+        display: flex; justify-content: space-between; font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 14px; margin-bottom: 5px;
+      }
+      .bar { height: 12px; background: #334155; border-radius: 999px; overflow: hidden; }
+      .bar-fill { height: 100%; border-radius: 999px; transition: width 0.5s; }
+      .bar-amber { background: #f59e0b; }
+      .bar-pink { background: #ec4899; }
+      .bar-green { background: #22c55e; }
+      .code-note { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: #94a3b8; margin-top: 10px; line-height: 1.5; }
+
+      .actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .act-btn {
+        border: none; border-radius: 18px; padding: 12px 8px; color: #fff; font-weight: 800;
+        cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.2); transition: transform 0.15s, opacity 0.3s;
+      }
+      .act-btn:hover:not(:disabled) { transform: scale(1.05); }
+      .act-btn:active:not(:disabled) { transform: scale(0.95); }
+      .act-btn:disabled { opacity: 0.4; cursor: default; }
+      .act-emoji { font-size: 28px; }
+      .act-code {
+        font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 10px; font-weight: 400;
+        opacity: 0.9; margin-top: 5px; line-height: 1.35; white-space: pre-line;
+      }
+      .act-amber { background: #f59e0b; }
+      .act-pink { background: #ec4899; }
+      .act-purple { background: #a855f7; }
+      .act-sky { background: #0ea5e9; }
+
+      .console {
+        height: 128px; overflow: hidden; background: #020617; border-radius: 18px; padding: 12px;
+        font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: #6ee7b7;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+      }
+      .console div { line-height: 1.7; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap header-inner">
+        <div class="brand">
+          <span class="logo">🤖</span>
+          <div>
+            <h1>Zappy</h1>
+            <p>Aprende o que é uma variável e cuida do teu robot 3D!</p>
+          </div>
+        </div>
+        <nav class="tabs">
+          <button class="tab-btn active" id="tabA">📖 Aprender</button>
+          <button class="tab-btn" id="tabJ">🎮 Jogar</button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= APRENDER ================= -->
+    <section id="secAprender">
+      <div class="cards">
+
+        <div class="card">
+          <h2>👋 Olá, programador(a) de variáveis!</h2>
+          <p>Uma variável é como uma <b>caixa com uma etiqueta</b>:</p>
+          <ul>
+            <li>🏷️ A <b>etiqueta</b> é o <b>nome</b> da variável (por exemplo: <code class="inline">idade</code>)</li>
+            <li>📦 O que está <b>dentro</b> é o <b>valor</b> (por exemplo: <code class="inline">10</code>)</li>
+          </ul>
+          <p class="mt">Em código, escreve-se assim: <span class="code-line"><span class="c-name">idade</span> = <span class="c-val">10</span></span></p>
+          <div class="vbox">
+            <div class="label">idade</div>
+            <div class="emoji">🎂</div>
+            <div class="value">10</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>🧪 Laboratório de variáveis</h2>
+          <p>Experimenta! Muda o <b>nome</b> (etiqueta) e o <b>valor</b> (o que está dentro):</p>
+          <div class="lab-grid">
+            <div class="field">
+              <label for="labName">🏷️ Nome da variável</label>
+              <input class="text-input" id="labName" value="idade" />
+              <p class="hint-small">💡 Nomes de variáveis não têm espaços — usa <b>_</b> (ex.: <code class="inline">anos_de_escola</code>)</p>
+            </div>
+            <div class="field">
+              <label for="labValue">🎚️ Valor dentro da caixa</label>
+              <input type="range" id="labValue" min="0" max="20" value="10" />
+              <p class="hint-small">Arrasta o slider e vê o valor a mudar!</p>
+            </div>
+          </div>
+          <div class="vbox">
+            <div class="label" id="labLabel">idade</div>
+            <div class="emoji">⭐</div>
+            <div class="value" id="labValueBox">10</div>
+          </div>
+          <p class="center mt"><span class="code-line" id="labCode"><span class="c-name">idade</span> = <span class="c-val">10</span></span></p>
+          <p class="center mt">🎉 A etiqueta fica sempre igual, mas o valor lá dentro pode <b>variar</b> — por isso se chama <b>variável</b>!</p>
+        </div>
+
+        <div class="card">
+          <h2>💬 Variáveis também guardam texto</h2>
+          <p>Escreve o teu nome e o Zappy vai cumprimentar-te. Também vais criar a variável <code class="inline">nome</code>!</p>
+          <input class="text-input" id="nameInput" placeholder="Escreve aqui o teu nome…" style="margin-top:14px" />
+          <p class="mt"><span class="robot-face">🤖</span><span class="bubble" id="greet">Olá, amigo(a)! Vamos programar! 🚀</span></p>
+          <p class="center mt"><span class="code-line" id="nameCode"><span class="c-name">nome</span> = <span class="c-val">"..."</span></span></p>
+          <p class="center mt">💡 Quando o valor é <b>texto</b>, escreve-se entre <b>aspas</b>: <code class="inline">"assim"</code>.</p>
+        </div>
+
+        <div class="card">
+          <h2>🎈 O valor dentro da caixa pode mudar</h2>
+          <p>Clica nos botões e vê a variável <code class="inline">pontos</code> a crescer. Cada botão escreve uma linha de código nova!</p>
+          <div class="balloon" id="balloon">🎈</div>
+          <div class="btn-row">
+            <button class="btn btn-green" id="btnMore">🎈 Encher (+10)</button>
+            <button class="btn btn-gray" id="btnReset">🔄 Recomeçar (= 0)</button>
+          </div>
+          <p class="center mt"><span class="code-line"><span class="c-name">pontos</span> = <span class="c-val" id="pontosVal">0</span></span></p>
+          <p class="last-code center" id="lastCode">▶ pontos = 0</p>
+          <p class="center mt">🔁 <code class="inline">pontos = pontos + 10</code> quer dizer: «pega no valor antigo, soma 10 e guarda-o de novo na mesma caixa».</p>
+        </div>
+
+        <div class="card">
+          <h2>🏅 Quiz do programador</h2>
+          <div id="quizBox"></div>
+        </div>
+
+        <div class="card note">
+          <h3>💡 Nota para professores e encarregados de educação</h3>
+          <p style="color:#78350f; font-size:15px;">
+            Este recurso introduz três ideias-chave sobre variáveis, adequadas aos 10 anos:
+            <b>nome</b> (etiqueta), <b>valor</b> (conteúdo da caixa) e <b>atribuição</b> (<code class="inline">x = valor</code>),
+            incluindo a auto-atribuição <code class="inline">x = x + 1</code>. O jogo na secção «Jogar» transforma
+            essas ideias em decisões concretas: cada botão mostra exatamente a linha de código que executa.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= JOGAR ================= -->
+    <section id="secJogar" hidden class="wrap">
+      <div class="mission">
+        🎯 <b>Missão:</b> mantém o <b>Zappy</b> alegre e contente! As caixas
+        <code class="inline">energia</code>, <code class="inline">felicidade</code> e <code class="inline">pontos</code> são
+        <b>variáveis</b> — e tu és quem manda nelas. Cada botão executa a linha de código que está escrita nele!
+      </div>
+
+      <div class="game-grid">
+        <div class="stage" id="stage">
+          <div id="stars"></div>
+          <div id="scene3d">
+            <div class="floor"></div>
+            <div class="ring"></div>
+          </div>
+          <div id="toastLayer" style="position:absolute; inset:0; overflow:hidden; pointer-events:none;"></div>
+          <div class="hint">🖱️ Arrasta para rodar a câmara · toca no Zappy para dar mimos 🥰</div>
+          <div class="overlay" id="overlay" hidden>
+            <div class="overlay-card">
+              <div class="overlay-emoji">🪫</div>
+              <h3>O Zappy ficou sem energia!</h3>
+              <p>A variável <code>energia</code> chegou a <b>0</b> e ele desligou-se. Vamos recarregá-lo!</p>
+              <button class="btn-recharge" id="btnRecharge">🔌 Recarregar (energia = 100)</button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="panel">
+          <div class="mood-card">
+            <div id="moodEmoji">🙂</div>
+            <div>
+              <div id="moodLabel">Zappy está: …</div>
+              <div id="moodTip"></div>
+            </div>
+          </div>
+
+          <div class="code-panel">
+            <div class="code-title"># o programa do Zappy</div>
+            <div class="stat">
+              <div class="stat-line"><span class="c-name">energia</span><span class="c-val" id="vEnergia">= 80</span></div>
+              <div class="bar"><div class="bar-fill bar-amber" id="barEnergia" style="width:80%"></div></div>
+            </div>
+            <div class="stat">
+              <div class="stat-line"><span class="c-name">felicidade</span><span class="c-val" id="vFelicidade">= 75</span></div>
+              <div class="bar"><div class="bar-fill bar-pink" id="barFelicidade" style="width:75%"></div></div>
+            </div>
+            <div class="stat">
+              <div class="stat-line"><span class="c-name">pontos</span><span class="c-val" id="vPontos">= 0</span></div>
+              <div class="bar"><div class="bar-fill bar-green" id="barPontos" style="width:0%"></div></div>
+            </div>
+            <div class="code-note">✨ A cada 2s feliz, o Zappy ganha: pontos = pontos + 1</div>
+          </div>
+
+          <div class="actions-grid" id="actionsGrid"></div>
+
+          <div class="console" id="console"></div>
+        </aside>
+      </div>
+    </section>
+
+    <footer>Feito com 💙 para jovens programadores · Um recurso pedagógico sobre variáveis</footer>
+
+    <script>
+      // =========================================================
+      // Utilidades
+      // =========================================================
+      var clampN = function (n) { return Math.max(0, Math.min(100, n)); };
+
+      function shade(hex, f) {
+        var n = parseInt(hex.slice(1), 16);
+        var r = Math.min(255, Math.round(((n >> 16) & 255) * f));
+        var g = Math.min(255, Math.round(((n >> 8) & 255) * f));
+        var b = Math.min(255, Math.round((n & 255) * f));
+        return "rgb(" + r + "," + g + "," + b + ")";
+      }
+
+      // =========================================================
+      // Hume (moods) e paleta
+      // =========================================================
+      var MOODS = {
+        radiante:  { body: "#38bdf8", eye: "#4ade80", panel: "#22d3ee", ring: "#4ade80", label: "Radiante!", emoji: "🤩", tip: "Está feliz a mais não poder ser. Continua assim!" },
+        contente:  { body: "#60a5fa", eye: "#34d399", panel: "#38bdf8", ring: "#34d399", label: "Contente", emoji: "🙂", tip: "Bom trabalho! Não te esqueças de o carregar." },
+        triste:    { body: "#8899c9", eye: "#93c5fd", panel: "#64748b", ring: "#93c5fd", label: "Triste", emoji: "😢", tip: "Precisa de brincar ou de dançar!" },
+        critico:   { body: "#f87171", eye: "#fb923c", panel: "#ef4444", ring: "#ef4444", label: "Em perigo!", emoji: "😰", tip: "Urgente! Carrega a bateria ou manda-o descansar!" },
+        desligado: { body: "#94a3b8", eye: "#64748b", panel: "#334155", ring: "#475569", label: "Sem energia", emoji: "🪫", tip: "A variável energia chegou a 0…" }
+      };
+
+      function getMood(s) {
+        if (s.energia <= 0) return "desligado";
+        if (s.energia <= 20 || s.felicidade <= 20) return "critico";
+        var avg = (s.energia + s.felicidade) / 2;
+        if (avg >= 75) return "radiante";
+        if (avg >= 50) return "contente";
+        return "triste";
+      }
+
+      // =========================================================
+      // Tabs
+      // =========================================================
+      var tabA = document.getElementById("tabA");
+      var tabJ = document.getElementById("tabJ");
+      function showTab(t) {
+        document.getElementById("secAprender").hidden = t !== "aprender";
+        document.getElementById("secJogar").hidden = t !== "jogar";
+        tabA.classList.toggle("active", t === "aprender");
+        tabJ.classList.toggle("active", t === "jogar");
+        window.scrollTo(0, 0);
+      }
+      tabA.onclick = function () { showTab("aprender"); };
+      tabJ.onclick = function () { showTab("jogar"); };
+
+      // =========================================================
+      // Secção APRENDER
+      // =========================================================
+      var labName = document.getElementById("labName");
+      var labValue = document.getElementById("labValue");
+      function updLab() {
+        var nm = labName.value.replace(/\s+/g, "_") || "...";
+        document.getElementById("labLabel").textContent = nm;
+        document.getElementById("labValueBox").textContent = labValue.value;
+        document.getElementById("labCode").innerHTML =
+          '<span class="c-name"></span> = <span class="c-val"></span>';
+        document.getElementById("labCode").querySelector(".c-name").textContent = nm;
+        document.getElementById("labCode").querySelector(".c-val").textContent = labValue.value;
+      }
+      labName.addEventListener("input", updLab);
+      labValue.addEventListener("input", updLab);
+
+      var nameInput = document.getElementById("nameInput");
+      function updName() {
+        var nm = nameInput.value.trim().slice(0, 14);
+        document.getElementById("greet").textContent =
+          "Olá, " + (nm ? nm : "amigo(a)") + "! Vamos programar! 🚀";
+        document.getElementById("nameCode").innerHTML =
+          '<span class="c-name">nome</span> = <span class="c-val"></span>';
+        document.getElementById("nameCode").querySelector(".c-val").textContent = '"' + (nm ? nm : "...") + '"';
+      }
+      nameInput.addEventListener("input", updName);
+
+      var learnPontos = 0;
+      var balloon = document.getElementById("balloon");
+      function updBalloon() {
+        document.getElementById("pontosVal").textContent = learnPontos;
+        var s = 1 + Math.min(learnPontos, 100) / 90;
+        balloon.style.transform = "scale(" + s.toFixed(2) + ")";
+      }
+      document.getElementById("btnMore").onclick = function () {
+        learnPontos = clampN(learnPontos + 10);
+        document.getElementById("lastCode").textContent = "▶ pontos = pontos + 10";
+        updBalloon();
+      };
+      document.getElementById("btnReset").onclick = function () {
+        learnPontos = 0;
+        document.getElementById("lastCode").textContent = "▶ pontos = 0";
+        updBalloon();
+      };
+
+      // ---------- Quiz ----------
+      var quiz = [
+        {
+          q: "O que é uma variável?",
+          options: ["Uma caixa com etiqueta que guarda um valor", "Um robot muito simpático", "Um tipo de jogo de computador"],
+          correct: 0,
+          why: "O nome (etiqueta) fica na caixa; o valor é o que está lá dentro."
+        },
+        {
+          q: "O que faz a linha  pontos = 50 ?",
+          options: ["Guarda o valor 50 dentro da caixa «pontos»", "Apaga o jogo", "Multiplica 50 por pontos"],
+          correct: 0,
+          why: "O «=» significa «guarda este valor dentro da caixa»."
+        },
+        {
+          q: "Depois de executar  energia = energia + 10 , a energia…",
+          options: ["Aumenta 10 (por exemplo, de 60 passa a 70)", "Fica exatamente na mesma", "Desaparece"],
+          correct: 0,
+          why: "O robot lê primeiro o valor antigo, soma 10 e guarda o resultado de volta na mesma caixa!"
+        }
+      ];
+      var qStep = 0, qPick = null, qScore = 0;
+      var quizBox = document.getElementById("quizBox");
+
+      function renderQuiz() {
+        if (qStep >= quiz.length) {
+          var starsN = Math.max(1, qScore);
+          var stars = "";
+          for (var i = 0; i < starsN; i++) stars += "⭐";
+          quizBox.innerHTML =
+            '<div class="q-result">' +
+            '<div class="q-stars">' + stars + "</div>" +
+            '<p class="q-score">Acertaste ' + qScore + " de " + quiz.length + "!</p>" +
+            "<p>Estás pronto(a) para cuidar do teu robot 3D! 🤖</p>" +
+            '<div class="btn-row">' +
+            '<button class="btn btn-gray" id="qRetry">🔄 Repetir quiz</button>' +
+            '<button class="btn btn-gradient" id="qGo">🎮 Ir cuidar do Zappy!</button>' +
+            "</div></div>";
+          document.getElementById("qRetry").onclick = function () {
+            qStep = 0; qScore = 0; qPick = null; renderQuiz();
+          };
+          document.getElementById("qGo").onclick = function () { showTab("jogar"); };
+          return;
+        }
+        var q = quiz[qStep];
+        quizBox.innerHTML =
+          '<p class="q-progress">Pergunta ' + (qStep + 1) + " de " + quiz.length + "</p>" +
+          '<p class="q-text"></p>' +
+          '<div class="q-options"></div>' +
+          '<div class="q-feedback" hidden></div>';
+        quizBox.querySelector(".q-text").textContent = q.q;
+        var opts = quizBox.querySelector(".q-options");
+        q.options.forEach(function (opt, i) {
+          var b = document.createElement("button");
+          b.className = "q-opt";
+          b.textContent = String.fromCharCode(65 + i) + ". " + opt;
+          b.onclick = function () { pickQ(i); };
+          opts.appendChild(b);
+        });
+      }
+
+      function pickQ(i) {
+        if (qPick !== null) return;
+        qPick = i;
+        var q = quiz[qStep];
+        if (i === q.correct) qScore++;
+        var buttons = quizBox.querySelectorAll(".q-opt");
+        buttons.forEach(function (b, idx) {
+          b.disabled = true;
+          if (idx === q.correct) b.classList.add("correct");
+          else if (idx === i) b.classList.add("wrong");
+          else b.classList.add("dim");
+        });
+        var fb = quizBox.querySelector(".q-feedback");
+        fb.hidden = false;
+        fb.innerHTML =
+          '<p class="q-verdict"></p>' +
+          '<button class="btn btn-indigo" id="qNext"></button>';
+        fb.querySelector(".q-verdict").textContent =
+          (i === q.correct ? "✅ Certo! " : "❌ Quase! ") + q.why;
+        fb.querySelector("#qNext").textContent =
+          qStep + 1 < quiz.length ? "Próxima ▶" : "Ver resultado 🎉";
+        fb.querySelector("#qNext").onclick = function () {
+          qPick = null;
+          qStep++;
+          renderQuiz();
+        };
+      }
+
+      // =========================================================
+      // Robot 3D (CSS 3D)
+      // =========================================================
+      var stage = document.getElementById("stage");
+      var scene3d = document.getElementById("scene3d");
+
+      // Estrelas de fundo
+      (function () {
+        var layer = document.getElementById("stars");
+        for (var i = 0; i < 90; i++) {
+          var s = document.createElement("span");
+          s.style.left = (Math.random() * 100).toFixed(2) + "%";
+          s.style.top = (Math.random() * 100).toFixed(2) + "%";
+          var sz = (Math.random() * 2 + 1).toFixed(1);
+          s.style.width = s.style.height = sz + "px";
+          s.style.animationDelay = (Math.random() * 4).toFixed(2) + "s";
+          layer.appendChild(s);
+        }
+      })();
+
+      // Fábrica de peças: div âncora em (x, y, z) com preserve-3d
+      function part(x, y, z) {
+        var el = document.createElement("div");
+        el.style.position = "absolute";
+        el.style.left = "0";
+        el.style.top = "0";
+        el.style.transformStyle = "preserve-3d";
+        el.style.transform = "translate3d(" + x + "px," + y + "px," + z + "px)";
+        return el;
+      }
+
+      // Fábrica de cubóides (caixas 3D com 6 faces)
+      function makeCuboid(w, h, d, color, radius) {
+        if (radius === undefined) radius = 6;
+        var root = document.createElement("div");
+        root.style.position = "absolute";
+        root.style.left = -w / 2 + "px";
+        root.style.top = -h / 2 + "px";
+        root.style.width = w + "px";
+        root.style.height = h + "px";
+        root.style.transformStyle = "preserve-3d";
+        var defs = [
+          [w, h, "translateZ(" + d / 2 + "px)", 1.05],
+          [w, h, "rotateY(180deg) translateZ(" + d / 2 + "px)", 0.72],
+          [d, h, "rotateY(-90deg) translateZ(" + w / 2 + "px)", 0.78],
+          [d, h, "rotateY(90deg) translateZ(" + w / 2 + "px)", 0.78],
+          [w, d, "rotateX(90deg) translateZ(" + h / 2 + "px)", 1.15],
+          [w, d, "rotateX(-90deg) translateZ(" + h / 2 + "px)", 0.55]
+        ];
+        var faces = [];
+        defs.forEach(function (df) {
+          var el = document.createElement("div");
+          el.setAttribute("data-f", df[3]);
+          el.style.position = "absolute";
+          el.style.left = "50%";
+          el.style.top = "50%";
+          el.style.width = df[0] + "px";
+          el.style.height = df[1] + "px";
+          el.style.marginLeft = -df[0] / 2 + "px";
+          el.style.marginTop = -df[1] / 2 + "px";
+          el.style.transform = df[2];
+          el.style.background = shade(color, df[3]);
+          el.style.borderRadius = radius + "px";
+          el.style.backfaceVisibility = "hidden";
+          root.appendChild(el);
+          faces.push(el);
+        });
+        return { root: root, faces: faces };
+      }
+
+      // Montagem do Zappy
+      var robotEl = part(0, 0, 0);
+      robotEl.style.left = "50%";
+      robotEl.style.top = "57%";
+      scene3d.appendChild(robotEl);
+
+      var bob = part(0, 0, 0);
+      var pulse = part(0, 0, 0);
+      robotEl.appendChild(bob);
+      bob.appendChild(pulse);
+
+      var bodyFaces = []; // faces que mudam de cor com o humor
+
+      // Tronco
+      var torso = makeCuboid(110, 130, 90, MOODS.contente.body, 14);
+      var torsoPart = part(0, 0, 0);
+      torsoPart.appendChild(torso.root);
+      pulse.appendChild(torsoPart);
+      bodyFaces = bodyFaces.concat(torso.faces);
+      torso.faces[0].appendChild(makeSimpleDiv("chest"));
+      torso.faces[0].appendChild(makeSimpleDiv("chest-ring"));
+
+      // Pescoço
+      var neck = makeCuboid(30, 22, 30, "#64748b", 6);
+      var neckPart = part(0, -59, 0);
+      neckPart.appendChild(neck.root);
+      pulse.appendChild(neckPart);
+
+      // Braços (pivôs nos ombros)
+      var armLPart = part(-64, -40, 0);
+      var armRPart = part(64, -40, 0);
+      var armL = makeCuboid(20, 64, 20, "#94a3b8", 10);
+      var armR = makeCuboid(20, 64, 20, "#94a3b8", 10);
+      armL.root.style.top = "0px";
+      armR.root.style.top = "0px";
+      armLPart.appendChild(armL.root);
+      armRPart.appendChild(armR.root);
+      pulse.appendChild(armLPart);
+      pulse.appendChild(armRPart);
+
+      // Pernas
+      [30, -30].forEach(function (x) {
+        var leg = makeCuboid(24, 36, 24, "#475569", 8);
+        leg.root.style.top = "0px";
+        var lp = part(x, 65, 0);
+        lp.appendChild(leg.root);
+        pulse.appendChild(lp);
+      });
+
+      // Cabeça (com cara)
+      var headPart = part(0, -105, 0);
+      var head = makeCuboid(95, 80, 80, MOODS.contente.body, 16);
+      headPart.appendChild(head.root);
+      bodyFaces = bodyFaces.concat(head.faces);
+      pulse.appendChild(headPart);
+
+      var eyeL = makeSimpleDiv("eye eye-l");
+      var eyeR = makeSimpleDiv("eye eye-r");
+      var mouthEl = makeSimpleDiv("mouth smile");
+      var cheekL = makeSimpleDiv("cheek cheek-l");
+      var cheekR = makeSimpleDiv("cheek cheek-r");
+      head.faces[0].appendChild(eyeL);
+      head.faces[0].appendChild(eyeR);
+      head.faces[0].appendChild(mouthEl);
+      head.faces[0].appendChild(cheekL);
+      head.faces[0].appendChild(cheekR);
+
+      // Orelhas
+      var earL = makeCuboid(12, 20, 20, "#64748b", 4);
+      var earR = makeCuboid(12, 20, 20, "#64748b", 4);
+      earL.root.style.left = "-57px";
+      earR.root.style.left = "45px";
+      earL.root.style.top = "-10px";
+      earR.root.style.top = "-10px";
+      headPart.appendChild(earL.root);
+      headPart.appendChild(earR.root);
+
+      // Antena
+      var antenna = makeCuboid(6, 28, 6, "#94a3b8", 3);
+      antenna.root.style.left = "-3px";
+      antenna.root.style.top = "-68px";
+      headPart.appendChild(antenna.root);
+      headPart.appendChild(makeSimpleDiv("antenna-ball"));
+
+      // Brilhos à volta
+      (function () {
+        for (var i = 0; i < 8; i++) {
+          var sp = document.createElement("div");
+          sp.className = "sparkle";
+          sp.style.left = "calc(50% + " + (Math.round(Math.random() * 260 - 130)) + "px)";
+          sp.style.top = "calc(57% + " + (Math.round(Math.random() * -190 + 30)) + "px)";
+          sp.style.animationDelay = (Math.random() * 3).toFixed(2) + "s";
+          sp.style.animationDuration = (2.5 + Math.random() * 2).toFixed(2) + "s";
+          scene3d.appendChild(sp);
+        }
+      })();
+
+      function makeSimpleDiv(cls) {
+        var el = document.createElement("div");
+        el.className = cls;
+        return el;
+      }
+
+      function setBodyColor(hex) {
+        bodyFaces.forEach(function (el) {
+          el.style.background = shade(hex, parseFloat(el.getAttribute("data-f")));
+        });
+      }
+
+      // =========================================================
+      // Estado do jogo
+      // =========================================================
+      var state = { energia: 80, felicidade: 75, pontos: 0 };
+      var logLines = ["▶ Zappy ligado! Olá! 👋"];
+      var mood = "contente";
+      var pulseStart = -10;
+
+      var moodParams = {
+        radiante:  { hop: 20, hopS: 5, swing: 0.7, swingS: 6, tiltX: 0, tiltZ: 0 },
+        contente:  { hop: 8, hopS: 2.5, swing: 0.28, swingS: 3, tiltX: 0, tiltZ: 0 },
+        triste:    { hop: 2, hopS: 1.2, swing: 0.06, swingS: 1.4, tiltX: 0.2, tiltZ: 0.14 },
+        critico:   { hop: 4, hopS: 6, swing: 0.45, swingS: 12, tiltX: 0.08, tiltZ: 0 },
+        desligado: { hop: 0, hopS: 1, swing: 0, swingS: 1, tiltX: 0.55, tiltZ: 0 }
+      };
+
+      function renderStats() {
+        document.getElementById("vEnergia").textContent = "= " + Math.round(state.energia);
+        document.getElementById("vFelicidade").textContent = "= " + Math.round(state.felicidade);
+        document.getElementById("vPontos").textContent = "= " + state.pontos;
+        document.getElementById("barEnergia").style.width = state.energia + "%";
+        document.getElementById("barFelicidade").style.width = state.felicidade + "%";
+        document.getElementById("barPontos").style.width = Math.min(state.pontos, 100) + "%";
+      }
+
+      function renderConsole() {
+        var c = document.getElementById("console");
+        c.innerHTML = "";
+        logLines.slice(0, 7).forEach(function (l, i) {
+          var d = document.createElement("div");
+          d.textContent = l;
+          d.style.opacity = Math.max(1 - i * 0.14, 0.2);
+          c.appendChild(d);
+        });
+      }
+
+      function updateMood() {
+        mood = getMood(state);
+        var p = MOODS[mood];
+        setBodyColor(p.body);
+        stage.style.setProperty("--eye-glow", p.eye);
+        stage.style.setProperty("--panel-glow", p.panel);
+        stage.style.setProperty("--ring-glow", p.ring);
+        var mouthCls = "mouth ";
+        if (mood === "radiante" || mood === "contente") mouthCls += "smile";
+        else if (mood === "desligado") mouthCls += "flat";
+        else mouthCls += "frown";
+        mouthEl.className = mouthCls;
+        var cheeksOn = mood === "radiante" ? "1" : "0";
+        cheekL.style.opacity = cheeksOn;
+        cheekR.style.opacity = cheeksOn;
+        stage.classList.toggle("critico", mood === "critico");
+        document.getElementById("moodEmoji").textContent = p.emoji;
+        document.getElementById("moodLabel").textContent = "Zappy está: " + p.label;
+        document.getElementById("moodTip").textContent = p.tip;
+        document.getElementById("overlay").hidden = state.energia > 0;
+        document.querySelectorAll(".act-btn").forEach(function (b) {
+          b.disabled = state.energia <= 0;
+        });
+      }
+
+      function refreshUI() {
+        renderStats();
+        updateMood();
+        renderConsole();
+      }
+
+      function addToast(text) {
+        var layer = document.getElementById("toastLayer");
+        var t = document.createElement("div");
+        t.className = "toast";
+        t.textContent = text;
+        layer.appendChild(t);
+        setTimeout(function () {
+          if (t.parentNode) t.parentNode.removeChild(t);
+        }, 1700);
+      }
+
+      function act(lines, mut, toast) {
+        if (state.energia <= 0) return;
+        var s = { energia: state.energia, felicidade: state.felicidade, pontos: state.pontos };
+        mut(s);
+        s.energia = clampN(s.energia);
+        s.felicidade = clampN(s.felicidade);
+        state = s;
+        logLines = lines.map(function (c) { return "▶ " + c; }).concat(logLines).slice(0, 7);
+        pulseStart = performance.now() / 1000;
+        addToast(toast);
+        refreshUI();
+      }
+
+      // Ações
+      var actions = [
+        {
+          emoji: "⚡", label: "Carregar bateria", cls: "act-amber",
+          code: ["energia = energia + 25"],
+          toast: "⚡ energia +25",
+          mut: function (s) { s.energia += 25; }
+        },
+        {
+          emoji: "🎮", label: "Brincar", cls: "act-pink",
+          code: ["felicidade = felicidade + 20", "energia = energia - 8"],
+          toast: "🎮 felicidade +20",
+          mut: function (s) { s.felicidade += 20; s.energia -= 8; }
+        },
+        {
+          emoji: "🎵", label: "Dançar", cls: "act-purple",
+          code: ["felicidade = felicidade + 15", "energia = energia - 15"],
+          toast: "🎵 felicidade +15",
+          mut: function (s) { s.felicidade += 15; s.energia -= 15; }
+        },
+        {
+          emoji: "😴", label: "Descansar", cls: "act-sky",
+          code: ["energia = energia + 20", "felicidade = felicidade - 5"],
+          toast: "😴 energia +20",
+          mut: function (s) { s.energia += 20; s.felicidade -= 5; }
+        }
+      ];
+      var grid = document.getElementById("actionsGrid");
+      actions.forEach(function (a) {
+        var b = document.createElement("button");
+        b.className = "act-btn " + a.cls;
+        b.innerHTML = '<div class="act-emoji"></div><div class="act-label"></div><div class="act-code"></div>';
+        b.querySelector(".act-emoji").textContent = a.emoji;
+        b.querySelector(".act-label").textContent = a.label;
+        b.querySelector(".act-code").textContent = a.code.join("\n");
+        b.onclick = function () { act(a.code, a.mut, a.toast); };
+        grid.appendChild(b);
+      });
+
+      document.getElementById("btnRecharge").onclick = function () {
+        state.energia = 100;
+        state.felicidade = Math.max(state.felicidade, 45);
+        logLines = ["▶ energia = 100"].concat(logLines).slice(0, 7);
+        pulseStart = performance.now() / 1000;
+        addToast("🔌 energia = 100");
+        refreshUI();
+      };
+
+      // Metabolismo: as variáveis baixam com o tempo
+      setInterval(function () {
+        if (state.energia <= 0) return;
+        state.energia = clampN(state.energia - 2);
+        state.felicidade = clampN(state.felicidade - 1);
+        var m = getMood(state);
+        if (m === "radiante" || m === "contente") state.pontos += 1;
+        refreshUI();
+      }, 2200);
+
+      // Mimos: tocar no robot (sem ser arrasto)
+      var dragDist = 0;
+      var dragging = false;
+      var lastX = 0, lastY = 0;
+      var rotX = 10, rotY = -24, zoom = 1;
+
+      function applyCam() {
+        scene3d.style.transform =
+          "rotateX(" + rotX + "deg) rotateY(" + rotY + "deg) scale3d(" + zoom + "," + zoom + "," + zoom + ")";
+      }
+
+      stage.addEventListener("pointerdown", function (e) {
+        dragging = true;
+        dragDist = 0;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        stage.classList.add("dragging");
+      });
+      window.addEventListener("pointermove", function (e) {
+        if (!dragging) return;
+        var dx = e.clientX - lastX;
+        var dy = e.clientY - lastY;
+        dragDist += Math.abs(dx) + Math.abs(dy);
+        lastX = e.clientX;
+        lastY = e.clientY;
+        rotY += dx * 0.4;
+        rotX = Math.max(-20, Math.min(40, rotX + dy * 0.25));
+        applyCam();
+      });
+      window.addEventListener("pointerup", function (e) {
+        if (!dragging) return;
+        dragging = false;
+        stage.classList.remove("dragging");
+        if (dragDist < 6) {
+          var el = e.target;
+          var inside = false;
+          while (el) {
+            if (el === robotEl) { inside = true; break; }
+            el = el.parentNode;
+          }
+          if (inside) {
+            act(["felicidade = felicidade + 5"], function (s) { s.felicidade += 5; }, "🥰 felicidade +5");
+          }
+        }
+      });
+      stage.addEventListener("wheel", function (e) {
+        e.preventDefault();
+        zoom = Math.max(0.6, Math.min(1.5, zoom - e.deltaY * 0.0012));
+        applyCam();
+      }, { passive: false });
+
+      // =========================================================
+      // Ciclo de animação
+      // =========================================================
+      function frame(now) {
+        var t = now / 1000;
+        var m = moodParams[mood];
+        bob.style.transform =
+          "translate3d(0," + (-m.hop * Math.abs(Math.sin(t * m.hopS))).toFixed(1) + "px,0)";
+        var sw = Math.sin(t * m.swingS) * m.swing;
+        armLPart.style.transform = "translate3d(-64px,-40px,0) rotateZ(" + (0.25 + sw).toFixed(3) + "rad)";
+        armRPart.style.transform = "translate3d(64px,-40px,0) rotateZ(" + (-0.25 - sw).toFixed(3) + "rad)";
+        var wob = Math.sin(t * 1.5) * 0.04;
+        headPart.style.transform =
+          "translate3d(0,-105px,0) rotateX(" + (m.tiltX + wob).toFixed(3) +
+          "rad) rotateZ(" + (m.tiltZ + Math.sin(t * 1.1) * 0.03).toFixed(3) + "rad)";
+        robotEl.style.transform = "rotateZ(" + (mood === "desligado" ? 0.28 : 0) + "rad)";
+        var dp = t - pulseStart;
+        var pop = dp >= 0 && dp < 0.45 ? Math.sin((dp / 0.45) * Math.PI) * 0.13 : 0;
+        pulse.style.transform = "scale3d(" + (1 + pop).toFixed(3) + "," + (1 + pop).toFixed(3) + "," + (1 + pop).toFixed(3) + ")";
+        var blink = t % 3.4 < 0.12 ? 0.15 : 1;
+        eyeL.style.transform = "scaleY(" + blink + ")";
+        eyeR.style.transform = "scaleY(" + blink + ")";
+        requestAnimationFrame(frame);
+      }
+
+      // Arranque
+      applyCam();
+      updLab();
+      updName();
+      updBalloon();
+      renderQuiz();
+      refreshUI();
+      requestAnimationFrame(frame);
+    </script>
+  </body>
+</html>
