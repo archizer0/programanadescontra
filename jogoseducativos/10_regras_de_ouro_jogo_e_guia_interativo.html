@@ -1,0 +1,2457 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10 Regras de Ouro para o teu WhatsApp! - Jogo Interativo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f4f0;
+            color: #1e293b;
+        }
+        h1, h2, h3, .title-font {
+            font-family: 'Outfit', sans-serif;
+        }
+        .card-rule {
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+        }
+        .card-rule:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 30px -10px rgba(15, 23, 42, 0.14), 0 8px 16px -6px rgba(15, 23, 42, 0.06);
+            border-color: #0d9488;
+        }
+        .card-rule:hover .card-photo {
+            transform: scale(1.07);
+        }
+        .card-photo {
+            transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .card-rule.completed {
+            border: 2px solid #10b981;
+            background: linear-gradient(to bottom, #ffffff, #f0fdf4);
+        }
+        .phone-mockup {
+            border: 8px solid #1e293b;
+            border-radius: 28px;
+            background-color: #efeae2;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+        }
+        .whatsapp-header {
+            background-color: #075e54;
+            color: white;
+        }
+        .msg-bubble-in {
+            background-color: #ffffff;
+            border-radius: 0px 14px 14px 14px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        }
+        .msg-bubble-out {
+            background-color: #dcf8c6;
+            border-radius: 14px 0px 14px 14px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.92); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.25s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Top Navigation & Header -->
+    <header class="w-full max-w-7xl mx-auto pt-6 pb-4 px-4 sm:px-6">
+        <div class="flex flex-col lg:flex-row items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="text-center lg:text-left">
+                <span class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-teal-100 text-teal-800 mb-2">
+                    Segurança Digital • 10 Anos
+                </span>
+                <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">
+                    10 REGRAS <span class="text-amber-600">DE OURO</span> PARA O TEU <span class="text-teal-700">WHATSAPP!</span>
+                </h1>
+                <p class="text-sm sm:text-base text-slate-600 mt-1">
+                    Explora o cartaz interativo ou joga as missões no telemóvel virtual para ganhares as 10 estrelas!
+                </p>
+            </div>
+
+            <!-- Controls & Progress -->
+            <div class="flex flex-wrap items-center justify-center gap-3">
+                <!-- Mode Switcher -->
+                <div class="bg-slate-100 p-1.5 rounded-xl flex items-center border border-slate-200">
+                    <button id="btnModeExplore" onclick="setMode('explore')" class="px-4 py-2 rounded-lg text-sm font-bold transition-all bg-white text-slate-900 shadow-sm">
+                        📖 Cartaz Interativo
+                    </button>
+                    <button id="btnModeQuiz" onclick="setMode('quiz')" class="px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-600 hover:text-slate-900">
+                        🗺️ Mundo RPG 3D
+                    </button>
+                </div>
+
+                <!-- Sound Toggle -->
+                <button id="btnSound" onclick="toggleSound()" class="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition" title="Ativar/Desativar Som">
+                    🔊
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="mt-4 bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <span>Progresso de Guardião Digital:</span>
+                <span id="progressCount" class="px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-full font-bold">0 / 10</span>
+            </div>
+            <div class="w-full sm:w-2/3 bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
+                <div id="progressBar" class="bg-gradient-to-r from-teal-500 to-emerald-500 h-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <button id="btnCertificate" onclick="openCertificateModal()" class="hidden px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg shadow transition animate-bounce">
+                🏆 Ver Diploma!
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 py-2">
+
+        <!-- VIEW 1: 2x5 Interactive Grid Poster -->
+        <section id="viewExplore" class="block">
+            <div id="rulesGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <!-- Cards dynamically rendered via JS with Three.js 3D canvases -->
+            </div>
+        </section>
+
+        <!-- VIEW 2: 3D RPG Adventure World ("Vila Digital 3D") -->
+        <section id="viewQuiz" class="hidden">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden max-w-6xl mx-auto">
+                <!-- Top RPG HUD Bar -->
+                <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="px-2.5 py-1 rounded-md bg-teal-500/20 border border-teal-400/40 text-teal-300 text-xs font-extrabold uppercase tracking-wider">
+                            🗺️ Vila Digital • RPG 3D
+                        </span>
+                        <p class="text-xs sm:text-sm text-slate-200 font-medium">
+                            Caminha até às personagens com <strong class="text-amber-300">!</strong> ou clica no chão para ajudar os teus amigos!
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="px-2.5 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700 hidden sm:inline-block">
+                            ⌨️ WASD / Setas ou 🖱️ Clica no chão
+                        </span>
+                        <button onclick="resetRpgCamera()" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-bold transition">
+                            🎯 Centrar Herói
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3D World Viewport + Interactive Overlays -->
+                <div class="relative w-full h-[500px] sm:h-[560px] bg-sky-100 select-none overflow-hidden">
+                    <div id="rpgWorldCanvas" class="w-full h-full cursor-pointer"></div>
+
+                    <!-- Mini-Legend / Zone Indicator -->
+                    <div class="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-200 shadow-sm pointer-events-none">
+                        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Localização Atual</div>
+                        <div id="rpgZoneName" class="text-xs sm:text-sm font-extrabold text-slate-800">Praça Central da Vila Digital</div>
+                    </div>
+
+                    <!-- Floating Proximity Prompt ("Press E / Click to Talk") -->
+                    <div id="rpgInteractPrompt" class="hidden absolute bottom-24 left-1/2 -translate-x-1/2 z-20">
+                        <button onclick="triggerActiveNpcDialog()" class="px-5 py-2.5 rounded-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs sm:text-sm shadow-xl border-2 border-white flex items-center gap-2 animate-bounce">
+                            <span>💬 Falar com <span id="rpgPromptNpcName">Amigo</span></span>
+                            <span class="px-1.5 py-0.5 bg-slate-900 text-white rounded text-[10px]">Espaço / E</span>
+                        </button>
+                    </div>
+
+                    <!-- On-Screen D-Pad Controls for Touch / Mouse -->
+                    <div class="absolute bottom-3 left-3 z-10 grid grid-cols-3 gap-1 w-28 h-28 opacity-90">
+                        <div></div>
+                        <button onpointerdown="setRpgMove('up', true)" onpointerup="setRpgMove('up', false)" onpointerleave="setRpgMove('up', false)" class="bg-slate-900/80 hover:bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold text-sm shadow border border-white/20 active:scale-95">▲</button>
+                        <div></div>
+                        <button onpointerdown="setRpgMove('left', true)" onpointerup="setRpgMove('left', false)" onpointerleave="setRpgMove('left', false)" class="bg-slate-900/80 hover:bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold text-sm shadow border border-white/20 active:scale-95">◀</button>
+                        <div class="bg-slate-900/40 rounded-lg flex items-center justify-center text-[10px] text-white font-bold">🏃</div>
+                        <button onpointerdown="setRpgMove('right', true)" onpointerup="setRpgMove('right', false)" onpointerleave="setRpgMove('right', false)" class="bg-slate-900/80 hover:bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold text-sm shadow border border-white/20 active:scale-95">▶</button>
+                        <div></div>
+                        <button onpointerdown="setRpgMove('down', true)" onpointerup="setRpgMove('down', false)" onpointerleave="setRpgMove('down', false)" class="bg-slate-900/80 hover:bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold text-sm shadow border border-white/20 active:scale-95">▼</button>
+                        <div></div>
+                    </div>
+
+                    <!-- Quick Teleport Bar to the 10 NPCs -->
+                    <div class="absolute bottom-3 right-3 z-10 bg-white/90 backdrop-blur-md p-2 rounded-xl border border-slate-200 shadow-sm max-w-[230px] sm:max-w-xs">
+                        <div class="text-[10px] font-bold uppercase text-slate-500 mb-1 px-1">Ir ter com Missão (1-10):</div>
+                        <div id="rpgNpcQuickBar" class="grid grid-cols-5 gap-1">
+                            <!-- Filled via JS -->
+                        </div>
+                    </div>
+
+                    <!-- RPG Dialog Box Modal Overlay -->
+                    <div id="rpgDialogOverlay" class="hidden absolute inset-0 bg-slate-950/55 backdrop-blur-xs z-30 items-end sm:items-center justify-center p-3 sm:p-6">
+                        <div class="bg-white rounded-2xl max-w-xl w-full p-4 sm:p-6 shadow-2xl border-2 border-teal-500 animate-pop max-h-[90%] overflow-y-auto">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                                <div class="flex items-center gap-3">
+                                    <div id="rpgDialogAvatar" class="w-11 h-11 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center text-2xl shadow-inner border border-teal-200">
+                                        🧑‍🤝‍🧑
+                                    </div>
+                                    <div>
+                                        <span id="rpgDialogPlace" class="text-[11px] font-extrabold uppercase tracking-wider text-teal-700 bg-teal-50 px-2 py-0.5 rounded">
+                                            Campo de Futebol • Missão #1
+                                        </span>
+                                        <h3 id="rpgDialogNpcName" class="text-base sm:text-lg font-extrabold text-slate-900">
+                                            Tiago (Capitão da Equipa)
+                                        </h3>
+                                    </div>
+                                </div>
+                                <button onclick="closeRpgDialog()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm">
+                                    ✕
+                                </button>
+                            </div>
+
+                            <!-- NPC Story Speech -->
+                            <div class="bg-amber-50/90 border border-amber-200 rounded-xl p-3.5 mb-4">
+                                <p id="rpgDialogSpeech" class="text-slate-800 text-xs sm:text-sm font-medium leading-relaxed italic"></p>
+                            </div>
+
+                            <div class="text-xs font-extrabold uppercase text-slate-500 mb-2">
+                                🛡️ Escolhe a tua ação de Guardião Digital:
+                            </div>
+                            <div id="rpgDialogChoices" class="space-y-2"></div>
+
+                            <div id="rpgDialogFeedback" class="hidden mt-3 p-3 rounded-xl text-xs sm:text-sm font-bold"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Rule Interactive Modal (When clicking a card in the 2x5 Grid) -->
+    <div id="ruleModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl border border-slate-200 animate-pop max-h-[92vh] overflow-y-auto">
+            <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+                <div>
+                    <span id="modalRuleNumber" class="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-teal-100 text-teal-800">
+                        Regra #1
+                    </span>
+                    <h3 id="modalRuleTitle" class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
+                        1. MOSTRA O CARTÃO VERMELHO!
+                    </h3>
+                </div>
+                <button onclick="closeRuleModal()" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Illustration + Full Explanation -->
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-5 my-5 items-center">
+                <div id="modalCanvasContainer" class="sm:col-span-5 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-300 h-52 shadow-inner relative">
+                    <!-- 3D WebGL Canvas for Modal -->
+                </div>
+                <div class="sm:col-span-7 space-y-3">
+                    <div class="text-xs font-bold uppercase text-amber-700 tracking-wide">Conselho Completo:</div>
+                    <p id="modalFullExplanation" class="text-slate-700 text-sm sm:text-base leading-relaxed">
+                        <!-- Full rule explanation -->
+                    </p>
+                </div>
+            </div>
+
+            <!-- Mini Interactive Challenge inside Modal -->
+            <div class="bg-slate-50 rounded-xl p-4 sm:p-5 border border-slate-200">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-lg">⚡</span>
+                    <h4 class="font-bold text-slate-800 text-sm sm:text-base">Mini-Desafio Rápido: O que farias?</h4>
+                </div>
+                <p id="modalQuestionText" class="text-sm text-slate-700 mb-3 font-medium"></p>
+                <div id="modalOptions" class="space-y-2"></div>
+                <div id="modalFeedback" class="hidden mt-3 p-3 rounded-lg text-xs sm:text-sm font-semibold"></div>
+            </div>
+
+            <div class="mt-5 flex justify-between items-center pt-3 border-t border-slate-100">
+                <span id="modalStatusBadge" class="text-xs font-semibold text-slate-500">Responde ao desafio para ganhar a estrela ⭐</span>
+                <button onclick="closeRuleModal()" class="px-5 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800">
+                    Voltar ao Cartaz
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Certificate Modal (When all 10 rules are completed) -->
+    <div id="certificateModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border-4 border-amber-400 text-center animate-pop">
+            <div class="w-16 h-16 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-3xl mx-auto mb-3 shadow-inner">
+                🛡️
+            </div>
+            <span class="text-xs font-bold uppercase tracking-widest text-amber-700 bg-amber-100 px-3 py-1 rounded-full">
+                Diploma Oficial
+            </span>
+            <h3 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2">
+                Mestre da Segurança no WhatsApp!
+            </h3>
+            <p class="text-sm sm:text-base text-slate-600 mt-2 leading-relaxed">
+                Parabéns! Dominaste as <strong>10 Regras de Ouro</strong>. Já sabes bloquear estranhos, guardar o teu PIN em segredo, proteger a tua localização e pedir ajuda sem medo aos teus pais ou professores!
+            </p>
+            <div class="my-5 p-4 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-5 gap-2 text-2xl">
+                <span>🟥</span><span>👥</span><span>🚪</span><span>🔇</span><span>🖼️</span>
+                <span>⚠️</span><span>🤝</span><span>🔐</span><span>🗺️</span><span>🗑️</span>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <button onclick="resetProgress()" class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm hover:bg-slate-100">
+                    🔄 Jogar de Novo
+                </button>
+                <button onclick="closeCertificateModal()" class="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow">
+                    Continuar a Explorar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 text-center text-xs text-slate-500">
+        Cartaz & Jogo Educativo • Cidadania e Segurança Digital para Crianças • Grelha 2x5 com Ilustrações Vetoriais
+    </footer>
+
+    <script>
+        // ==========================================
+        // STATE & AUDIO VARIABLES
+        // ==========================================
+        let completedRules = new Set();
+        let currentQuizIndex = 0;
+        let currentMode = 'explore';
+        let activeModalRuleId = null;
+        let soundEnabled = true;
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('btnSound');
+            btn.textContent = soundEnabled ? '🔊' : '🔇';
+            playTone('click');
+        }
+
+        function playTone(type) {
+            if (!soundEnabled) return;
+            try {
+                if (typeof Tone !== 'undefined') {
+                    if (Tone.context.state !== 'running') {
+                        Tone.context.resume();
+                    }
+                    const synth = new Tone.Synth().toDestination();
+                    if (type === 'correct') {
+                        synth.triggerAttackRelease('C5', '8n', Tone.now());
+                        setTimeout(() => synth.triggerAttackRelease('G5', '8n', Tone.now() + 0.1), 100);
+                    } else if (type === 'wrong') {
+                        synth.triggerAttackRelease('G3', '8n', Tone.now());
+                    } else {
+                        synth.triggerAttackRelease('E4', '16n', Tone.now());
+                    }
+                }
+            } catch (e) {
+                // Audio context might be restricted before user interaction
+            }
+        }
+
+        // ==========================================
+        // THREE.JS 3D SCENE BUILDERS FOR THE 10 RULES
+        // ==========================================
+        const activeRenderers = new Map();
+
+        // Helper: Physical Toy/Vinyl Material with satin clearcoat
+        function toyMaterial(color, opts = {}) {
+            return new THREE.MeshPhysicalMaterial({
+                color: color,
+                roughness: opts.roughness !== undefined ? opts.roughness : 0.32,
+                metalness: opts.metalness !== undefined ? opts.metalness : 0.05,
+                clearcoat: opts.clearcoat !== undefined ? opts.clearcoat : 0.35,
+                clearcoatRoughness: 0.25,
+                emissive: opts.emissive || 0x000000,
+                emissiveIntensity: opts.emissiveIntensity || 0
+            });
+        }
+
+        // Helper: Circular Collector's Diorama Pedestal Base
+        function createDioramaBase(topColor = 0xffffff, rimColor = 0xe2e8f0) {
+            const baseGroup = new THREE.Group();
+            const outer = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.65, 1.75, 0.22, 48),
+                toyMaterial(rimColor, { roughness: 0.4, clearcoat: 0.2 })
+            );
+            outer.position.y = -1.08;
+            outer.receiveShadow = true;
+
+            const inner = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.52, 1.52, 0.08, 48),
+                toyMaterial(topColor, { roughness: 0.25, clearcoat: 0.5 })
+            );
+            inner.position.y = -0.95;
+            inner.receiveShadow = true;
+
+            baseGroup.add(outer, inner);
+            return baseGroup;
+        }
+
+        // Helper: High-Detail 3D Smartphone with Bezel, Speaker, Camera, Side Buttons & Chat UI
+        function createPhoneModel(screenColor = 0xf8fafc, headerColor = 0x075e54) {
+            const phoneGroup = new THREE.Group();
+
+            // Main metallic chassis
+            const chassis = new THREE.Mesh(
+                new THREE.BoxGeometry(1.32, 2.34, 0.16),
+                toyMaterial(0x1e293b, { roughness: 0.22, metalness: 0.65, clearcoat: 0.6 })
+            );
+            chassis.castShadow = true;
+            chassis.receiveShadow = true;
+            phoneGroup.add(chassis);
+
+            // Metallic rim accent
+            const rim = new THREE.Mesh(
+                new THREE.BoxGeometry(1.36, 2.38, 0.12),
+                toyMaterial(0x475569, { roughness: 0.3, metalness: 0.8 })
+            );
+            phoneGroup.add(rim);
+
+            // Side volume buttons
+            const btn1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.26, 0.06), toyMaterial(0x94a3b8, { metalness: 0.8 }));
+            btn1.position.set(-0.69, 0.45, 0);
+            const btn2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.26, 0.06), toyMaterial(0x94a3b8, { metalness: 0.8 }));
+            btn2.position.set(-0.69, 0.12, 0);
+            phoneGroup.add(btn1, btn2);
+
+            // Glossy illuminated screen
+            const screen = new THREE.Mesh(
+                new THREE.BoxGeometry(1.18, 2.14, 0.04),
+                toyMaterial(screenColor, { roughness: 0.12, clearcoat: 0.9 })
+            );
+            screen.position.z = 0.075;
+            phoneGroup.add(screen);
+
+            // WhatsApp Top Header Bar
+            const header = new THREE.Mesh(
+                new THREE.BoxGeometry(1.18, 0.34, 0.045),
+                toyMaterial(headerColor, { roughness: 0.25 })
+            );
+            header.position.set(0, 0.9, 0.08);
+            phoneGroup.add(header);
+
+            // Top speaker notch & front camera lens
+            const notch = new THREE.Mesh(
+                new THREE.BoxGeometry(0.36, 0.06, 0.05),
+                toyMaterial(0x0f172a, { roughness: 0.2 })
+            );
+            notch.position.set(0, 1.02, 0.085);
+            phoneGroup.add(notch);
+
+            return phoneGroup;
+        }
+
+        // Helper: Richly Sculpted Toy-Art Kid/Adult Character (Ears, Nose, Cheeks, Eye Highlights, Hair, Collar)
+        function createKidBust(shirtColor = 0x0d9488, hairColor = 0x451a03, scale = 1, options = {}) {
+            const group = new THREE.Group();
+            const skinMat = toyMaterial(options.skinColor || 0xffcba4, { roughness: 0.38, clearcoat: 0.25 });
+            const hairMat = toyMaterial(hairColor, { roughness: 0.45, clearcoat: 0.2 });
+
+            // Head
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.44, 32, 32), skinMat);
+            head.position.y = 0.48;
+            head.castShadow = true;
+            group.add(head);
+
+            // Ears
+            const earGeo = new THREE.SphereGeometry(0.11, 16, 16);
+            const leftEar = new THREE.Mesh(earGeo, skinMat);
+            leftEar.position.set(-0.43, 0.46, 0);
+            const rightEar = new THREE.Mesh(earGeo, skinMat);
+            rightEar.position.set(0.43, 0.46, 0);
+            group.add(leftEar, rightEar);
+
+            // Cute 3D Button Nose
+            const nose = new THREE.Mesh(new THREE.SphereGeometry(0.065, 16, 16), skinMat);
+            nose.position.set(0, 0.44, 0.43);
+            group.add(nose);
+
+            // Rosy Toy Cheeks
+            const cheekMat = toyMaterial(0xfb7185, { roughness: 0.5, clearcoat: 0.1 });
+            const cheekGeo = new THREE.SphereGeometry(0.065, 16, 16);
+            const leftCheek = new THREE.Mesh(cheekGeo, cheekMat);
+            leftCheek.scale.set(1.2, 0.7, 0.5);
+            leftCheek.position.set(-0.24, 0.38, 0.37);
+            const rightCheek = new THREE.Mesh(cheekGeo, cheekMat);
+            rightCheek.scale.set(1.2, 0.7, 0.5);
+            rightCheek.position.set(0.24, 0.38, 0.37);
+            group.add(leftCheek, rightCheek);
+
+            // Expressive Eyes with White Specular Catchlights
+            const eyeMat = toyMaterial(0x0f172a, { roughness: 0.05, clearcoat: 1.0 });
+            const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            [-0.15, 0.15].forEach(xPos => {
+                const eye = new THREE.Mesh(new THREE.SphereGeometry(0.062, 16, 16), eyeMat);
+                eye.position.set(xPos, 0.5, 0.39);
+                const spark = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 10), sparkMat);
+                spark.position.set(xPos + 0.02, 0.52, 0.44);
+                group.add(eye, spark);
+
+                // Eyebrow
+                const brow = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 0.03), hairMat);
+                brow.position.set(xPos, 0.61, 0.39);
+                brow.rotation.z = xPos < 0 ? 0.1 : -0.1;
+                group.add(brow);
+            });
+
+            // Smile Mouth
+            const smile = new THREE.Mesh(
+                new THREE.TorusGeometry(0.075, 0.018, 12, 24, Math.PI),
+                toyMaterial(0x9f1239, { roughness: 0.3 })
+            );
+            smile.rotation.x = Math.PI;
+            smile.position.set(0, 0.36, 0.41);
+            group.add(smile);
+
+            // Sculpted Hair Volume + Front Tuft
+            const hairCap = new THREE.Mesh(
+                new THREE.SphereGeometry(0.465, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.58),
+                hairMat
+            );
+            hairCap.position.y = 0.51;
+            hairCap.rotation.x = -0.18;
+            hairCap.castShadow = true;
+            group.add(hairCap);
+
+            const hairFringe = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), hairMat);
+            hairFringe.scale.set(1.6, 0.65, 0.9);
+            hairFringe.position.set(0.05, 0.78, 0.32);
+            group.add(hairFringe);
+
+            // Neck
+            const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.22, 20), skinMat);
+            neck.position.y = 0.05;
+            group.add(neck);
+
+            // Rounded Toy Torso & White Collar
+            const torso = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.32, 0.44, 0.72, 28),
+                toyMaterial(shirtColor, { roughness: 0.35, clearcoat: 0.25 })
+            );
+            torso.position.y = -0.32;
+            torso.castShadow = true;
+            group.add(torso);
+
+            const collar = new THREE.Mesh(
+                new THREE.TorusGeometry(0.22, 0.045, 14, 28),
+                toyMaterial(0xffffff, { roughness: 0.3 })
+            );
+            collar.rotation.x = Math.PI / 2;
+            collar.position.y = 0.02;
+            group.add(collar);
+
+            // Shoulders / Arms
+            [-0.36, 0.36].forEach(xArm => {
+                const shoulder = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.16, 16, 16),
+                    toyMaterial(shirtColor, { roughness: 0.35 })
+                );
+                shoulder.position.set(xArm, -0.12, 0);
+                group.add(shoulder);
+            });
+
+            // Optional glasses for Adult / Teacher look
+            if (options.glasses) {
+                const glassMat = toyMaterial(0x334155, { metalness: 0.7, roughness: 0.2 });
+                const leftRim = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.016, 12, 24), glassMat);
+                leftRim.position.set(-0.15, 0.5, 0.43);
+                const rightRim = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.016, 12, 24), glassMat);
+                rightRim.position.set(0.15, 0.5, 0.43);
+                const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.016, 0.016), glassMat);
+                bridge.position.set(0, 0.51, 0.43);
+                group.add(leftRim, rightRim, bridge);
+            }
+
+            group.scale.set(scale, scale, scale);
+            return group;
+        }
+
+        const threeSceneBuilders = {
+            // 1. Mostra o Cartão Vermelho (Árbitro/Mão Toy Art + Apito Metálico + Telemóvel com Símbolo Bloquear + Cartão Vermelho)
+            1: (container) => initThreeCard(container, 0xffe4e6, (scene) => {
+                const root = new THREE.Group();
+                root.add(createDioramaBase(0xfff1f2, 0xfecdd3));
+
+                // Telemóvel com mensagem suspeita bloqueada
+                const phone = createPhoneModel(0xf8fafc, 0x991b1b);
+                phone.position.set(-0.62, 0.08, -0.18);
+                phone.rotation.y = 0.32;
+                root.add(phone);
+
+                // Balão de chat vermelho bloqueado no ecrã
+                const badBubble = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.86, 0.32, 0.04),
+                    toyMaterial(0xfecaca, { roughness: 0.3 })
+                );
+                badBubble.position.set(0, 0.42, 0.11);
+                phone.add(badBubble);
+
+                // Escudo de Bloqueio 3D no telemóvel
+                const stopRing = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.32, 0.075, 20, 36),
+                    toyMaterial(0xdc2626, { roughness: 0.2, clearcoat: 0.8 })
+                );
+                stopRing.position.set(0, -0.15, 0.14);
+                const stopBar = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.58, 0.09, 0.09),
+                    toyMaterial(0xdc2626, { roughness: 0.2, clearcoat: 0.8 })
+                );
+                stopBar.position.set(0, -0.15, 0.14);
+                stopBar.rotation.z = -Math.PI / 4;
+                phone.add(stopRing, stopBar);
+
+                // Cartão Vermelho Brilhante + Mão com Dedos Esculpidos + Apito Prateado
+                const redCardGroup = new THREE.Group();
+                const whiteFrame = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.12, 1.56, 0.09),
+                    toyMaterial(0xffffff, { roughness: 0.25, clearcoat: 0.6 })
+                );
+                const redCard = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.02, 1.46, 0.13),
+                    toyMaterial(0xef4444, { roughness: 0.15, clearcoat: 0.9, emissive: 0x991b1b, emissiveIntensity: 0.18 })
+                );
+                redCard.castShadow = true;
+                redCardGroup.add(whiteFrame, redCard);
+
+                // Ícone de exclamação branca no centro do Cartão Vermelho
+                const exStick = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.45, 16), toyMaterial(0xffffff));
+                exStick.position.set(0, 0.15, 0.08);
+                const exDot = new THREE.Mesh(new THREE.SphereGeometry(0.065, 16, 16), toyMaterial(0xffffff));
+                exDot.position.set(0, -0.22, 0.08);
+                redCardGroup.add(exStick, exDot);
+
+                // Mão Toy Art com dedos e manga desportiva a segurar o cartão
+                const skinMat = toyMaterial(0xffcba4, { roughness: 0.35 });
+                const palm = new THREE.Mesh(new THREE.SphereGeometry(0.23, 20, 20), skinMat);
+                palm.position.set(-0.22, -0.72, 0.12);
+                const thumb = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.22, 14), skinMat);
+                thumb.rotation.z = -0.6;
+                thumb.position.set(-0.1, -0.62, 0.2);
+                const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.26, 20), toyMaterial(0x1e293b));
+                cuff.position.set(-0.24, -0.95, 0.1);
+                redCardGroup.add(palm, thumb, cuff);
+
+                redCardGroup.position.set(0.62, 0.25, 0.32);
+                redCardGroup.rotation.set(0.06, -0.28, -0.14);
+                root.add(redCardGroup);
+
+                // Apito de árbitro cromado na base
+                const whistleGroup = new THREE.Group();
+                const metalMat = toyMaterial(0xe2e8f0, { metalness: 0.85, roughness: 0.15, clearcoat: 0.9 });
+                const wBody = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.2, 24), metalMat);
+                wBody.rotation.z = Math.PI / 2;
+                const wMouth = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.28), metalMat);
+                wMouth.position.set(0, 0.06, 0.2);
+                whistleGroup.add(wBody, wMouth);
+                whistleGroup.position.set(0.05, -0.72, 0.55);
+                whistleGroup.rotation.y = 0.5;
+                root.add(whistleGroup);
+
+                scene.add(root);
+                return {
+                    root,
+                    update: (t) => {
+                        redCardGroup.position.y = 0.25 + Math.sin(t * 2.8) * 0.1;
+                        redCardGroup.rotation.z = -0.14 + Math.sin(t * 2) * 0.05;
+                    }
+                };
+            }),
+
+            // 2. O Teu Perfil é Só para Amigos (Moldura Dourada + Criança 3D Detalhada + Cadeado Metálico + Crachá "Amigos")
+            2: (container) => initThreeCard(container, 0xccfbf1, (scene) => {
+                const root = new THREE.Group();
+                root.add(createDioramaBase(0xf0fdfa, 0x99f6e4));
+
+                // Moldura Circular de Perfil com Aro Duplo
+                const outerRing = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.96, 0.12, 24, 56),
+                    toyMaterial(0x0d9488, { roughness: 0.2, metalness: 0.3, clearcoat: 0.8 })
+                );
+                outerRing.position.y = 0.12;
+                outerRing.castShadow = true;
+                root.add(outerRing);
+
+                const innerRing = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.84, 0.04, 16, 48),
+                    toyMaterial(0xffffff, { roughness: 0.2 })
+                );
+                innerRing.position.set(0, 0.12, 0.05);
+                root.add(innerRing);
+
+                const backDisc = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.92, 0.92, 0.12, 40),
+                    toyMaterial(0x5eead4, { roughness: 0.4 })
+                );
+                backDisc.rotation.x = Math.PI / 2;
+                backDisc.position.set(0, 0.12, -0.08);
+                root.add(backDisc);
+
+                // Criança 3D detalhada no centro do Perfil
+                const kid = createKidBust(0x0284c7, 0x451a03, 0.92);
+                kid.position.set(0, -0.05, 0.06);
+                root.add(kid);
+
+                // Cadeado Dourado Polido com Fechadura Esculpida
+                const lockGroup = new THREE.Group();
+                const lockBody = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.58, 0.5, 0.24),
+                    toyMaterial(0xf59e0b, { roughness: 0.2, metalness: 0.65, clearcoat: 0.85 })
+                );
+                lockBody.castShadow = true;
+                const shackle = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.17, 0.055, 16, 32, Math.PI),
+                    toyMaterial(0xf8fafc, { metalness: 0.9, roughness: 0.15 })
+                );
+                shackle.position.y = 0.25;
+                const keyholeDot = new THREE.Mesh(new THREE.CircleGeometry(0.06, 16), new THREE.MeshBasicMaterial({ color: 0x451a03 }));
+                keyholeDot.position.set(0, 0.04, 0.125);
+                const keyholeSlot = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.02), new THREE.MeshBasicMaterial({ color: 0x451a03 }));
+                keyholeSlot.position.set(0, -0.05, 0.125);
+                lockGroup.add(lockBody, shackle, keyholeDot, keyholeSlot);
+                lockGroup.position.set(0.78, -0.45, 0.38);
+                lockGroup.rotation.z = -0.1;
+                root.add(lockGroup);
+
+                // Estrela/Selo de Contacto Verificado à esquerda
+                const friendBadge = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.28, 0.28, 0.1, 24),
+                    toyMaterial(0x10b981, { roughness: 0.2, clearcoat: 0.8 })
+                );
+                friendBadge.rotation.x = Math.PI / 2;
+                friendBadge.position.set(-0.82, 0.65, 0.28);
+                root.add(friendBadge);
+
+                scene.add(root);
+                return {
+                    root,
+                    update: (t) => {
+                        lockGroup.position.y = -0.45 + Math.sin(t * 2.8) * 0.07;
+                        friendBadge.rotation.z = Math.sin(t * 2) * 0.15;
+                    }
+                };
+            }),
+
+            // 3. Cuidado com Grupos de Estranhos (Porta de Madeira com Almofadas + Crachá VIP Verde + Estranhos Barrados por Cancela)
+            3: (container) => initThreeCard(container, 0xfef3c7, (scene) => {
+                const root = new THREE.Group();
+                root.add(createDioramaBase(0xfffbeb, 0xfde68a));
+
+                // Moldura e Porta de Madeira Esculpida com Painéis em Relevo
+                const doorGroup = new THREE.Group();
+                const frame = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.48, 2.18, 0.22),
+                    toyMaterial(0x78350f, { roughness: 0.5 })
+                );
+                const door = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.24, 1.98, 0.26),
+                    toyMaterial(0xd97706, { roughness: 0.35, clearcoat: 0.3 })
+                );
+                door.castShadow = true;
+
+                // Painéis decorativos da porta
+                const topPanel = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.62, 0.3), toyMaterial(0xb45309, { roughness: 0.4 }));
+                topPanel.position.y = 0.42;
+                const botPanel = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.62, 0.3), toyMaterial(0xb45309, { roughness: 0.4 }));
+                botPanel.position.y = -0.48;
+
+                // Maçaneta dourada + escudo
+                const knob = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.1, 20, 20),
+                    toyMaterial(0xfacc15, { metalness: 0.85, roughness: 0.15 })
+                );
+                knob.position.set(0.38, -0.05, 0.2);
+
+                // Emblema Verde "Só Amigos" na porta
+                const badge = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.3, 0.3, 0.08, 28),
+                    toyMaterial(0x10b981, { roughness: 0.2, clearcoat: 0.8 })
+                );
+                badge.rotation.x = Math.PI / 2;
+                badge.position.set(0, 0.42, 0.16);
+
+                doorGroup.add(frame, door, topPanel, botPanel, knob, badge);
+                doorGroup.position.set(-0.42, 0.12, -0.1);
+                doorGroup.rotation.y = 0.18;
+                root.add(doorGroup);
+
+                // Bonecos "Desconhecidos" (Cinzento/Roxo) barrados no exterior
+                const stranger1 = createKidBust(0x475569, 0x1e293b, 0.68, { skinColor: 0xcbd5e1 });
+                stranger1.position.set(0.75, -0.15, 0.05);
+                stranger1.rotation.y = -0.35;
+                root.add(stranger1);
+
+                const stranger2 = createKidBust(0x64748b, 0x334155, 0.56, { skinColor: 0x94a3b8 });
+                stranger2.position.set(1.12, -0.25, -0.25);
+                stranger2.rotation.y = -0.5;
+                root.add(stranger2);
+
+                // Cancela / Barreira Vermelha e Branca de Segurança à frente dos estranhos
+                const barrierGroup = new THREE.Group();
+                const barRed = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.065, 0.065, 1.05, 16),
+                    toyMaterial(0xef4444, { roughness: 0.2, clearcoat: 0.8 })
+                );
+                barRed.rotation.z = Math.PI / 2;
+                const stripe1 = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.068, 0.2, 16), toyMaterial(0xffffff));
+                stripe1.rotation.z = Math.PI / 2;
+                stripe1.position.x = -0.22;
+                const stripe2 = stripe1.clone();
+                stripe2.position.x = 0.22;
+                barrierGroup.add(barRed, stripe1, stripe2);
+                barrierGroup.position.set(0.82, -0.18, 0.48);
+                root.add(barrierGroup);
+
+                scene.add(root);
+                return {
+                    root,
+                    update: (t) => {
+                        stranger1.position.x = 0.75 + Math.sin(t * 2.5) * 0.05;
+                        barrierGroup.position.y = -0.18 + Math.sin(t * 3) * 0.03;
+                    }
+                };
+            }),
+
+            // 4. Silêncio para Desconhecidos (Telemóvel com Chamada Desconhecida + Sino Dourado Polido + Símbolo Silêncio + Zzz)
+            4: (container) => initThreeCard(container, 0xe0e7ff, (scene) => {
+                const root = new THREE.Group();
+                root.add(createDioramaBase(0xeef2ff, 0xc7d2fe));
+
+                // Telemóvel com ecrã de chamada escura
+                const phone = createPhoneModel(0x1e1b4b, 0x312e81);
+                phone.position.set(-0.58, 0.1, -0.2);
+                phone.rotation.y = 0.28;
+                root.add(phone);
+
+                // Botões de recusar (vermelho) e silenciar no ecrã do telemóvel
+                const btnReject = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.05, 20), toyMaterial(0xef4444));
+                btnReject.rotation.x = Math.PI / 2;
+                btnReject.position.set(-0.24, -0.55, 0.11);
+                const btnMute = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.05, 20), toyMaterial(0x10b981));
+                btnMute.rotation.x = Math.PI / 2;
+                btnMute.position.set(0.24, -0.55, 0.11);
+                phone.add(btnReject, btnMute);
+
+                // Sino 3D Dourado Esculpido com Aba, Coroa e Badalo
+                const bellGroup = new THREE.Group();
+                const goldMat = toyMaterial(0xfbbf24, { metalness: 0.7, roughness: 0.2, clearcoat: 0.9 });
+                const bellBody = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.62, 0.85, 32), goldMat);
+                bellBody.castShadow = true;
+                const bellDome = new THREE.Mesh(new THREE.SphereGeometry(0.28, 24, 24), goldMat);
+                bellDome.position.y = 0.35;
+                const bellLip = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.08, 16, 36), goldMat);
+                bellLip.rotation.x = Math.PI / 2;
+                bellLip.position.y = -0.42;
+                const bellHandle = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.035, 12, 24), goldMat);
+                bellHandle.position.y = 0.64;
+                const clapper = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 20), goldMat);
+                clapper.position.y = -0.54;
+                bellGroup.add(bellBody, bellDome, bellLip, bellHandle, clapper);
+
+                // Aro Vermelho de Silêncio (Mute Slash)
+                const redMat = toyMaterial(0xef4444, { roughness: 0.2, clearcoat: 0.85 });
+                const muteRing = new THREE.Mesh(new THREE.TorusGeometry(0.76, 0.085, 20, 44), redMat);
+                muteRing.position.z = 0.16;
+                const muteSlash = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.13, 0.13), redMat);
+                muteSlash.rotation.z = -Math.PI / 4;
+                muteSlash.position.z = 0.22;
+                bellGroup.add(muteRing, muteSlash);
+
+                bellGroup.position.set(0.48, 0.15, 0.28);
+                root.add(bellGroup);
+
+                scene.add(root);
+                return {
+                    root,
+                    update: (t) => {
+                        bellGroup.rotation.z = Math.sin(t * 2.2) * 0.06;
+                        bellGroup.position.y = 0.15 + Math.sin(t * 2.8) * 0.05;
+                    }
+                };
+            }),
+
+            // 5. Não Deixes Entrar "Lixo" (Moldura de Galeria com Paisagem 3D + Escudo Protetor + Monstrinho de Lixo Digital Bloqueado)
+            5: (container) => initThreeCard(container, 0xe0f2fe, (scene) => {
+                const root = new THREE.Group();
+                root.add(createDioramaBase(0xf0f9ff, 0xbae6fd));
+
+                // Moldura de Galeria 3D (Quadro Toy Art com Sol, Nuvem e Montanhas)
+                const frameGroup = new THREE.Group();
+                const outerFrame = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.72, 1.36, 0.15),
+                    toyMaterial(0xffffff, { roughness: 0.2, clearcoat: 0.7 })
+                );
+                outerFrame.castShadow = true;
+                const skyBg = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.48, 1.12, 0.16),
+                    toyMaterial(0x38bdf8, { roughness: 0.35 })
+                );
+                const sun = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.17, 20, 20),
+                    toyMaterial(0xfde047, { emissive: 0xfacc15, emissiveIntensity: 0.25 })
+                );
+                sun.position.set(-0.42, 0.26, 0.09);
+
+                // Nuvem fofa 3D
+                const cloudMat = toyMaterial(0xffffff, { roughness: 0.3 });
+                const c1 = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), cloudMat);
+                c1.position.set(-0.1, 0.3, 0.1);
+                const c2 = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 16), cloudMat);
+                c2.position.set(0.02, 0.28, 0.1);
+
+                // Duas montanhas verdes
+                const mtn1 = new THREE.Mesh(new THREE.ConeGeometry(0.44, 0.68, 16), toyMaterial(0x10b981, { roughness: 0.35 }));
+                mtn1.position.set(0.22, -0.22, 0.08);
+                const mtn2 = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.5, 16), toyMaterial(0x059669, { roughness: 0.35 }));
+                mtn2.position.set(-0.22, -0.3, 0.07);
+
+                frameGroup.add(outerFrame, skyBg, sun, c1, c2, mtn1, mtn2);
+                frameGroup.position.set(-0.28, 0.15, -0.08);
+                frameGroup.rotation.y = 0.22;
+                root.add(frameGroup);
+
+                // Escudo Hexagonal Azul Brilhante (Bloqueio de Download Automático)
+                const shieldGroup = new THREE.Group();
+                const shieldOuter = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.52, 0.52, 0.14, 6),
+                    toyMaterial(0x0284c7, { metalness: 0.45, roughness: 0.2, clearcoat: 0.85 })
+                );
+                shieldOuter.rotation.x = Math.PI / 2;
+                const shieldRim = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.42, 0.42, 0.16, 6),
+                    toyMaterial(0x38bdf8, { roughness: 0.25 })
+                );
+                shieldRim.rotation.x = Math.PI / 2;
+                shieldGroup.add(shieldOuter, shieldRim);
+                shieldGroup.position.set(0.62, -0.18, 0.36);
+                root.add(shieldGroup);
+
+                // "Lixo Digital / Vírus" com espinhos bloqueado fora da galeria
+                const virusGroup = new THREE.Group();
+                const vMat = toyMaterial(0x84cc16, { roughness: 0.3, clearcoat: 0.5 });
+                const vCore = new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 20), vMat);
+                virusGroup.add(vCore);
+                for (let i = 0; i < 6; i++) {
+                    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.18, 12), vMat);
+                    const angle = (i / 6) * Math.PI * 2;
+                    spike.position.set(Math.cos(angle) * 0.26, Math.sin(angle) * 0.26, 0);
+                    spike.rotation.z = angle - Math.PI / 2;
+                    virusGroup.add(spike);
+                }
+                virusGroup.position.set(0.85, 0.62, 0.28);
+                root.add(virusGroup);
+
+                scene.add(root);
+                return {
+                    root,
+                    update: (t) => {
+                        virusGroup.rotation.z = t * 1.2;
+                        virusGroup.position.y = 0.62 + Math.sin(t * 3.2) * 0.08;
+                        shieldGroup.position.y = -0.18 + Math.sin(t * 2.5) * 0.05;
+                    }
+                };
+            }),
+
+            // 6. Número Sem Nome? Fica Longe! (Telemóvel com Link Suspeito + Anzol Metálico de Phishing + Sinal de Perigo 3D)
+            6: (container) => initThreeCard(container, 0xfef9c3, (scene) => {
+                const root = new THREE.Group();
+                root.add(createDioramaBase(0xfefce8, 0xfef08a));
+
+                // Telemóvel com barra de link azul enganador
+                const phone = createPhoneModel(0xffffff, 0xb45309);
+                phone.position.set(-0.58, 0.08, -0.18);
+                phone.rotation.y = 0.28;
+                root.add(phone);
+
+                const fakeLinkBar = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.88, 0.26, 0.05),
+                    toyMaterial(0x3b82f6, { emissive: 0x1d4ed8, emissiveIntensity: 0.2 })
+                );
+                fakeLinkBar.position.set(0, 0.15, 0.11);
+                phone.add(fakeLinkBar);
+
+                // Triângulo de Perigo 3D (Amarelo e Vermelho com Exclamação)
+                const warnGroup = new THREE.Group();
+                const triOuter = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.68, 1.15, 3),
+                    toyMaterial(0xf59e0b, { roughness: 0.22, clearcoat: 0.8 })
+                );
+                triOuter.rotation.y = Math.PI / 6;
+                triOuter.castShadow = true;
+                const exBar = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.065, 0.055, 0.38, 16),
+                    toyMaterial(0xffffff)
+                );
+                exBar.position.set(0, 0.06, 0.36);
+                const exDot = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.075, 16, 16),
+                    toyMaterial(0xffffff)
+                );
+                exDot.position.set(0, -0.24, 0.36);
+                warnGroup.add(triOuter, exBar, exDot);
+                warnGroup.position.set(0.56, -0.18, 0.26);
+                root.add(warnGroup);
+
+                // Anzol de Pesca Cromado (Símbolo clássico de Phishing / Isco)
+                const hookGroup = new THREE.Group();
+                const chromeMat = toyMaterial(0xe2e8f0, { metalness: 0.9, roughness: 0.12, clearcoat: 1.0 });
+                const topRing = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.03, 12, 24), chromeMat);
+                topRing.position.y = 0.88;
+                const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.85, 16), chromeMat);
+                shank.position.y = 0.42;
+                const curve = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.045, 16, 32, Math.PI), chromeMat);
+                curve.rotation.x = Math.PI;
+                curve.position.set(0.24, 0, 0);
+                const barb = new THREE.Mesh(new THREE.ConeGeometry(0.065, 0.18, 16), chromeMat);
+                barb.position.set(0.48, 0.08, 0);
+                hookGroup.add(topRing, shank, curve, barb);
+                hookGroup.position.set(0.18, 0.35, 0.46);
+                root.add(hookGroup);
+
+                scene.add(root);
+                return {
+                    root,
+                    update: (t) => {
+                        hookGroup.position.y = 0.35 + Math.sin(t * 3) * 0.14;
+                        warnGroup.rotation.z = Math.sin(t * 2) * 0.05;
+                    }
+                };
+            }),
+
+            // 7. Pede Ajuda Sem Medo (Adulto/Professor com Óculos + Criança + Coração 3D Brilhante de Equipa)
+            7: (container) => initThreeCard(container, 0xdcfce7, (scene) => {
+                const root = new THREE.Group();
+                root.add(createDioramaBase(0xf0fdf4, 0xbbf7d0));
+
+                // Adulto de Confiança (Pai/Mãe/Professor com óculos)
+                const adult = createKidBust(0x0284c7, 0x78350f, 1.02, { glasses: true });
+                adult.position.set(-0.54, -0.05, 0);
+                adult.rotation.y = 0.28;
+                root.add(adult);
+
+                // Criança sorridente ao lado
+                const child = createKidBust(0xf59e0b, 0x451a03, 0.78);
+                child.position.set(0.54, -0.25, 0.16);
+                child.rotation.y = -0.28;
+                root.add(child);
+
+                // Coração 3D Esculpido e Luminoso no topo (Equipa Protetora)
+                const heartGroup = new THREE.Group();
+                const heartMat = toyMaterial(0xef4444, { roughness: 0.15, clearcoat: 0.9, emissive: 0xbe123c, emissiveIntensity: 0.2 });
+                const leftLobe = new THREE.Mesh(new THREE.SphereGeometry(0.24, 24, 24), heartMat);
+                leftLobe.position.set(-0.14, 0.12, 0);
+                const rightLobe = new THREE.Mesh(new THREE.SphereGeometry(0.24, 24, 24), heartMat);
+                rightLobe.position.set(0.14, 0.12, 0);
+                const tipCone = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.48, 28), heartMat);
+                tipCone.rotation.x = Math.PI;
+                tipCone.position.y = -0.14;
+                heartGroup.add(leftLobe, rightLobe, tipCone);
+                heartGroup.position.set(0, 0.72, 0.35);
+                root.add(heartGroup);
+
+                scene.add(root);
+                return {
+                    root,
+                    update: (t) => {
+                        const pulse = 1 + Math.sin(t * 3.8) * 0.08;
+                        heartGroup.scale.set(pulse, pulse, pulse);
+                        heartGroup.position.y = 0.72 + Math.sin(t * 2.5) * 0.05;
+                    }
+                };
+            }),
+
+            // 8. Cria um Código Secreto (Cofre-Forte Blindado 3D com Dobradiças, Volante Dourado e Ecrã PIN de 6 Estrelas)
+            8: (container) => initThreeCard(container, 0xe0e7ff, (scene) => {
+                const root = new THREE.Group();
+                root.add(createDioramaBase(0xeef2ff, 0xc7d2fe));
+
+                const safeGroup = new THREE.Group();
+
+                // Corpo do Cofre Metálico Azul-Indigo
+                const safeBody = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.75, 1.72, 1.32),
+                    toyMaterial(0x312e81, { metalness: 0.55, roughness: 0.28, clearcoat: 0.6 })
+                );
+                safeBody.castShadow = true;
+                safeGroup.add(safeBody);
+
+                // Porta espessa do cofre
+                const safeDoor = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.48, 1.44, 0.18),
+                    toyMaterial(0x4338ca, { metalness: 0.6, roughness: 0.22, clearcoat: 0.75 })
+                );
+                safeDoor.position.z = 0.66;
+                safeGroup.add(safeDoor);
+
+                // Dobradiças laterais robustas
+                const hingeMat = toyMaterial(0x94a3b8, { metalness: 0.85, roughness: 0.2 });
+                const hinge1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.32, 16), hingeMat);
+                hinge1.position.set(-0.74, 0.42, 0.68);
+                const hinge2 = hinge1.clone();
+                hinge2.position.set(-0.74, -0.42, 0.68);
+                safeGroup.add(hinge1, hinge2);
+
+                // Volante Dourado Giratório do Cofre
+                const wheelGroup = new THREE.Group();
+                const goldMat = toyMaterial(0xfbbf24, { metalness: 0.85, roughness: 0.15, clearcoat: 0.9 });
+                const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.14, 20), goldMat);
+                hub.rotation.x = Math.PI / 2;
+                const wheelRing = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.06, 16, 36), goldMat);
+                const spoke1 = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.64, 12), goldMat);
+                const spoke2 = spoke1.clone();
+                spoke2.rotation.z = Math.PI / 2;
+                wheelGroup.add(hub, wheelRing, spoke1, spoke2);
+                wheelGroup.position.set(-0.28, -0.08, 0.8);
+                safeGroup.add(wheelGroup);
+
+                // Visor Digital Escuro no topo da porta para o PIN de 6 dígitos
+                const displayScreen = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.68, 0.22, 0.06),
+                    toyMaterial(0x0f172a, { roughness: 0.15 })
+                );
+                displayScreen.position.set(0.32, 0.42, 0.76);
+                safeGroup.add(displayScreen);
+
+                // 6 Teclas Verdes Luminosas (PIN de 6 números)
+                for (let i = 0; i < 6; i++) {
+                    const keyBtn = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.15, 0.15, 0.08),
+                        toyMaterial(0x34d399, { emissive: 0x10b981, emissiveIntensity: 0.45 })
+                    );
+                    const col = i % 2;
+                    const row = Math.floor(i / 2);
+                    keyBtn.position.set(0.22 + col * 0.22, 0.12 - row * 0.22, 0.76);
+                    safeGroup.add(keyBtn);
+                }
+
+                safeGroup.position.y = 0.08;
+                safeGroup.rotation.y = -0.32;
+                root.add(safeGroup);
+
+                scene.add(root);
+                return {
+                    root,
+                    update: (t) => {
+                        wheelGroup.rotation.z = t * 1.4;
+                    }
+                };
+            }),
+
+            // 9. O Teu Mapa é Segredo (Diorama de Bairro 3D com Casa, Árvores, Estrada, Pino de Localização e Cadeado)
+            9: (container) => initThreeCard(container, 0xccfbf1, (scene) => {
+                const root = new THREE.Group();
+                root.add(createDioramaBase(0xf0fdfa, 0x99f6e4));
+
+                const mapDiorama = new THREE.Group();
+
+                // Tabuleiro Verde do Mapa com Moldura Branca
+                const mapFrame = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.16, 0.16, 1.58),
+                    toyMaterial(0xffffff, { roughness: 0.3 })
+                );
+                mapFrame.position.y = -0.42;
+                const mapGrass = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.0, 0.18, 1.42),
+                    toyMaterial(0x34d399, { roughness: 0.45 })
+                );
+                mapGrass.position.y = -0.4;
+                mapDiorama.add(mapFrame, mapGrass);
+
+                // Estrada asfaltada com faixa tracejada
+                const road = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.02, 0.04, 0.38),
+                    toyMaterial(0x475569, { roughness: 0.5 })
+                );
+                road.position.y = -0.3;
+                const roadLine = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.8, 0.05, 0.06),
+                    toyMaterial(0xfde047)
+                );
+                roadLine.position.y = -0.295;
+                mapDiorama.add(road, roadLine);
+
+                // Casinha/Escola 3D com Porta e Telhado
+                const walls = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.56, 0.46, 0.52),
+                    toyMaterial(0xffffff, { roughness: 0.25 })
+                );
+                walls.position.set(-0.52, -0.08, -0.32);
+                walls.castShadow = true;
+                const roof = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.48, 0.42, 4),
+                    toyMaterial(0xf97316, { roughness: 0.3 })
+                );
+                roof.position.set(-0.52, 0.34, -0.32);
+                roof.rotation.y = Math.PI / 4;
+                mapDiorama.add(walls, roof);
+
+                // Árvore Toy Art ao lado da casa
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.28, 12), toyMaterial(0x78350f));
+                trunk.position.set(-0.02, -0.18, -0.38);
+                const leaves = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), toyMaterial(0x059669));
+                leaves.position.set(-0.02, 0.06, -0.38);
+                mapDiorama.add(trunk, leaves);
+
+                // Pino de Localização GPS Vermelho Polido
+                const pinGroup = new THREE.Group();
+                const pinMat = toyMaterial(0xef4444, { roughness: 0.15, clearcoat: 0.9 });
+                const pinHead = new THREE.Mesh(new THREE.SphereGeometry(0.36, 28, 28), pinMat);
+                pinHead.position.y = 0.46;
+                pinHead.castShadow = true;
+                const pinCone = new THREE.Mesh(new THREE.ConeGeometry(0.33, 0.62, 28), pinMat);
+                pinCone.rotation.x = Math.PI;
+                pinCone.position.y = 0.08;
+                const pinCenter = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), toyMaterial(0xffffff));
+                pinCenter.position.set(0, 0.46, 0.24);
+                pinGroup.add(pinHead, pinCone, pinCenter);
+                pinGroup.position.set(0.46, 0.02, 0.12);
+                mapDiorama.add(pinGroup);
+
+                mapDiorama.rotation.x = 0.32;
+                mapDiorama.rotation.y = -0.32;
+                mapDiorama.position.y = 0.08;
+                root.add(mapDiorama);
+
+                scene.add(root);
+                return {
+                    root,
+                    update: (t) => {
+                        pinGroup.position.y = 0.05 + Math.abs(Math.sin(t * 3)) * 0.22;
+                    }
+                };
+            }),
+
+            // 10. Corta as "Correntes" (Caixote Metálico Canelado com Tampa + Elos de Corrente Partidos + Mensagens Amachucadas)
+            10: (container) => initThreeCard(container, 0xf3e8ff, (scene) => {
+                const root = new THREE.Group();
+                root.add(createDioramaBase(0xfaf5ff, 0xe9d5ff));
+
+                // Caixote do Lixo Metálico com Nervuras Verticais e Tampa Entreaberta
+                const binGroup = new THREE.Group();
+                const binMat = toyMaterial(0x64748b, { metalness: 0.65, roughness: 0.25, clearcoat: 0.7 });
+                const binBody = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.52, 1.28, 28), binMat);
+                binBody.position.y = -0.25;
+                binBody.castShadow = true;
+                const binRim = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.065, 16, 36), binMat);
+                binRim.rotation.x = Math.PI / 2;
+                binRim.position.y = 0.38;
+                binGroup.add(binBody, binRim);
+
+                // Nervuras em relevo no caixote
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, 1.05, 10), binMat);
+                    rib.position.set(Math.cos(angle) * 0.58, -0.26, Math.sin(angle) * 0.58);
+                    rib.rotation.z = -Math.cos(angle) * 0.1;
+                    rib.rotation.x = Math.sin(angle) * 0.1;
+                    binGroup.add(rib);
+                }
+
+                // Tampa do caixote inclinada ao lado
+                const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.68, 0.08, 28), binMat);
+                lid.position.set(-0.62, 0.58, -0.15);
+                lid.rotation.z = 0.65;
+                binGroup.add(lid);
+                root.add(binGroup);
+
+                // Elos de Corrente Roxos Partidos a cair no caixote
+                const chainMat = toyMaterial(0x9333ea, { roughness: 0.2, metalness: 0.35, clearcoat: 0.85 });
+                const link1 = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.075, 18, 32), chainMat);
+                link1.position.set(-0.22, 0.72, 0.05);
+                link1.rotation.z = 0.45;
+                link1.castShadow = true;
+
+                const link2 = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.075, 18, 32, Math.PI * 1.55), chainMat);
+                link2.position.set(0.28, 0.66, 0.12);
+                link2.rotation.y = 0.7;
+                link2.rotation.z = -0.35;
+                link2.castShadow = true;
+
+                // Bolas de papel amachucado (Boatos falsos)
+                const paperMat = toyMaterial(0xffffff, { roughness: 0.6 });
+                const paper1 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.2, 0), paperMat);
+                paper1.position.set(0.05, 0.44, 0.15);
+                const paper2 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.16, 0), toyMaterial(0xfef08a, { roughness: 0.5 }));
+                paper2.position.set(-0.18, 0.4, -0.1);
+
+                root.add(link1, link2, paper1, paper2);
+                scene.add(root);
+                return {
+                    root,
+                    update: (t) => {
+                        link1.position.y = 0.72 + Math.sin(t * 3) * 0.09;
+                        link2.position.y = 0.66 + Math.cos(t * 3) * 0.09;
+                        link2.rotation.z = -0.35 + Math.sin(t * 2) * 0.15;
+                    }
+                };
+            })
+        };
+
+        function initThreeCard(container, bgHex, setupCallback) {
+            if (!container) return;
+
+            // Dispose previous renderer in this container if any
+            if (activeRenderers.has(container.id)) {
+                const prev = activeRenderers.get(container.id);
+                cancelAnimationFrame(prev.reqId);
+                prev.renderer.dispose();
+                activeRenderers.delete(container.id);
+            }
+
+            container.innerHTML = '';
+            const width = container.clientWidth || 220;
+            const height = container.clientHeight || 165;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(bgHex);
+
+            const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 100);
+            camera.position.set(0, 0.42, 4.55);
+            camera.lookAt(0, -0.05, 0);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.12;
+            container.appendChild(renderer.domElement);
+
+            // Luminous Toy-Studio 3-Point Lighting with Soft Shadows
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0xe2e8f0, 0.9);
+            scene.add(hemiLight);
+
+            const keyLight = new THREE.DirectionalLight(0xfffbeb, 1.15);
+            keyLight.position.set(3.5, 6.5, 5.0);
+            keyLight.castShadow = true;
+            keyLight.shadow.mapSize.width = 512;
+            keyLight.shadow.mapSize.height = 512;
+            keyLight.shadow.camera.near = 0.5;
+            keyLight.shadow.camera.far = 15;
+            keyLight.shadow.bias = -0.001;
+            scene.add(keyLight);
+
+            const fillLight = new THREE.DirectionalLight(0xe0f2fe, 0.55);
+            fillLight.position.set(-4, 2, 3);
+            scene.add(fillLight);
+
+            const rimLight = new THREE.PointLight(0xffffff, 0.5, 10);
+            rimLight.position.set(0, 3, -3.5);
+            scene.add(rimLight);
+
+            const sceneObj = setupCallback(scene, camera, renderer);
+
+            // Enable cast/receive shadows across all child meshes
+            if (sceneObj && sceneObj.root) {
+                sceneObj.root.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+            }
+
+            // Interactive mouse tilt on card
+            let targetRotY = 0;
+            let targetRotX = 0;
+            container.onmousemove = (e) => {
+                const rect = container.getBoundingClientRect();
+                const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                const ny = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                targetRotY = nx * 0.55;
+                targetRotX = ny * 0.25;
+            };
+            container.onmouseleave = () => {
+                targetRotY = 0;
+                targetRotX = 0;
+            };
+
+            const clock = new THREE.Clock();
+            const state = { reqId: null, renderer };
+
+            function animate() {
+                state.reqId = requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                if (sceneObj && sceneObj.root) {
+                    const autoSwing = Math.sin(elapsed * 1.4) * 0.22;
+                    sceneObj.root.rotation.y += ((autoSwing + targetRotY) - sceneObj.root.rotation.y) * 0.08;
+                    sceneObj.root.rotation.x += (targetRotX - sceneObj.root.rotation.x) * 0.08;
+                }
+                if (sceneObj && sceneObj.update) {
+                    sceneObj.update(elapsed);
+                }
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            if (container.id) {
+                activeRenderers.set(container.id, state);
+            }
+        }
+
+        // ==========================================
+        // 10 RULES DATA + INTERACTIVE SCENARIOS
+        // ==========================================
+        const rulesData = [
+            {
+                id: 1,
+                shortTitle: "1. MOSTRA O CARTÃO VERMELHO!",
+                posterSummary: "Bloqueia e denuncia quem te assustar ou incomodar!",
+                fullText: "Se receberes uma mensagem esquisita, que te assuste ou te deixe desconfortável, não respondas! Podes «bloquear» e «denunciar» logo essa pessoa. É como expulsar do jogo alguém que não está a cumprir as regras.",
+                phoneContact: "Desconhecido (+351 999...)",
+                phoneAvatar: "😠",
+                phoneBubble: "Olá! Não me conheces mas quero fazer-te perguntas estranhas. Responde já!",
+                scenarioQuestion: "Recebeste esta mensagem desconfortável de alguém que não cumpre as regras. O que fazes?",
+                options: [
+                    { text: "Respondo a perguntar quem é e porque está a chatear.", correct: false, feedback: "Cuidado! Nunca deves responder a mensagens esquisitas ou que te deixem desconfortável." },
+                    { text: "Mostro o cartão vermelho: não respondo, bloqueio e denuncio logo!", correct: true, feedback: "Muito bem! Bloquear e denunciar é como expulsar do jogo quem não cumpre as regras." },
+                    { text: "Continuo a conversar para ver se é uma brincadeira.", correct: false, feedback: "Não arrisques! Se te deixa desconfortável, bloqueia imediatamente." }
+                ]
+            },
+            {
+                id: 2,
+                shortTitle: "2. O TEU PERFIL É SÓ PARA AMIGOS!",
+                posterSummary: "Pede ajuda para que só os teus amigos vejam a tua foto!",
+                fullText: "Sabias que podes esconder a tua foto de perfil e o teu estado de pessoas que não conheces? Pede ajuda para ires às definições e mudares tudo para «Os meus contactos». Assim, só os teus amigos de verdade é que te conseguem ver.",
+                phoneContact: "Definições de Privacidade",
+                phoneAvatar: "⚙️",
+                phoneBubble: "Quem pode ver a minha Foto de Perfil e o meu Estado?\n• Todos\n• Os meus contactos",
+                scenarioQuestion: "Estás nas definições do WhatsApp com os teus pais. Que opção deves escolher para proteger a tua foto?",
+                options: [
+                    { text: "«Os meus contactos», para só os amigos de verdade verem.", correct: true, feedback: "Excelente escolha! Assim os estranhos não conseguem ver a tua foto nem o teu estado." },
+                    { text: "«Todos», para qualquer pessoa do mundo ver a minha foto.", correct: false, feedback: "Pessoas que não conheces não devem ver a tua foto de perfil." },
+                    { text: "Não mudo nada nas definições.", correct: false, feedback: "É importante rever as definições e escolher «Os meus contactos»." }
+                ]
+            },
+            {
+                id: 3,
+                shortTitle: "3. CUIDADO COM GRUPOS DE ESTRANHOS!",
+                posterSummary: "Muda as definições para que só os teus contactos te adicionem a grupos!",
+                fullText: "Às vezes, as pessoas adicionam-nos a grupos cheios de gente que não conhecemos. Para evitar confusão, podes mudar as regras do teu WhatsApp para que só os teus contactos te possam colocar em grupos novos.",
+                phoneContact: "Grupo: Mega Desconhecidos",
+                phoneAvatar: "👥",
+                phoneBubble: "Foste adicionado a um grupo com 150 números que não conheces.",
+                scenarioQuestion: "Como podes evitar que pessoas estranhas te coloquem em grupos confusos?",
+                options: [
+                    { text: "Fico em todos os grupos e mando fotografias minhas.", correct: false, feedback: "Perigo! Em grupos de estranhos não sabes quem está do outro lado." },
+                    { text: "Mudo as definições de Grupos para «Os meus contactos».", correct: true, feedback: "Certíssimo! Assim só os teus contactos guardados te podem adicionar a grupos." },
+                    { text: "Dou o número dos meus amigos para entrarem também.", correct: false, feedback: "Nunca partilhes o número dos teus amigos em grupos de desconhecidos!" }
+                ]
+            },
+            {
+                id: 4,
+                shortTitle: "4. SILÊNCIO PARA DESCONHECIDOS!",
+                posterSummary: "Não atendas números desconhecidos. Põe chamadas de estranhos em silêncio!",
+                fullText: "Se o teu telemóvel tocar no WhatsApp e for um número sem nome, não precisas de atender! Podes ativar uma opção mágica que põe essas chamadas de estranhos logo em silêncio para não te chatearem.",
+                phoneContact: "Chamada de Voz: +351 987...",
+                phoneAvatar: "📞",
+                phoneBubble: "📲 A tocar... Número sem nome (Não está nos teus contactos)",
+                scenarioQuestion: "O WhatsApp está a tocar e é um número sem nome que não conheces. Qual é a atitude certa?",
+                options: [
+                    { text: "Não atendo e ativo a opção de silenciar chamadas de desconhecidos!", correct: true, feedback: "Boa! Não precisas de atender números sem nome e podes silenciá-los automaticamente." },
+                    { text: "Atendo a chamada com câmara ligada para ver quem é.", correct: false, feedback: "Nunca atendas chamadas nem videochamadas de números desconhecidos!" },
+                    { text: "Ligo de volta cinco vezes seguidas.", correct: false, feedback: "Não ligues de volta a números desconhecidos." }
+                ]
+            },
+            {
+                id: 5,
+                shortTitle: "5. NÃO DEIXES ENTRAR \"LIXO\"!",
+                posterSummary: "Desliga o download automático de fotos e vídeos para decidir o que queres abrir!",
+                fullText: "Desliga o «download automático». Assim, se alguém te mandar uma foto ou um vídeo estranho, isso não vai ser guardado logo na tua galeria de fotos. És tu que decides o que queres abrir!",
+                phoneContact: "Armazenamento e Dados",
+                phoneAvatar: "🖼️",
+                phoneBubble: "Download automático de fotografias e vídeos:\n[ Ligado / Desligado ]",
+                scenarioQuestion: "Para evitar que fotos ou vídeos estranhos fiquem guardados sozinhos na tua galeria, o que deves fazer?",
+                options: [
+                    { text: "Deixo o download automático sempre ligado para guardar tudo.", correct: false, feedback: "Se estiver ligado, coisas estranhas podem entrar diretamente na tua galeria." },
+                    { text: "Desligo o «download automático» para ser eu a decidir o que quero abrir!", correct: true, feedback: "Perfeito! Assim controlas o que entra no teu telemóvel e evitas lixo digital." },
+                    { text: "Abro todas as fotos de estranhos mal chegam.", correct: false, feedback: "Nunca abras ficheiros enviados por números desconhecidos." }
+                ]
+            },
+            {
+                id: 6,
+                shortTitle: "6. NÚMERO SEM NOME? FICA LONGE!",
+                posterSummary: "Sem nome? Não respondas, não abras fotos e nunca cliques em links!",
+                fullText: "Se receberes uma mensagem de um número que não está guardado nos teus contactos, não respondas, não abras fotos e nunca cliques naquelas letras azuis (os links). Pode ser um vírus ou um truque.",
+                phoneContact: "+351 900 111 222 (Sem Nome)",
+                phoneAvatar: "⚠️",
+                phoneBubble: "Ganhaste um prémio secreto! Clica já nestas letras azuis: http://truque-perigoso.xyz",
+                scenarioQuestion: "Um número que não está nos teus contactos mandou este link azul. O que fazes?",
+                options: [
+                    { text: "Clico logo nas letras azuis para receber o prémio.", correct: false, feedback: "Cuidado! Links de números desconhecidos podem ser vírus ou truques." },
+                    { text: "Fico longe! Não respondo, não abro fotos e nunca clico no link.", correct: true, feedback: "Isso mesmo! Número sem nome? Fica longe de links e ficheiros!" },
+                    { text: "Envio o link para os meus colegas clicarem primeiro.", correct: false, feedback: "Nunca reencaminhes links suspeitos para os teus amigos." }
+                ]
+            },
+            {
+                id: 7,
+                shortTitle: "7. PEDE AJUDA SEM MEDO!",
+                posterSummary: "Se vires algo estranho, conta aos teus pais ou professores. Eles estão na tua equipa!",
+                fullText: "Se vires alguma coisa no WhatsApp que te deixe triste, assustado ou confuso, mostra aos teus pais ou professores. Eles não vão ficar zangados contigo nem te vão castigar tirando o telemóvel! Eles só querem ser a tua equipa e ajudar a proteger-te.",
+                phoneContact: "Equipa de Confiança",
+                phoneAvatar: "🤝",
+                phoneBubble: "Viste uma mensagem que te deixou triste e assustado, mas tens receio de ficar sem telemóvel.",
+                scenarioQuestion: "O que deves fazer quando algo no WhatsApp te deixa assustado, triste ou confuso?",
+                options: [
+                    { text: "Escondo tudo e fico calado com medo que me tirem o telemóvel.", correct: false, feedback: "Não precisas de ter medo! Os teus pais e professores querem proteger-te, não castigar-te." },
+                    { text: "Mostro logo aos meus pais ou professores, porque eles são a minha equipa!", correct: true, feedback: "Muito bem! Pedir ajuda a um adulto de confiança é sempre a decisão mais corajosa e segura." },
+                    { text: "Tento resolver sozinho discutindo com quem mandou a mensagem.", correct: false, feedback: "Não respondas sozinho; chama sempre os teus pais ou professores." }
+                ]
+            },
+            {
+                id: 8,
+                shortTitle: "8. CRIA UM CÓDIGO SECRETO!",
+                posterSummary: "Cria um PIN de 6 números com os teus pais e não o digas a ninguém!",
+                fullText: "Para ninguém roubar o teu WhatsApp e fingir que és tu, cria um PIN (um código de 6 números) com a ajuda dos teus pais. É como a chave de um diário secreto, nunca a podes dizer a ninguém, nem aos teus melhores amigos!",
+                phoneContact: "Confirmação em Dois Passos",
+                phoneAvatar: "🔐",
+                phoneBubble: "PIN de segurança de 6 números ativado: [ * * * * * * ]",
+                scenarioQuestion: "Um amigo da escola pede-te o teu código PIN de 6 números do WhatsApp. O que lhe dizes?",
+                options: [
+                    { text: "Não digo a ninguém! O PIN é secreto, só eu e os meus pais sabemos.", correct: true, feedback: "Exatamente! O código PIN é como a chave de um diário secreto, não se partilha nem com os melhores amigos." },
+                    { text: "Digo o código porque é meu amigo de verdade.", correct: false, feedback: "Mesmo sendo um grande amigo, o PIN de segurança nunca deve ser partilhado." },
+                    { text: "Escrevo o meu PIN no estado do WhatsApp para não me esquecer.", correct: false, feedback: "Nunca coloques códigos ou palavras-passe visíveis para outras pessoas!" }
+                ]
+            },
+            {
+                id: 9,
+                shortTitle: "9. O TEU MAPA É SEGREDO!",
+                posterSummary: "Nunca envies a tua morada, escola ou onde treinas. Os teus locais em segredo!",
+                fullText: "Nunca envies a tua morada, o nome da tua escola ou onde treinas pelo WhatsApp. Mesmo que pareça ser um amigo a perguntar, a conta dele pode ter sido roubada. Mantém os teus locais em segredo.",
+                phoneContact: "Mensagem Recebida",
+                phoneAvatar: "🗺️",
+                phoneBubble: "Olá! Diz-me aí qual é a tua morada exata e a que horas treinas hoje!",
+                scenarioQuestion: "Recebeste esta pergunta pelo WhatsApp. Deves enviar a tua morada ou onde treinas?",
+                options: [
+                    { text: "Sim, envio a morada, o nome da escola e a localização em tempo real.", correct: false, feedback: "Perigo! Mesmo que pareça um conhecido, a conta pode ter sido roubada." },
+                    { text: "Nunca envio a morada, escola ou local de treino pelo WhatsApp!", correct: true, feedback: "Excelente! O teu mapa é segredo. Protege sempre os locais onde costumas estar." },
+                    { text: "Mando uma fotografia da porta da minha casa.", correct: false, feedback: "Fotografias da rua ou da porta de casa também revelam onde moras. Mantém em segredo!" }
+                ]
+            },
+            {
+                id: 10,
+                shortTitle: "10. CORTA AS \"CORRENTES\"!",
+                posterSummary: "Correntes de mensagens ou boatos? Não partilhes, apaga-as!",
+                fullText: "Sabes aquelas mensagens que dizem «reencaminhado muitas vezes» ou «manda para 10 pessoas senão acontece uma coisa má»? É tudo mentira! São só brincadeiras de mau gosto ou pessoas a tentar assustar. Não envies aos teus amigos, simplesmente apaga.",
+                phoneContact: "↪ Reencaminhado muitas vezes",
+                phoneAvatar: "🗑️",
+                phoneBubble: "⚠️ URGENTE: Manda esta mensagem para 10 amigos agora senão vais ter azar amanhã!",
+                scenarioQuestion: "Apareceu esta «corrente» no teu WhatsApp. O que vais fazer?",
+                options: [
+                    { text: "Fico assustado e envio rapidamente para 10 amigos.", correct: false, feedback: "Não precisas de ter medo! Essas correntes são sempre mentira." },
+                    { text: "Corto a corrente: não envio a ninguém e apago logo a mensagem!", correct: true, feedback: "Muito bem! Ao apagares a mensagem, cortas a corrente e proteges os teus amigos de sustos falsos." },
+                    { text: "Envio para 20 pessoas para ter a certeza.", correct: false, feedback: "Isso só espalha mais mentiras e assusta outras crianças. Apaga sempre!" }
+                ]
+            }
+        ];
+
+        // ==========================================
+        // RENDER 2x5 POSTER GRID WITH 3D CANVASES
+        // ==========================================
+        function renderPosterGrid() {
+            const grid = document.getElementById('rulesGrid');
+            grid.innerHTML = '';
+
+            rulesData.forEach(rule => {
+                const isDone = completedRules.has(rule.id);
+                const card = document.createElement('div');
+                card.className = `card-rule rounded-2xl overflow-hidden flex flex-col justify-between cursor-pointer relative ${isDone ? 'completed' : ''}`;
+                card.onclick = () => openRuleModal(rule.id);
+
+                card.innerHTML = `
+                    <!-- Top 3D Canvas Header -->
+                    <div class="relative h-40 sm:h-44 w-full bg-slate-100 overflow-hidden flex items-center justify-center border-b border-slate-200">
+                        <div id="canvas-card-${rule.id}" class="w-full h-full flex items-center justify-center"></div>
+                        <!-- Number & Star Floating Pill -->
+                        <div class="absolute top-2.5 right-2.5 w-7 h-7 rounded-full ${isDone ? 'bg-emerald-500 text-white' : 'bg-white/90 text-slate-800'} backdrop-blur-md shadow-sm flex items-center justify-center text-xs font-extrabold border border-slate-200 pointer-events-none">
+                            ${isDone ? '⭐' : rule.id}
+                        </div>
+                    </div>
+
+                    <!-- Card Body: Sober Title & Clear Advice -->
+                    <div class="p-3.5 sm:p-4 flex-1 flex flex-col justify-between bg-white">
+                        <div>
+                            <h2 class="text-xs sm:text-sm font-extrabold text-slate-900 leading-snug tracking-tight mb-1.5">
+                                ${rule.shortTitle}
+                            </h2>
+                            <p class="text-xs text-slate-600 font-medium leading-relaxed">
+                                ${rule.posterSummary}
+                            </p>
+                        </div>
+
+                        <!-- Interactive Call-To-Action Footer -->
+                        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                            <span class="text-[11px] font-bold ${isDone ? 'text-emerald-700' : 'text-teal-700'} flex items-center gap-1">
+                                ${isDone ? '✔ Regra Dominada' : 'Praticar Regra 3D'}
+                            </span>
+                            <span class="w-5 h-5 rounded-full ${isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-teal-50 text-teal-700'} flex items-center justify-center text-[10px] font-bold">
+                                ➔
+                            </span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+
+                // Initialize Three.js 3D scene in card after DOM insertion
+                setTimeout(() => {
+                    const containerEl = document.getElementById(`canvas-card-${rule.id}`);
+                    if (containerEl && threeSceneBuilders[rule.id]) {
+                        threeSceneBuilders[rule.id](containerEl);
+                    }
+                }, 50);
+            });
+        }
+
+        // ==========================================
+        // PROGRESS & CERTIFICATE LOGIC
+        // ==========================================
+        function updateProgressUI() {
+            const count = completedRules.size;
+            document.getElementById('progressCount').textContent = `${count} / 10`;
+            document.getElementById('progressBar').style.width = `${(count / 10) * 100}%`;
+
+            const certBtn = document.getElementById('btnCertificate');
+            if (count === 10) {
+                certBtn.classList.remove('hidden');
+            } else {
+                certBtn.classList.add('hidden');
+            }
+        }
+
+        function markRuleCompleted(ruleId) {
+            const hadAllBefore = completedRules.size === 10;
+            completedRules.add(ruleId);
+            updateProgressUI();
+            renderPosterGrid();
+
+            if (!hadAllBefore && completedRules.size === 10) {
+                setTimeout(() => {
+                    openCertificateModal();
+                }, 700);
+            }
+        }
+
+        function resetProgress() {
+            completedRules.clear();
+            currentQuizIndex = 0;
+            updateProgressUI();
+            renderPosterGrid();
+            updateRpgQuestMarkers();
+            closeCertificateModal();
+        }
+
+        // ==========================================
+        // MODAL LOGIC (EXPLORE MODE)
+        // ==========================================
+        function openRuleModal(ruleId) {
+            playTone('click');
+            activeModalRuleId = ruleId;
+            const rule = rulesData.find(r => r.id === ruleId);
+            if (!rule) return;
+
+            document.getElementById('modalRuleNumber').textContent = `Regra de Ouro #${rule.id}`;
+            document.getElementById('modalRuleTitle').textContent = rule.shortTitle;
+            
+            // Init 3D Scene in Modal
+            setTimeout(() => {
+                const modalContainer = document.getElementById('modalCanvasContainer');
+                if (modalContainer && threeSceneBuilders[rule.id]) {
+                    threeSceneBuilders[rule.id](modalContainer);
+                }
+            }, 50);
+
+            document.getElementById('modalFullExplanation').textContent = rule.fullText;
+            document.getElementById('modalQuestionText').textContent = rule.scenarioQuestion;
+
+            const optionsEl = document.getElementById('modalOptions');
+            const feedbackEl = document.getElementById('modalFeedback');
+            feedbackEl.classList.add('hidden');
+            optionsEl.innerHTML = '';
+
+            rule.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3 rounded-xl border border-slate-200 bg-white hover:border-teal-600 hover:bg-teal-50/40 transition text-xs sm:text-sm font-medium text-slate-800 flex items-center gap-2.5";
+                btn.innerHTML = `
+                    <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs shrink-0">${String.fromCharCode(65 + idx)}</span>
+                    <span>${opt.text}</span>
+                `;
+                btn.onclick = () => handleModalOptionClick(rule.id, opt, btn);
+                optionsEl.appendChild(btn);
+            });
+
+            const statusBadge = document.getElementById('modalStatusBadge');
+            statusBadge.textContent = completedRules.has(rule.id)
+                ? "⭐ Já conquistaste a estrela desta regra!"
+                : "Responde ao desafio para ganhar a estrela ⭐";
+
+            const modal = document.getElementById('ruleModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function handleModalOptionClick(ruleId, option, clickedBtn) {
+            const feedbackEl = document.getElementById('modalFeedback');
+            feedbackEl.classList.remove('hidden');
+
+            if (option.correct) {
+                playTone('correct');
+                clickedBtn.className = "w-full text-left p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-xs sm:text-sm font-bold text-emerald-900 flex items-center gap-2.5";
+                feedbackEl.className = "mt-3 p-3 rounded-lg text-xs sm:text-sm font-semibold bg-emerald-100 text-emerald-900 border border-emerald-300";
+                feedbackEl.textContent = "✅ " + option.feedback;
+                document.getElementById('modalStatusBadge').textContent = "⭐ Estrela conquistada!";
+                markRuleCompleted(ruleId);
+                setTimeout(() => {
+                    closeRuleModal();
+                }, 900);
+            } else {
+                playTone('wrong');
+                clickedBtn.className = "w-full text-left p-3 rounded-xl border-2 border-rose-400 bg-rose-50 text-xs sm:text-sm font-medium text-rose-900 flex items-center gap-2.5";
+                feedbackEl.className = "mt-3 p-3 rounded-lg text-xs sm:text-sm font-semibold bg-rose-100 text-rose-900 border border-rose-300";
+                feedbackEl.textContent = "❌ " + option.feedback + " Tenta outra opção!";
+            }
+        }
+
+        function closeRuleModal() {
+            const modal = document.getElementById('ruleModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // ==========================================
+        // 3D RPG WORLD MODE ("VILA DIGITAL 3D")
+        // ==========================================
+        const rpgQuestsData = [
+            {
+                id: 1,
+                npcName: "Tiago (Árbitro Júnior)",
+                place: "Campo de Futebol da Vila",
+                avatar: "⚽",
+                shirtColor: 0xef4444,
+                hairColor: 0x451a03,
+                pos: { x: -9, z: -6 },
+                propType: "goal",
+                speech: "«Olá Guardião! Acabei o treino e um número estranho começou a mandar-me mensagens rudes a exigir que eu lhe responda já. Estou nervoso... O que faço como árbitro no WhatsApp?»",
+                choices: [
+                    { text: "Mostra o Cartão Vermelho: não respondas, bloqueia e denuncia logo essa conta!", correct: true, feedback: "Boa! Tal como no futebol, quem não cumpre as regras leva cartão vermelho (Bloquear e Denunciar)!" },
+                    { text: "Responde com outra mensagem zangada para o assustar.", correct: false, feedback: "Responder a provocações é perigoso. Bloqueia e denuncia sem responder!" },
+                    { text: "Aceita o pedido dele para ver o que ele quer.", correct: false, feedback: "Nunca continues conversa com quem te deixa desconfortável." }
+                ]
+            },
+            {
+                id: 2,
+                npcName: "Beatriz (Fotógrafa do Clube)",
+                place: "Jardim dos Retratos",
+                avatar: "📸",
+                shirtColor: 0x0d9488,
+                hairColor: 0x78350f,
+                pos: { x: -4.5, z: -7.5 },
+                propType: "camera",
+                speech: "«Tirei uma foto super gira com o meu cão para pôr no perfil do WhatsApp! Mas reparei que qualquer pessoa desconhecida na rua consegue ver a minha foto e o meu estado... Como resolvo isto?»",
+                choices: [
+                    { text: "Nas Definições de Privacidade, muda Foto de Perfil e Estado para «Os meus contactos».", correct: true, feedback: "Perfeito! Assim só os teus amigos de verdade guardados nos contactos veem a tua foto!" },
+                    { text: "Deixa em «Todos», porque quantas mais pessoas virem, melhor.", correct: false, feedback: "Estranhos não devem ter acesso à tua fotografia de perfil." },
+                    { text: "Envia a foto para todos os números que aparecerem.", correct: false, feedback: "A tua foto é só para amigos! Configura sempre para «Os meus contactos»." }
+                ]
+            },
+            {
+                id: 3,
+                npcName: "Lucas (Guarda do Portão)",
+                place: "Portão do Clube Secreto",
+                avatar: "🚪",
+                shirtColor: 0xd97706,
+                hairColor: 0x1e293b,
+                pos: { x: 0, z: -8 },
+                propType: "gate",
+                speech: "«Socorro! Hoje acordei e tinham-me colocado num grupo chamado 'Mega Sorteio' cheio de 200 números que nunca vi na vida! Como tranco a porta a grupos de estranhos?»",
+                choices: [
+                    { text: "Fica no grupo e escreve o teu nome completo para te apresentares.", correct: false, feedback: "Nunca dês dados pessoais em grupos com desconhecidos!" },
+                    { text: "Sai do grupo e muda as definições de Grupos para «Os meus contactos».", correct: true, feedback: "Excelente! Agora ninguém desconhecido te consegue pôr em grupos sem permissão." },
+                    { text: "Adiciona todos os teus colegas da turma a esse grupo estranho.", correct: false, feedback: "Isso colocaria os teus colegas em risco também!" }
+                ]
+            },
+            {
+                id: 4,
+                npcName: "Sofia (Estudante na Biblioteca)",
+                place: "Quiosque do Silêncio",
+                avatar: "🔇",
+                shirtColor: 0x4f46e5,
+                hairColor: 0x92400e,
+                pos: { x: 4.5, z: -7.5 },
+                propType: "bell",
+                speech: "«Estou a tentar ler, mas o meu WhatsApp não pára de tocar com chamadas de voz de números sem nome! Tenho medo de atender. Há algum truque mágico?»",
+                choices: [
+                    { text: "Atende rápido a chamada para perguntar quem está a falar.", correct: false, feedback: "Não precisas nem deves atender números sem nome!" },
+                    { text: "Não atendas e ativa nas definições «Silenciar chamadas de desconhecidos»!", correct: true, feedback: "Magia feita! As chamadas de números desconhecidos ficam logo em silêncio." },
+                    { text: "Manda uma mensagem com a tua voz para esse número.", correct: false, feedback: "Ignora números desconhecidos e mantém o silêncio ativado." }
+                ]
+            },
+            {
+                id: 5,
+                npcName: "Martim (Artista da Galeria)",
+                place: "Atelier de Pintura",
+                avatar: "🖼️",
+                shirtColor: 0x0284c7,
+                hairColor: 0x451a03,
+                pos: { x: 9, z: -6 },
+                propType: "easel",
+                speech: "«A galeria de fotos do meu telemóvel ficou cheia de imagens e vídeos esquisitos que mandaram num grupo, sem eu sequer ter clicado neles! Como impeço que entre lixo sozinho?»",
+                choices: [
+                    { text: "Desliga o «download automático» nas definições para decidires o que queres abrir!", correct: true, feedback: "Exacto! Com o download automático desligado, nada entra na tua galeria sem tu deixares." },
+                    { text: "Compra um cartão de memória maior para guardar tudo automaticamente.", correct: false, feedback: "O problema não é o espaço, é a segurança! Desliga o download automático." },
+                    { text: "Reencaminha as fotos estranhas para outros amigos.", correct: false, feedback: "Nunca partilhes ficheiros estranhos." }
+                ]
+            },
+            {
+                id: 6,
+                npcName: "Inês (Exploradora do Lago)",
+                place: "Ponte do Cuidado",
+                avatar: "🎣",
+                shirtColor: 0xeab308,
+                hairColor: 0x78350f,
+                pos: { x: -9, z: 5 },
+                propType: "sign",
+                speech: "«Um número que não está nos meus contactos mandou-me umas letras azuis a dizer que ganhei 1000 moedas no meu jogo favorito se clicar lá! Parece um isco de pesca...»",
+                choices: [
+                    { text: "Clica nas letras azuis para ver se as moedas são verdadeiras.", correct: false, feedback: "É uma armadilha (phishing)! Nunca cliques em links de desconhecidos." },
+                    { text: "Número sem nome? Fica longe! Não respondas, não abras fotos e nunca cliques no link!", correct: true, feedback: "Grande defesa! Fugiste do anzol dos links falsos e protegeste o telemóvel." },
+                    { text: "Pede ao teu irmão mais novo para clicar no telemóvel dele.", correct: false, feedback: "Os links falsos são perigosos em qualquer telemóvel!" }
+                ]
+            },
+            {
+                id: 7,
+                npcName: "Prof. André & Mãe Clara",
+                place: "Banco da Equipa de Apoio",
+                avatar: "🤝",
+                shirtColor: 0x10b981,
+                hairColor: 0x334155,
+                pos: { x: -4.5, z: 7 },
+                propType: "bench",
+                speech: "«Olá campeão! O teu colega Rui viu algo no WhatsApp que o deixou muito triste, mas está com medo de nos contar porque acha que lhe vamos tirar o telemóvel de castigo. O que lhe dizes?»",
+                choices: [
+                    { text: "Diz-lhe para pedir ajuda sem medo! Os pais e professores são a nossa equipa e não tiram o telemóvel!", correct: true, feedback: "Isso mesmo! Os adultos de confiança estão sempre do teu lado para te proteger." },
+                    { text: "Diz-lhe para apagar tudo e guardar o segredo sozinho.", correct: false, feedback: "Guardar coisas que nos assustam faz mal. Pede sempre ajuda aos pais ou professores!" },
+                    { text: "Diz-lhe para responder sozinho à pessoa que o assustou.", correct: false, feedback: "Chama sempre um adulto da tua equipa!" }
+                ]
+            },
+            {
+                id: 8,
+                npcName: "Guardião do Cofre",
+                place: "Torre do Código Secreto",
+                avatar: "🔐",
+                shirtColor: 0x4338ca,
+                hairColor: 0x1e1b4b,
+                pos: { x: 0, z: 7.5 },
+                propType: "safe",
+                speech: "«Para ninguém roubar a tua conta de WhatsApp e fingir que és tu, criei um cofre com um PIN de 6 números com os meus pais. O meu melhor amigo pediu-me o código emprestado. Posso dar?»",
+                choices: [
+                    { text: "Sim, aos melhores amigos da escola podemos dizer o PIN todo.", correct: false, feedback: "Nem aos melhores amigos! O PIN é só teu e dos teus pais." },
+                    { text: "Nunca! O PIN de 6 números é como a chave de um diário secreto, só tu e os teus pais podem saber!", correct: true, feedback: "Cofre blindado! O teu PIN de 6 números está 100% seguro." },
+                    { text: "Coloca o PIN de 6 números escrito na descrição do teu perfil.", correct: false, feedback: "Assim qualquer pessoa roubaria a tua conta!" }
+                ]
+            },
+            {
+                id: 9,
+                npcName: "Diana (Cartógrafa Secreta)",
+                place: "Posto da Bússola",
+                avatar: "🗺️",
+                shirtColor: 0x059669,
+                hairColor: 0x7c2d12,
+                pos: { x: 4.5, z: 7 },
+                propType: "compass",
+                speech: "«Recebi uma mensagem que parece ser de um colega a perguntar qual é a morada da minha casa e a que horas tenho treino hoje. Mas e se a conta dele tiver sido roubada?»",
+                choices: [
+                    { text: "O teu mapa é segredo! Nunca envies morada, escola ou local de treino pelo WhatsApp.", correct: true, feedback: "Muito bem pensado! Os teus locais importantes ficam sempre em segredo." },
+                    { text: "Manda a localização em tempo real durante o dia inteiro.", correct: false, feedback: "Nunca envies a tua localização ou rotina pelo WhatsApp!" },
+                    { text: "Envia uma foto da rua e do número da tua porta.", correct: false, feedback: "Nunca partilhes fotos que mostrem onde moras ou estudas." }
+                ]
+            },
+            {
+                id: 10,
+                npcName: "Gonçalo (Reciclador de Boatos)",
+                place: "Ecoponto Digital",
+                avatar: "🗑️",
+                shirtColor: 0x9333ea,
+                hairColor: 0x3b0764,
+                pos: { x: 9, z: 5 },
+                propType: "bin",
+                speech: "«Chegou-me uma mensagem com a etiqueta 'Reencaminhado muitas vezes' a dizer que se eu não mandar a 10 amigos vai acontecer uma coisa má! Estou com vontade de cortar esta corrente!»",
+                choices: [
+                    { text: "Manda rápido para 10 amigos pelo sim pelo não.", correct: false, feedback: "Essas mensagens são sempre mentira! Não espalhes sustos aos teus amigos." },
+                    { text: "Corta a corrente já: é tudo mentira! Não envies a ninguém e apaga a mensagem para o lixo!", correct: true, feedback: "Corrente cortada! Protegeste os teus amigos e limpaste o WhatsApp de boatos!" },
+                    { text: "Publica a corrente num grupo grande da escola.", correct: false, feedback: "As correntes devem ser apagadas imediatamente." }
+                ]
+            }
+        ];
+
+        let rpgState = {
+            initialized: false,
+            scene: null,
+            camera: null,
+            renderer: null,
+            reqId: null,
+            player: null,
+            playerTarget: null,
+            moveFlags: { up: false, down: false, left: false, right: false },
+            npcs: [],
+            nearestNpc: null,
+            activeQuestId: null
+        };
+
+        function setMode(mode) {
+            playTone('click');
+            currentMode = mode;
+            const exploreView = document.getElementById('viewExplore');
+            const quizView = document.getElementById('viewQuiz');
+            const btnExplore = document.getElementById('btnModeExplore');
+            const btnQuiz = document.getElementById('btnModeQuiz');
+
+            if (mode === 'explore') {
+                exploreView.classList.remove('hidden');
+                quizView.classList.add('hidden');
+                btnExplore.className = "px-4 py-2 rounded-lg text-sm font-bold transition-all bg-white text-slate-900 shadow-sm";
+                btnQuiz.className = "px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-600 hover:text-slate-900";
+                renderPosterGrid();
+            } else {
+                exploreView.classList.add('hidden');
+                quizView.classList.remove('hidden');
+                btnQuiz.className = "px-4 py-2 rounded-lg text-sm font-bold transition-all bg-white text-slate-900 shadow-sm";
+                btnExplore.className = "px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-600 hover:text-slate-900";
+                setTimeout(() => {
+                    initRpgWorld();
+                    updateRpgQuestMarkers();
+                }, 60);
+            }
+        }
+
+        function setRpgMove(dir, isDown) {
+            rpgState.moveFlags[dir] = isDown;
+            if (isDown) rpgState.playerTarget = null;
+        }
+
+        function resetRpgCamera() {
+            if (!rpgState.player) return;
+            rpgState.player.position.set(0, 0, 0);
+            rpgState.playerTarget = null;
+            playTone('click');
+        }
+
+        function teleportToNpc(questId) {
+            const q = rpgQuestsData.find(item => item.id === questId);
+            if (!q || !rpgState.player) return;
+            playTone('click');
+            rpgState.playerTarget = new THREE.Vector3(q.pos.x * 0.82, 0, q.pos.z * 0.78);
+        }
+
+        function buildRpgCharacterModel(shirtColor, hairColor, isHero = false) {
+            const group = new THREE.Group();
+            const bust = createKidBust(shirtColor, hairColor, 0.85);
+            bust.position.y = 0.72;
+            group.add(bust);
+
+            // Legs
+            const legMat = toyMaterial(0x1e293b, { roughness: 0.4 });
+            const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.42, 14), legMat);
+            leftLeg.position.set(-0.14, 0.21, 0);
+            const rightLeg = leftLeg.clone();
+            rightLeg.position.x = 0.14;
+            group.add(leftLeg, rightLeg);
+
+            if (isHero) {
+                // Hero Shield Emblem on Back + Golden Halo Ring under feet
+                const ring = new THREE.Mesh(
+                    new THREE.RingGeometry(0.48, 0.62, 32),
+                    new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide })
+                );
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.y = 0.03;
+                group.add(ring);
+            }
+
+            group.traverse(c => {
+                if (c.isMesh) {
+                    c.castShadow = true;
+                    c.receiveShadow = true;
+                }
+            });
+            return { group, leftLeg, rightLeg };
+        }
+
+        function createStationProp(propType) {
+            const g = new THREE.Group();
+            if (propType === 'goal') {
+                const postMat = toyMaterial(0xffffff);
+                const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.3, 12), postMat);
+                p1.position.set(-0.7, 0.65, -0.7);
+                const p2 = p1.clone();
+                p2.position.x = 0.7;
+                const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.48, 12), postMat);
+                bar.rotation.z = Math.PI / 2;
+                bar.position.set(0, 1.3, -0.7);
+                g.add(p1, p2, bar);
+            } else if (propType === 'gate') {
+                const arch = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.5, 0.22), toyMaterial(0xd97706));
+                arch.position.set(0, 0.75, -0.8);
+                g.add(arch);
+            } else if (propType === 'bell') {
+                const bell = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.7, 20), toyMaterial(0xfbbf24, { metalness: 0.7 }));
+                bell.position.set(0.8, 0.9, -0.4);
+                g.add(bell);
+            } else if (propType === 'safe') {
+                const safe = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.95, 0.8), toyMaterial(0x312e81, { metalness: 0.5 }));
+                safe.position.set(0.85, 0.48, -0.4);
+                g.add(safe);
+            } else if (propType === 'bin') {
+                const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.3, 0.8, 20), toyMaterial(0x64748b, { metalness: 0.6 }));
+                bin.position.set(0.75, 0.4, -0.3);
+                g.add(bin);
+            } else {
+                constpedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.42, 0.55, 18), toyMaterial(0xe2e8f0));
+                constpedestal.position.set(0.75, 0.28, -0.4);
+                g.add(constpedestal);
+            }
+            return g;
+        }
+
+        function initRpgWorld() {
+            const container = document.getElementById('rpgWorldCanvas');
+            if (!container) return;
+
+            const width = container.clientWidth || 900;
+            const height = container.clientHeight || 520;
+
+            if (rpgState.initialized && rpgState.renderer) {
+                rpgState.camera.aspect = width / height;
+                rpgState.camera.updateProjectionMatrix();
+                rpgState.renderer.setSize(width, height);
+                return;
+            }
+
+            container.innerHTML = '';
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xdbeafe);
+            scene.fog = new THREE.Fog(0xdbeafe, 22, 42);
+
+            const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
+            camera.position.set(0, 11, 14);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.1;
+            container.appendChild(renderer.domElement);
+
+            // Lights
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x86efac, 0.85));
+            const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.2);
+            sunLight.position.set(12, 22, 14);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 1024;
+            sunLight.shadow.mapSize.height = 1024;
+            sunLight.shadow.camera.left = -16;
+            sunLight.shadow.camera.right = 16;
+            sunLight.shadow.camera.top = 14;
+            sunLight.shadow.camera.bottom = -14;
+            scene.add(sunLight);
+
+            // Ground Island Meadow
+            const ground = new THREE.Mesh(
+                new THREE.CylinderGeometry(16.5, 17.2, 0.8, 64),
+                toyMaterial(0x4ade80, { roughness: 0.55, clearcoat: 0.1 })
+            );
+            ground.position.y = -0.4;
+            ground.receiveShadow = true;
+            ground.name = "rpgGround";
+            scene.add(ground);
+
+            // Central Plaza Cobblestone Circle & Cross Paths
+            const plaza = new THREE.Mesh(
+                new THREE.CylinderGeometry(3.4, 3.4, 0.05, 40),
+                toyMaterial(0xf1f5f9, { roughness: 0.4 })
+            );
+            plaza.position.y = 0.02;
+            plaza.receiveShadow = true;
+            scene.add(plaza);
+
+            // Central Digital Guardian Fountain / Trophy Monument
+            const monument = new THREE.Group();
+            const mBase = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 0.45, 24), toyMaterial(0xcbd5e1));
+            mBase.position.y = 0.22;
+            const mCrystal = new THREE.Mesh(
+                new THREE.OctahedronGeometry(0.55, 0),
+                toyMaterial(0x14b8a6, { roughness: 0.1, clearcoat: 1, emissive: 0x0d9488, emissiveIntensity: 0.25 })
+            );
+            mCrystal.position.y = 1.15;
+            monument.add(mBase, mCrystal);
+            scene.add(monument);
+
+            // Decorative Toy Trees around perimeter
+            const treePositions = [
+                [-12.5, -2], [12.5, -2], [-12, 2.5], [12, 2.5],
+                [-7, -10.5], [7, -10.5], [-7, 10.5], [7, 10.5],
+                [-2.2, -3.5], [2.2, -3.5], [-2.2, 3.5], [2.2, 3.5]
+            ];
+            treePositions.forEach(([tx, tz]) => {
+                const tree = new THREE.Group();
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.8, 12), toyMaterial(0x78350f));
+                trunk.position.y = 0.4;
+                const crown1 = new THREE.Mesh(new THREE.SphereGeometry(0.62, 18, 18), toyMaterial(0x16a34a));
+                crown1.position.y = 1.05;
+                const crown2 = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 16), toyMaterial(0x22c55e));
+                crown2.position.set(0.2, 1.45, 0.1);
+                tree.add(trunk, crown1, crown2);
+                tree.position.set(tx, 0, tz);
+                tree.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+                scene.add(tree);
+            });
+
+            // Create Hero Player
+            const heroObj = buildRpgCharacterModel(0x0d9488, 0x451a03, true);
+            heroObj.group.position.set(0, 0, 2.2);
+            scene.add(heroObj.group);
+
+            // Create the 10 Quest NPC Stations
+            const npcs = [];
+            rpgQuestsData.forEach((q) => {
+                const stationGroup = new THREE.Group();
+                stationGroup.position.set(q.pos.x, 0, q.pos.z);
+
+                // Station Pad
+                const pad = new THREE.Mesh(
+                    new THREE.CylinderGeometry(1.35, 1.42, 0.08, 32),
+                    toyMaterial(0xffffff, { roughness: 0.3 })
+                );
+                pad.position.y = 0.04;
+                pad.receiveShadow = true;
+                stationGroup.add(pad);
+
+                // Station themed 3D prop
+                stationGroup.add(createStationProp(q.propType));
+
+                // NPC Character
+                const npcChar = buildRpgCharacterModel(q.shirtColor, q.hairColor, false);
+                // Face center
+                npcChar.group.lookAt(0, 0, 0);
+                stationGroup.add(npcChar.group);
+
+                // Floating Quest Marker ("!" gold cone+sphere, turns green when completed)
+                const markerGroup = new THREE.Group();
+                const exStem = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.09, 0.06, 0.38, 14),
+                    toyMaterial(0xf59e0b, { emissive: 0xd97706, emissiveIntensity: 0.35 })
+                );
+                exStem.position.y = 0.22;
+                const exDot = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.09, 14, 14),
+                    toyMaterial(0xf59e0b, { emissive: 0xd97706, emissiveIntensity: 0.35 })
+                );
+                exDot.position.y = -0.08;
+                markerGroup.add(exStem, exDot);
+                markerGroup.position.y = 2.05;
+                stationGroup.add(markerGroup);
+
+                scene.add(stationGroup);
+                npcs.push({
+                    quest: q,
+                    stationGroup,
+                    npcChar,
+                    markerGroup,
+                    exStem,
+                    exDot,
+                    pad
+                });
+            });
+
+            // Click on ground or NPC to walk & interact
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            renderer.domElement.addEventListener('pointerdown', (e) => {
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+
+                const intersects = raycaster.intersectObjects(scene.children, true);
+                if (intersects.length > 0) {
+                    const pt = intersects[0].point;
+                    const clampedX = Math.max(-12, Math.min(12, pt.x));
+                    const clampedZ = Math.max(-10, Math.min(10, pt.z));
+                    rpgState.playerTarget = new THREE.Vector3(clampedX, 0, clampedZ);
+                }
+            });
+
+            rpgState.initialized = true;
+            rpgState.scene = scene;
+            rpgState.camera = camera;
+            rpgState.renderer = renderer;
+            rpgState.player = heroObj.group;
+            rpgState.heroParts = heroObj;
+            rpgState.monumentCrystal = mCrystal;
+            rpgState.npcs = npcs;
+
+            updateRpgQuestMarkers();
+
+            // Start RPG Game Loop
+            const clock = new THREE.Clock();
+            function animateRpg() {
+                rpgState.reqId = requestAnimationFrame(animateRpg);
+                const dt = Math.min(clock.getDelta(), 0.05);
+                const elapsed = clock.getElapsedTime();
+
+                if (rpgState.monumentCrystal) {
+                    rpgState.monumentCrystal.rotation.y = elapsed * 1.2;
+                    rpgState.monumentCrystal.position.y = 1.15 + Math.sin(elapsed * 2.5) * 0.1;
+                }
+
+                // Player Movement (Keyboard / D-Pad or Click Target)
+                let vx = 0;
+                let vz = 0;
+                const speed = 5.4;
+
+                if (rpgState.moveFlags.up) vz -= 1;
+                if (rpgState.moveFlags.down) vz += 1;
+                if (rpgState.moveFlags.left) vx -= 1;
+                if (rpgState.moveFlags.right) vx += 1;
+
+                if (vx !== 0 || vz !== 0) {
+                    const len = Math.hypot(vx, vz);
+                    vx = (vx / len) * speed;
+                    vz = (vz / len) * speed;
+                    rpgState.player.position.x = Math.max(-12.2, Math.min(12.2, rpgState.player.position.x + vx * dt));
+                    rpgState.player.position.z = Math.max(-10.2, Math.min(10.2, rpgState.player.position.z + vz * dt));
+                    rpgState.player.rotation.y = Math.atan2(vx, vz);
+                } else if (rpgState.playerTarget) {
+                    const dx = rpgState.playerTarget.x - rpgState.player.position.x;
+                    const dz = rpgState.playerTarget.z - rpgState.player.position.z;
+                    const dist = Math.hypot(dx, dz);
+                    if (dist > 0.18) {
+                        const step = Math.min(dist, speed * dt);
+                        rpgState.player.position.x += (dx / dist) * step;
+                        rpgState.player.position.z += (dz / dist) * step;
+                        rpgState.player.rotation.y = Math.atan2(dx, dz);
+                        vx = dx;
+                        vz = dz;
+                    } else {
+                        rpgState.playerTarget = null;
+                    }
+                }
+
+                // Walking leg swing animation
+                const isMoving = Math.hypot(vx, vz) > 0.05;
+                if (isMoving) {
+                    rpgState.heroParts.leftLeg.rotation.x = Math.sin(elapsed * 14) * 0.55;
+                    rpgState.heroParts.rightLeg.rotation.x = -Math.sin(elapsed * 14) * 0.55;
+                    rpgState.player.position.y = Math.abs(Math.sin(elapsed * 14)) * 0.06;
+                } else {
+                    rpgState.heroParts.leftLeg.rotation.x = 0;
+                    rpgState.heroParts.rightLeg.rotation.x = 0;
+                    rpgState.player.position.y = 0;
+                }
+
+                // Smooth Follow Camera
+                const desiredCamX = rpgState.player.position.x * 0.65;
+                const desiredCamZ = rpgState.player.position.z * 0.65 + 11.5;
+                camera.position.x += (desiredCamX - camera.position.x) * 0.08;
+                camera.position.z += (desiredCamZ - camera.position.z) * 0.08;
+                camera.lookAt(rpgState.player.position.x * 0.5, 0.5, rpgState.player.position.z * 0.5);
+
+                // Check Proximity to NPCs & Animate Quest Markers
+                let closest = null;
+                let minDist = 2.35;
+                rpgState.npcs.forEach((n) => {
+                    n.markerGroup.position.y = 2.05 + Math.sin(elapsed * 3.5 + n.quest.id) * 0.12;
+                    n.markerGroup.rotation.y = elapsed * 2;
+
+                    const d = Math.hypot(
+                        rpgState.player.position.x - n.quest.pos.x,
+                        rpgState.player.position.z - n.quest.pos.z
+                    );
+                    if (d < minDist) {
+                        minDist = d;
+                        closest = n;
+                    }
+                });
+
+                const promptEl = document.getElementById('rpgInteractPrompt');
+                const zoneNameEl = document.getElementById('rpgZoneName');
+                if (closest) {
+                    rpgState.nearestNpc = closest.quest;
+                    promptEl.classList.remove('hidden');
+                    document.getElementById('rpgPromptNpcName').textContent = `#${closest.quest.id} ${closest.quest.npcName}`;
+                    zoneNameEl.textContent = `${closest.quest.place} — ${closest.quest.npcName}`;
+                } else {
+                    rpgState.nearestNpc = null;
+                    promptEl.classList.add('hidden');
+                    zoneNameEl.textContent = "Praça Central da Vila Digital (Explora as 10 Missões)";
+                }
+
+                renderer.render(scene, camera);
+            }
+            animateRpg();
+        }
+
+        function updateRpgQuestMarkers() {
+            // Update quick teleport buttons
+            const quickBar = document.getElementById('rpgNpcQuickBar');
+            if (quickBar) {
+                quickBar.innerHTML = '';
+                rpgQuestsData.forEach(q => {
+                    const done = completedRules.has(q.id);
+                    const btn = document.createElement('button');
+                    btn.className = `h-7 rounded-lg text-xs font-extrabold border transition flex items-center justify-center ${
+                        done
+                            ? 'bg-emerald-500 text-white border-emerald-600'
+                            : 'bg-slate-100 hover:bg-amber-100 text-slate-800 border-slate-300'
+                    }`;
+                    btn.textContent = done ? `⭐` : q.id;
+                    btn.title = `${q.id}. ${q.npcName}`;
+                    btn.onclick = () => teleportToNpc(q.id);
+                    quickBar.appendChild(btn);
+                });
+            }
+
+            // Update 3D markers above NPC heads
+            if (!rpgState.npcs) return;
+            rpgState.npcs.forEach(n => {
+                const isDone = completedRules.has(n.quest.id);
+                const matColor = isDone ? 0x10b981 : 0xf59e0b;
+                const emiColor = isDone ? 0x059669 : 0xd97706;
+                n.exStem.material.color.setHex(matColor);
+                n.exStem.material.emissive.setHex(emiColor);
+                n.exDot.material.color.setHex(matColor);
+                n.exDot.material.emissive.setHex(emiColor);
+                n.pad.material.color.setHex(isDone ? 0xd1fae5 : 0xffffff);
+            });
+        }
+
+        function triggerActiveNpcDialog() {
+            if (!rpgState.nearestNpc) return;
+            openRpgDialog(rpgState.nearestNpc.id);
+        }
+
+        function openRpgDialog(questId) {
+            const quest = rpgQuestsData.find(q => q.id === questId);
+            if (!quest) return;
+            playTone('click');
+            rpgState.activeQuestId = quest.id;
+
+            document.getElementById('rpgDialogAvatar').textContent = quest.avatar;
+            document.getElementById('rpgDialogPlace').textContent = `${quest.place} • Missão #${quest.id}`;
+            document.getElementById('rpgDialogNpcName').textContent = quest.npcName;
+            document.getElementById('rpgDialogSpeech').textContent = quest.speech;
+
+            const choicesEl = document.getElementById('rpgDialogChoices');
+            const feedbackEl = document.getElementById('rpgDialogFeedback');
+            feedbackEl.classList.add('hidden');
+            choicesEl.innerHTML = '';
+
+            quest.choices.forEach((choice, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-teal-600 hover:bg-teal-50/40 transition text-xs sm:text-sm font-semibold text-slate-800 flex items-center gap-2.5";
+                btn.innerHTML = `
+                    <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-700 font-extrabold flex items-center justify-center text-xs shrink-0">${String.fromCharCode(65 + idx)}</span>
+                    <span>${choice.text}</span>
+                `;
+                btn.onclick = () => handleRpgChoice(quest, choice, btn);
+                choicesEl.appendChild(btn);
+            });
+
+            const overlay = document.getElementById('rpgDialogOverlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+
+        function handleRpgChoice(quest, choice, clickedBtn) {
+            const feedbackEl = document.getElementById('rpgDialogFeedback');
+            feedbackEl.classList.remove('hidden');
+
+            if (choice.correct) {
+                playTone('correct');
+                clickedBtn.className = "w-full text-left p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-xs sm:text-sm font-extrabold text-emerald-950 flex items-center gap-2.5";
+                feedbackEl.className = "mt-3 p-3 rounded-xl text-xs sm:text-sm font-bold bg-emerald-100 text-emerald-900 border border-emerald-300";
+                feedbackEl.textContent = "🌟 Missão Cumprida! " + choice.feedback;
+
+                markRuleCompleted(quest.id);
+                updateRpgQuestMarkers();
+
+                setTimeout(() => {
+                    closeRpgDialog();
+                }, 1100);
+            } else {
+                playTone('wrong');
+                clickedBtn.className = "w-full text-left p-3 rounded-xl border-2 border-rose-400 bg-rose-50 text-xs sm:text-sm font-semibold text-rose-900 flex items-center gap-2.5";
+                feedbackEl.className = "mt-3 p-3 rounded-xl text-xs sm:text-sm font-bold bg-rose-100 text-rose-900 border border-rose-300";
+                feedbackEl.textContent = "⚠️ " + choice.feedback + " Tenta outra ação!";
+            }
+        }
+
+        function closeRpgDialog() {
+            const overlay = document.getElementById('rpgDialogOverlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        }
+
+        // Keyboard Listeners for 3D RPG Movement & Interaction
+        window.addEventListener('keydown', (e) => {
+            if (currentMode !== 'quiz') return;
+            const k = e.key.toLowerCase();
+            if (k === 'w' || e.key === 'ArrowUp') { setRpgMove('up', true); e.preventDefault(); }
+            if (k === 's' || e.key === 'ArrowDown') { setRpgMove('down', true); e.preventDefault(); }
+            if (k === 'a' || e.key === 'ArrowLeft') { setRpgMove('left', true); e.preventDefault(); }
+            if (k === 'd' || e.key === 'ArrowRight') { setRpgMove('right', true); e.preventDefault(); }
+            if ((k === 'e' || e.key === ' ') && rpgState.nearestNpc) {
+                const overlay = document.getElementById('rpgDialogOverlay');
+                if (overlay.classList.contains('hidden')) {
+                    triggerActiveNpcDialog();
+                    e.preventDefault();
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (currentMode !== 'quiz') return;
+            const k = e.key.toLowerCase();
+            if (k === 'w' || e.key === 'ArrowUp') setRpgMove('up', false);
+            if (k === 's' || e.key === 'ArrowDown') setRpgMove('down', false);
+            if (k === 'a' || e.key === 'ArrowLeft') setRpgMove('left', false);
+            if (k === 'd' || e.key === 'ArrowRight') setRpgMove('right', false);
+        });
+
+        // ==========================================
+        // CERTIFICATE MODAL
+        // ==========================================
+        function openCertificateModal() {
+            playTone('correct');
+            const modal = document.getElementById('certificateModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeCertificateModal() {
+            const modal = document.getElementById('certificateModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // Initialize on load
+        window.onload = function () {
+            renderPosterGrid();
+            updateProgressUI();
+        };
+    </script>
+</body>
+</html>
