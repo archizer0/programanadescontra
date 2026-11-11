@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kastamonu's Magic Wheat 3D Adventure!</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js para o Mundo 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Infantis e Divertidas -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(180deg, #38bdf8 0%, #bae6fd 100%);
+            color: #1e293b;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, .font-kid {
+            font-family: 'Fredoka', cursive, sans-serif;
+            letter-spacing: 0.02em;
+        }
+
+        /* Estilo de Botões "Brinquedo / Cartoon" com relevo 3D */
+        .toy-card {
+            background: #ffffff;
+            border: 4px solid #f59e0b;
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 0 #d97706, 0 12px 20px rgba(0,0,0,0.15);
+        }
+
+        .toy-btn {
+            transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border-bottom-width: 5px;
+        }
+
+        .toy-btn:hover {
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        .toy-btn:active {
+            transform: translateY(3px);
+            border-bottom-width: 2px;
+        }
+
+        .active-tool-kid {
+            background: #fef3c7 !important;
+            border-color: #f59e0b !important;
+            transform: scale(1.04);
+            box-shadow: 0 0 0 3px #fbbf24;
+        }
+
+        #canvas-3d-wrapper {
+            position: relative;
+            width: 100%;
+            height: 440px;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            border: 5px solid #ffffff;
+            box-shadow: 0 10px 0 #0284c7, 0 15px 30px rgba(0,0,0,0.2);
+            background: linear-gradient(180deg, #7dd3fc 0%, #e0f2fe 100%);
+            touch-action: none;
+        }
+
+        @media (min-width: 1024px) {
+            #canvas-3d-wrapper {
+                height: 520px;
+            }
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .mascot-float {
+            animation: floatSlow 2.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-2 sm:p-4">
+
+    <!-- BARRA DE TOPO COLORIDA E AMIGÁVEL PARA CRIANÇAS -->
+    <header class="max-w-7xl w-full mx-auto toy-card p-3 sm:p-4 mb-4 bg-white/95">
+        <div class="flex flex-col lg:flex-row justify-between items-center gap-3">
+            
+            <!-- Título e Mascote Urso Pardo das Montanhas Küre -->
+            <div class="flex items-center justify-between w-full lg:w-auto gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-14 h-14 rounded-2xl bg-amber-400 border-4 border-amber-600 flex items-center justify-center text-3xl shadow-md mascot-float shrink-0" title="Bobi, the Guardian Bear of the Küre Mountains">
+                        🐻
+                    </div>
+                    <div>
+                        <span class="bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            Kastamonu 3D • Türkiye
+                        </span>
+                        <h1 class="font-kid text-xl sm:text-2xl font-bold text-amber-600 leading-tight">
+                            The Magic Wheat of İhsangazi
+                        </h1>
+                    </div>
+                </div>
+
+                <button onclick="toggleHelpModal()" class="lg:hidden toy-btn px-3 py-2 rounded-xl bg-sky-400 border-sky-600 text-white font-kid text-xs flex items-center gap-1">
+                    <i class="fa-solid fa-circle-question text-sm"></i> How to Play
+                </button>
+            </div>
+
+            <!-- Placar de Recursos com Ícones Grandes -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full lg:w-auto">
+                <!-- Estação / Sol -->
+                <div class="bg-sky-50 border-2 border-sky-200 px-3 py-1.5 rounded-2xl flex items-center gap-2">
+                    <span id="season-emoji" class="text-2xl">🌸</span>
+                    <div>
+                        <div class="text-[10px] font-bold uppercase text-sky-600">Season</div>
+                        <div id="season-display" class="font-kid text-xs sm:text-sm text-slate-800">Spring • Day 1</div>
+                    </div>
+                </div>
+
+                <!-- Moedas Douradas -->
+                <div class="bg-amber-50 border-2 border-amber-200 px-3 py-1.5 rounded-2xl flex items-center gap-2">
+                    <span class="text-2xl">🪙</span>
+                    <div>
+                        <div class="text-[10px] font-bold uppercase text-amber-600">Coins</div>
+                        <div class="font-kid text-xs sm:text-sm text-slate-800"><span id="stat-coins">120</span> ₺</div>
+                    </div>
+                </div>
+
+                <!-- Cesto de Trigo & Bulgur -->
+                <div class="bg-yellow-50 border-2 border-yellow-300 px-3 py-1.5 rounded-2xl flex items-center gap-2">
+                    <span class="text-2xl">🌾</span>
+                    <div>
+                        <div class="text-[10px] font-bold uppercase text-yellow-700">Wheat / Bulgur</div>
+                        <div class="font-kid text-xs sm:text-sm text-slate-800">
+                            <span id="stat-raw-siyez">2</span>🌾 / <span id="stat-bulgur" class="text-amber-600">0</span>🥣
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Poção de Alho Mágico -->
+                <div class="bg-purple-50 border-2 border-purple-200 px-3 py-1.5 rounded-2xl flex items-center gap-2">
+                    <span class="text-2xl">🧄</span>
+                    <div>
+                        <div class="text-[10px] font-bold uppercase text-purple-600">Garlic Spray</div>
+                        <div class="font-kid text-xs sm:text-sm text-slate-800"><span id="stat-garlic-spray">2</span> sprays</div>
+                    </div>
+                </div>
+
+                <!-- Estrelas de Energia -->
+                <div class="col-span-2 sm:col-span-1 bg-rose-50 border-2 border-rose-200 px-3 py-1.5 rounded-2xl flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">⚡</span>
+                        <div>
+                            <div class="text-[10px] font-bold uppercase text-rose-600">Energy</div>
+                            <div class="font-kid text-xs sm:text-sm text-slate-800"><span id="stat-energy">6</span> / <span id="stat-max-energy">6</span></div>
+                        </div>
+                    </div>
+                    <button onclick="toggleHelpModal()" class="hidden lg:flex toy-btn w-9 h-9 rounded-xl bg-sky-400 border-sky-600 text-white items-center justify-center" title="Illustrated Guide">
+                        <i class="fa-solid fa-book-open"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Duas Barras de Missão Divertidas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t-2 border-amber-100">
+            <!-- Saúde da Natureza -->
+            <div class="bg-emerald-50/80 px-3 py-1.5 rounded-xl border border-emerald-200">
+                <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-emerald-700 flex items-center gap-1">
+                        🐟 Clean River & Happy Forest (Goal: 75%)
+                    </span>
+                    <span id="eco-percent" class="font-kid text-emerald-700">65%</span>
+                </div>
+                <div class="w-full h-3.5 bg-white rounded-full overflow-hidden border-2 border-emerald-300 p-0.5">
+                    <div id="eco-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-green-500 transition-all duration-500" style="width: 65%"></div>
+                </div>
+            </div>
+
+            <!-- Pontos de Amizade da Aldeia (İmece) -->
+            <div class="bg-amber-50/80 px-3 py-1.5 rounded-xl border border-amber-200">
+                <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-amber-700 flex items-center gap-1">
+                        🌟 Village Friendship - "İmece" (Goal: 100 stars)
+                    </span>
+                    <span id="imece-percent" class="font-kid text-amber-700">15 / 100 ⭐</span>
+                </div>
+                <div class="w-full h-3.5 bg-white rounded-full overflow-hidden border-2 border-amber-300 p-0.5">
+                    <div id="imece-bar" class="h-full rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 transition-all duration-500" style="width: 15%"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ÁREA PRINCIPAL DO JOGO (MOCHILA ESQUERDA + MUNDO 3D CENTRO + ALDEIA DIREITA) -->
+    <main class="max-w-7xl w-full mx-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+        <!-- COLUNA ESQUERDA: MOCHILA DE SEMENTES E FERRAMENTAS (3 cols) -->
+        <section class="lg:col-span-3 toy-card p-4 flex flex-col gap-2.5">
+            <div class="flex items-center justify-between border-b-2 border-amber-100 pb-2">
+                <h2 class="font-kid text-base sm:text-lg text-amber-600 flex items-center gap-2">
+                    🎒 Magic Backpack
+                </h2>
+                <span class="text-[11px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">Pick 1 item</span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-2">
+                <!-- 1. Semente de Trigo Siyez -->
+                <button onclick="selectTool('plant_siyez')" id="tool-plant_siyez" class="tool-btn toy-btn active-tool-kid text-left p-2.5 rounded-2xl border-2 border-slate-200 bg-slate-50 flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-amber-400 flex items-center justify-center text-2xl shadow-sm shrink-0">
+                        🌾
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="font-kid text-xs sm:text-sm text-slate-800 truncate">Golden Siyez Wheat</div>
+                        <div class="text-[11px] font-bold text-amber-600">15 🪙 • Super Strong!</div>
+                    </div>
+                </button>
+
+                <!-- 2. Super Alho de Taşköprü -->
+                <button onclick="selectTool('plant_garlic')" id="tool-plant_garlic" class="tool-btn toy-btn text-left p-2.5 rounded-2xl border-2 border-slate-200 bg-slate-50 flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-purple-400 flex items-center justify-center text-2xl shadow-sm shrink-0">
+                        🧄
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="font-kid text-xs sm:text-sm text-slate-800 truncate">Super Shield Garlic</div>
+                        <div class="text-[11px] font-bold text-purple-600">20 🪙 • Scares Bugs</div>
+                    </div>
+                </button>
+
+                <!-- 3. Planta Amiga da Terra (Kendir) -->
+                <button onclick="selectTool('plant_hemp')" id="tool-plant_hemp" class="tool-btn toy-btn text-left p-2.5 rounded-2xl border-2 border-slate-200 bg-slate-50 flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-emerald-400 flex items-center justify-center text-2xl shadow-sm shrink-0">
+                        🌿
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="font-kid text-xs sm:text-sm text-slate-800 truncate">Earth-Cleaner Plant</div>
+                        <div class="text-[11px] font-bold text-emerald-600">10 🪙 • Heals Soil</div>
+                    </div>
+                </button>
+
+                <!-- 4. Pinheiro Guardião das Montanhas -->
+                <button onclick="selectTool('plant_hedge')" id="tool-plant_hedge" class="tool-btn toy-btn text-left p-2.5 rounded-2xl border-2 border-slate-200 bg-slate-50 flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-teal-500 flex items-center justify-center text-2xl shadow-sm shrink-0">
+                        🌲
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="font-kid text-xs sm:text-sm text-slate-800 truncate">Shield Pine Tree</div>
+                        <div class="text-[11px] font-bold text-teal-600">25 🪙 • Stops Bad Wind</div>
+                    </div>
+                </button>
+
+                <!-- 5. Borrifador de Alho -->
+                <button onclick="selectTool('spray_garlic')" id="tool-spray_garlic" class="tool-btn toy-btn text-left p-2.5 rounded-2xl border-2 border-slate-200 bg-slate-50 flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-indigo-400 flex items-center justify-center text-2xl shadow-sm shrink-0">
+                        🫧
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="font-kid text-xs sm:text-sm text-slate-800 truncate">Garlic Spray</div>
+                        <div class="text-[11px] font-bold text-indigo-600">Uses 1 🧄 • Fast Cure</div>
+                    </div>
+                </button>
+
+                <!-- 6. Cesto de Colheita / Pá -->
+                <button onclick="selectTool('harvest')" id="tool-harvest" class="tool-btn toy-btn text-left p-2.5 rounded-2xl border-2 border-slate-200 bg-slate-50 flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-orange-400 flex items-center justify-center text-2xl shadow-sm shrink-0">
+                        🧺
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="font-kid text-xs sm:text-sm text-slate-800 truncate">Harvest Basket</div>
+                        <div class="text-[11px] font-bold text-orange-600">Harvest or Tidy Up</div>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Balão de Explicação Infantil -->
+            <div id="tool-desc-box" class="mt-1 p-3 rounded-2xl bg-amber-50 border-2 border-amber-300 text-xs text-slate-700 leading-relaxed">
+                <strong class="font-kid text-amber-700 block text-sm mb-0.5">🌾 Golden Siyez Wheat:</strong>
+                A magical 10,000-year-old seed! Click on a 3D soil block to plant it!
+            </div>
+        </section>
+
+        <!-- COLUNA CENTRAL: MUNDO 3D INTERATIVO (6 cols) -->
+        <section class="lg:col-span-6 flex flex-col gap-3">
+            
+            <!-- Janela 3D do Vale de İhsangazi -->
+            <div id="canvas-3d-wrapper">
+                <!-- Avisos Flutuantes sobre o Mundo 3D -->
+                <div class="absolute top-3 left-3 right-3 flex flex-wrap justify-between items-center gap-2 pointer-events-none z-10">
+                    <div class="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border-2 border-red-400 shadow-md flex items-center gap-2 text-xs font-bold text-red-600">
+                        <i class="fa-solid fa-wind animate-bounce"></i>
+                        <span>North: Plant Pine Trees 🌲 in the back row to block the Grey Cloud!</span>
+                    </div>
+
+                    <div class="flex gap-1.5 pointer-events-auto">
+                        <button onclick="rotateCamera(-0.4)" class="toy-btn w-9 h-9 rounded-full bg-white border-2 border-sky-400 text-sky-600 font-bold shadow flex items-center justify-center" title="Rotate Camera Left">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                        <button onclick="resetCameraView()" class="toy-btn px-2.5 h-9 rounded-full bg-white border-2 border-sky-400 text-sky-600 text-xs font-kid shadow flex items-center justify-center" title="Center 3D View">
+                            🎥 Center
+                        </button>
+                        <button onclick="rotateCamera(0.4)" class="toy-btn w-9 h-9 rounded-full bg-white border-2 border-sky-400 text-sky-600 font-bold shadow flex items-center justify-center" title="Rotate Camera Right">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Etiqueta de Instrução Rato/Toque na base do 3D -->
+                <div class="absolute bottom-3 left-3 right-3 flex justify-between items-center pointer-events-none z-10">
+                    <span class="bg-slate-900/75 text-white text-[11px] font-bold px-3 py-1 rounded-full">
+                        👆 Click 3D blocks to plant • Drag to rotate the island!
+                    </span>
+                    <span id="wind-forecast" class="bg-sky-500 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow">
+                        🌬️ Gentle Breeze
+                    </span>
+                </div>
+
+                <!-- O Canvas do Three.js é injetado aqui -->
+                <div id="three-mount" class="w-full h-full"></div>
+            </div>
+
+            <!-- Balão de Fala do Urso Bobi + Botão Dormir / Novo Dia -->
+            <div class="toy-card p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-50 to-yellow-50">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-200 border-2 border-amber-400 flex items-center justify-center text-2xl shrink-0">
+                        🐻
+                    </div>
+                    <div>
+                        <div class="font-kid text-xs uppercase text-amber-600">Bobi the Guardian Bear says:</div>
+                        <p id="game-log" class="text-xs sm:text-sm font-bold text-slate-700 mt-0.5">
+                            Hello, little guardian! Click on the green squares on the 3D island to sow our Siyez Wheat!
+                        </p>
+                    </div>
+                </div>
+
+                <button onclick="nextDay()" class="w-full sm:w-auto shrink-0 toy-btn px-6 py-3 rounded-2xl bg-gradient-to-b from-amber-400 to-orange-500 border-orange-700 text-white font-kid text-base shadow-lg flex items-center justify-center gap-2">
+                    🌞 New Day!
+                </button>
+            </div>
+        </section>
+
+        <!-- COLUNA DIREITA: MOINHO DE ÁGUA E FEIRA DA ALDEIA (3 cols) -->
+        <section class="lg:col-span-3 flex flex-col gap-3 w-full">
+            <div class="toy-card p-4 flex flex-col gap-3">
+                <h2 class="font-kid text-base sm:text-lg text-amber-600 border-b-2 border-amber-100 pb-2 flex items-center gap-2">
+                    🏡 Kastamonu Village
+                </h2>
+
+                <!-- 1. Moinho de Água 3D (Minijogo Divertido) -->
+                <div class="bg-sky-50 rounded-2xl p-3 border-2 border-sky-200">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-kid text-sm text-sky-700 flex items-center gap-1.5">
+                            ⚙️ Creek Watermill
+                        </span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-200 text-sky-800">Minigame!</span>
+                    </div>
+                    <p class="text-xs text-slate-600 mb-2.5 leading-snug">
+                        Use the waterwheel to turn your Wheat into delicious <strong>Golden Bulgur</strong>!
+                    </p>
+                    <button onclick="openMillModal()" class="w-full toy-btn py-2.5 px-3 rounded-xl bg-sky-500 hover:bg-sky-400 border-sky-700 text-white font-kid text-xs flex items-center justify-center gap-2 shadow">
+                        🥣 Grind Wheat (<span id="btn-raw-count">2</span> ready)
+                    </button>
+                </div>
+
+                <!-- 2. Feirinha e Partilha Solidária (İmece) -->
+                <div class="bg-amber-50 rounded-2xl p-3 border-2 border-amber-200 flex flex-col gap-2">
+                    <div class="font-kid text-sm text-amber-700">
+                        🎪 Village Market & Sharing (İmece)
+                    </div>
+
+                    <!-- Vender Bulgur -->
+                    <button onclick="sellBulgur()" class="w-full toy-btn py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 border-emerald-700 text-white text-xs font-bold flex items-center justify-between">
+                        <span>🥖 Sell 1 Bulgur</span>
+                        <span class="bg-white/25 px-2 py-0.5 rounded-lg">+45 🪙 & +5 ⭐</span>
+                    </button>
+
+                    <!-- Partilhar Sementes com Vizinhos -->
+                    <button onclick="donateSeedsImece()" class="w-full toy-btn py-2 px-3 rounded-xl bg-pink-500 hover:bg-pink-400 border-pink-700 text-white text-xs font-bold flex items-center justify-between">
+                        <span>🎁 Gift 2 Wheat to Friends</span>
+                        <span class="bg-white/25 px-2 py-0.5 rounded-lg">+15 ⭐ & +River</span>
+                    </button>
+
+                    <!-- Panela Mágica de Cobre -->
+                    <button onclick="buyCopperUpgrade()" id="btn-copper-upgrade" class="w-full toy-btn py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 border-amber-700 text-white text-xs font-bold flex items-center justify-between">
+                        <span>🍯 Copper Pot (+2 ⚡)</span>
+                        <span class="bg-white/25 px-2 py-0.5 rounded-lg">150 🪙</span>
+                    </button>
+                </div>
+
+                <!-- 3. Construir a Casa de Madeira sem Pregos (Konak 3D) -->
+                <div class="bg-orange-50 rounded-2xl p-3 border-2 border-orange-200">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-kid text-xs sm:text-sm text-orange-700">
+                            🏰 3D Wooden House (Konak)
+                        </span>
+                        <span id="konak-level-badge" class="text-[10px] font-bold bg-orange-200 px-2 py-0.5 rounded-full text-orange-900">Level 1/3</span>
+                    </div>
+                    <p id="konak-desc" class="text-xs text-slate-600 mb-2 leading-snug">
+                        Did you know Kastamonu has wooden buildings made like puzzle pieces without using any nails? Upgrade your 3D house!
+                    </p>
+                    <button onclick="upgradeKonak()" id="btn-konak-upgrade" class="w-full toy-btn py-2 px-3 rounded-xl bg-orange-500 hover:bg-orange-400 border-orange-700 text-white font-kid text-xs">
+                        🔨 Upgrade 3D House (180 🪙)
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL 1: MINIJOGO DO MOINHO DE ÁGUA -->
+    <div id="mill-modal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="toy-card max-w-md w-full p-6 text-center relative bg-white">
+            <button onclick="closeMillModal()" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold flex items-center justify-center">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="w-16 h-16 rounded-2xl bg-sky-400 border-4 border-sky-600 mx-auto flex items-center justify-center text-3xl shadow-md mb-2">
+                ⚙️
+            </div>
+            <h3 class="font-kid text-xl text-amber-600">Waterwheel Challenge!</h3>
+            <p class="text-xs sm:text-sm text-slate-600 mt-1 mb-4">
+                Click the button when the marker is inside the <strong>Green Zone</strong> to make the best Bulgur in Türkiye!
+            </p>
+
+            <!-- Barra de Jogo Infantil -->
+            <div class="bg-slate-100 p-4 rounded-2xl border-2 border-slate-300 mb-4">
+                <div class="relative w-full h-9 bg-slate-700 rounded-xl overflow-hidden border-2 border-slate-400">
+                    <!-- Zona Aceitável Amarela -->
+                    <div class="absolute top-0 bottom-0 left-[22%] w-[56%] bg-amber-400/70"></div>
+                    <!-- Zona Perfeita Verde -->
+                    <div class="absolute top-0 bottom-0 left-[38%] w-[24%] bg-emerald-400 border-x-4 border-white flex items-center justify-center font-kid text-xs text-emerald-950">
+                        HERE! ⭐
+                    </div>
+                    <!-- Indicador Móvel -->
+                    <div id="mill-cursor" class="absolute top-0 bottom-0 w-3 bg-rose-500 border-2 border-white rounded-full shadow-lg" style="left: 10%;"></div>
+                </div>
+
+                <div class="text-xs font-bold text-slate-700 mt-3">
+                    Wheat in basket: <span id="modal-raw-count" class="text-amber-600 text-sm">2</span> 🌾
+                </div>
+                <div id="mill-result-msg" class="text-xs font-bold text-sky-700 mt-1 min-h-[1.5rem]">
+                    Get your finger ready and click "GRIND NOW!"
+                </div>
+            </div>
+
+            <button onclick="triggerMillGrind()" class="w-full toy-btn py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 border-emerald-700 font-kid text-base text-white shadow-lg">
+                🎯 GRIND NOW!
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 2: LIVRINHO ILUSTRADO PARA CRIANÇAS -->
+    <div id="help-modal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="toy-card max-w-xl w-full p-6 bg-white relative max-h-[90vh] overflow-y-auto">
+            <button onclick="toggleHelpModal()" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold flex items-center justify-center">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <h3 class="font-kid text-2xl text-amber-600 flex items-center gap-2 mb-4">
+                📖 The Secret of Kastamonu
+            </h3>
+
+            <div class="space-y-3 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                <div class="p-3.5 rounded-2xl bg-amber-50 border-2 border-amber-200 flex gap-3 items-center">
+                    <span class="text-3xl">🌾</span>
+                    <div>
+                        <h4 class="font-kid text-amber-700 text-base">1. The Oldest Wheat in the World!</h4>
+                        <p>In <strong>Kastamonu (Türkiye)</strong> grows <strong>Siyez Wheat</strong>, which is 10,000 years old! It doesn't like polluted winds. Plant <strong>Pine Trees 🌲 in the back row</strong> of the 3D island to protect it!</p>
+                    </div>
+                </div>
+
+                <div class="p-3.5 rounded-2xl bg-purple-50 border-2 border-purple-200 flex gap-3 items-center">
+                    <span class="text-3xl">🧄</span>
+                    <div>
+                        <h4 class="font-kid text-purple-700 text-base">2. Friendly Super Garlic</h4>
+                        <p>Instead of chemicals that dirty the little fishes' river, plant the famous <strong>Taşköprü Garlic</strong>! Its smell creates a magic shield on neighboring squares and scares away all the bad bugs!</p>
+                    </div>
+                </div>
+
+                <div class="p-3.5 rounded-2xl bg-emerald-50 border-2 border-emerald-200 flex gap-3 items-center">
+                    <span class="text-3xl">🤝</span>
+                    <div>
+                        <h4 class="font-kid text-emerald-700 text-base">3. The Magic Word: "İmece"</h4>
+                        <p>In Türkiye, when neighbors help each other take care of nature, it is called <strong>İmece</strong>! Collect <strong>100 Stars ⭐</strong> and keep the <strong>River 75% clean</strong> to win!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5 text-center">
+                <button onclick="toggleHelpModal()" class="toy-btn px-8 py-3 rounded-2xl bg-amber-500 border-amber-700 font-kid text-white text-sm">
+                    Let's Play in 3D! 🚀
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: FESTA DE VITÓRIA -->
+    <div id="endgame-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 hidden items-center justify-center p-4">
+        <div class="toy-card max-w-md w-full p-6 text-center bg-white">
+            <div class="text-6xl mb-3 animate-bounce">🎉🐻🏆</div>
+            <h3 class="font-kid text-2xl text-amber-600 mb-2">
+                Congratulations! You Saved Kastamonu Valley!
+            </h3>
+            <p class="text-sm text-slate-600 leading-relaxed mb-5">
+                The 10,000-year-old Siyez Wheat is safe, the creek sparkles clean, and the whole village is celebrating thanks to your help!
+            </p>
+            <button onclick="resetGame()" class="toy-btn px-6 py-3 rounded-2xl bg-emerald-500 border-emerald-700 font-kid text-base text-white shadow-lg">
+                🔄 Play Again!
+            </button>
+        </div>
+    </div>
+
+    <!-- CÓDIGO DO JOGO + MOTOR 3D THREE.JS -->
+    <script>
+        // ==========================================
+        // 1. ESTADO DO JOGO
+        // ==========================================
+        const GRID_SIZE = 5;
+        let gameState = {
+            day: 1,
+            seasonIndex: 0,
+            coins: 120,
+            rawSiyez: 2,
+            bulgur: 0,
+            garlicSpray: 2,
+            energy: 6,
+            maxEnergy: 6,
+            ecoHealth: 65,
+            imecePoints: 15,
+            konakLevel: 1,
+            copperUpgrade: false,
+            selectedTool: 'plant_siyez',
+            grid: []
+        };
+
+        const SEASONS = [
+            { name: 'Spring', emoji: '🌸', skyTop: '#38bdf8', windRisk: 0.22 },
+            { name: 'Sunny Summer', emoji: '☀️', skyTop: '#0ea5e9', windRisk: 0.35 },
+            { name: 'Golden Autumn', emoji: '🍂', skyTop: '#f59e0b', windRisk: 0.25 },
+            { name: 'Mountain Winter', emoji: '⛄', skyTop: '#94a3b8', windRisk: 0.15 }
+        ];
+
+        const TOOL_DESCRIPTIONS = {
+            plant_siyez: '<strong class="font-kid text-amber-700 block text-sm mb-0.5">🌾 Golden Siyez Wheat (15 🪙):</strong> The oldest wheat in the world! Grows in 3 days. Protect it from the wind with Pine Trees in the back row!',
+            plant_garlic: '<strong class="font-kid text-purple-700 block text-sm mb-0.5">🧄 Taşköprü Super Garlic (20 🪙):</strong> Magic plant! Protects all neighboring squares against bugs and gives Sprays when harvested.',
+            plant_hemp: '<strong class="font-kid text-emerald-700 block text-sm mb-0.5">🌿 Earth-Cleaner Plant (10 🪙):</strong> Has friendly roots that clean dirty purple squares and make the soil green again!',
+            plant_hedge: '<strong class="font-kid text-teal-700 block text-sm mb-0.5">🌲 Küre Shield Pine (25 🪙):</strong> Plant in the back row (North) to create a barrier against the grey cloud!',
+            spray_garlic: '<strong class="font-kid text-indigo-700 block text-sm mb-0.5">🫧 Natural Garlic Spray:</strong> Use 1 dose to scare away bugs or clean a purple square without polluting the river!',
+            harvest: '<strong class="font-kid text-orange-700 block text-sm mb-0.5">🧺 Harvest Basket:</strong> Click on big, ready plants to put them in your basket or clear the land!'
+        };
+
+        // ==========================================
+        // 2. MOTOR 3D (THREE.JS) - MUNDO TOY-BOX
+        // ==========================================
+        let scene, camera, renderer, raycaster, mouse;
+        let tileMeshes = []; // Blocos clicáveis 5x5
+        let cropObjectsGroup; // Grupo com as plantas 3D
+        let waterWheelMesh; // Roda do moinho 3D que gira
+        let konakGroup; // Casa tradicional Turca em 3D
+        let cloudGroup; // Nuvens fofas no céu
+        let hoverHighlightMesh; // Anel brilhante ao passar o rato
+        let jumpingAnimations = []; // Efeitos elásticos quando se planta
+
+        // Controlo de Câmara 3D (Rato e Toque)
+        let cameraAngle = 0;
+        let targetCameraAngle = 0;
+        let isDragging = false;
+        let dragStartX = 0;
+        let pointerMoved = false;
+
+        function init3DWorld() {
+            const container = document.getElementById('three-mount');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xbae6fd);
+            scene.fog = new THREE.FogExp2(0xbae6fd, 0.018);
+
+            camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 200);
+            updateCameraPosition();
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+
+            // Luzes Alegres e Quentes
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.9);
+            dirLight.position.set(12, 22, 14);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+
+            // Criar Ilha Flutuante de Kastamonu
+            buildIslandEnvironment();
+
+            // Criar Grelha 5x5 de Terrenos 3D
+            cropObjectsGroup = new THREE.Group();
+            scene.add(cropObjectsGroup);
+            buildFarmTiles3D();
+
+            // Anel de Seleção 3D
+            const ringGeo = new THREE.RingGeometry(0.62, 0.78, 24);
+            ringGeo.rotateX(-Math.PI / 2);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xfef08a, side: THREE.DoubleSide });
+            hoverHighlightMesh = new THREE.Mesh(ringGeo, ringMat);
+            hoverHighlightMesh.position.y = 0.32;
+            hoverHighlightMesh.visible = false;
+            scene.add(hoverHighlightMesh);
+
+            // Raycaster para cliques nas peças 3D
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            setup3DInteractions(renderer.domElement);
+            window.addEventListener('resize', onWindowResize);
+
+            // Atualizar modelos 3D com o estado inicial
+            sync3DCrops();
+            animate3D();
+        }
+
+        function buildIslandEnvironment() {
+            // Base da Ilha Verde
+            const islandGeo = new THREE.CylinderGeometry(9.8, 7.5, 2.2, 32);
+            const islandMat = new THREE.MeshLambertMaterial({ color: 0x4ade80 });
+            const island = new THREE.Mesh(islandGeo, islandMat);
+            island.position.y = -1.1;
+            island.receiveShadow = true;
+            scene.add(island);
+
+            // Borda de Terra da Ilha
+            const cliffGeo = new THREE.CylinderGeometry(7.6, 5.2, 2.0, 24);
+            const cliffMat = new THREE.MeshLambertMaterial({ color: 0xb45309 });
+            const cliff = new THREE.Mesh(cliffGeo, cliffMat);
+            cliff.position.y = -2.6;
+            scene.add(cliff);
+
+            // Riacho Azul (Rio Karaçomak) na lateral direita
+            const riverGeo = new THREE.BoxGeometry(2.2, 0.15, 13.5);
+            const riverMat = new THREE.MeshLambertMaterial({ color: 0x38bdf8 });
+            const river = new THREE.Mesh(riverGeo, riverMat);
+            river.position.set(5.4, 0.03, 0);
+            scene.add(river);
+
+            // Montanhas de Küre e Ilgaz ao fundo (Norte)
+            const mtPositions = [
+                { x: -5.5, z: -6.8, s: 2.6, h: 4.5 },
+                { x: -1.8, z: -7.5, s: 3.2, h: 5.8 },
+                { x: 2.2, z: -7.2, s: 2.8, h: 4.9 }
+            ];
+            mtPositions.forEach(m => {
+                const mtGroup = new THREE.Group();
+                const coneGeo = new THREE.ConeGeometry(m.s, m.h, 7);
+                const coneMat = new THREE.MeshLambertMaterial({ color: 0x64748b });
+                const cone = new THREE.Mesh(coneGeo, coneMat);
+                cone.position.y = m.h / 2;
+                mtGroup.add(cone);
+
+                // Topo de Neve nas montanhas de Ilgaz
+                const snowGeo = new THREE.ConeGeometry(m.s * 0.42, m.h * 0.4, 7);
+                const snowMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+                const snow = new THREE.Mesh(snowGeo, snowMat);
+                snow.position.y = m.h * 0.81;
+                mtGroup.add(snow);
+
+                mtGroup.position.set(m.x, 0, m.z);
+                scene.add(mtGroup);
+            });
+
+            // Moinho de Água 3D (Taş Değirmen) perto do riacho
+            const millGroup = new THREE.Group();
+            const millBase = new THREE.Mesh(
+                new THREE.BoxGeometry(1.8, 1.6, 1.8),
+                new THREE.MeshLambertMaterial({ color: 0xfde68a })
+            );
+            millBase.position.y = 0.8;
+            millBase.castShadow = true;
+            millGroup.add(millBase);
+
+            const millRoof = new THREE.Mesh(
+                new THREE.ConeGeometry(1.5, 1.1, 4),
+                new THREE.MeshLambertMaterial({ color: 0xea580c })
+            );
+            millRoof.position.y = 2.15;
+            millRoof.rotation.y = Math.PI / 4;
+            millGroup.add(millRoof);
+
+            // Roda de Água Giratória
+            waterWheelMesh = new THREE.Group();
+            const wheelRing = new THREE.Mesh(
+                new THREE.TorusGeometry(0.75, 0.12, 8, 16),
+                new THREE.MeshLambertMaterial({ color: 0x78350f })
+            );
+            waterWheelMesh.add(wheelRing);
+            for (let i = 0; i < 4; i++) {
+                const spoke = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.6, 0.12, 0.2),
+                    new THREE.MeshLambertMaterial({ color: 0x92400e })
+                );
+                spoke.rotation.z = (Math.PI / 4) * i;
+                waterWheelMesh.add(spoke);
+            }
+            waterWheelMesh.rotation.y = Math.PI / 2;
+            waterWheelMesh.position.set(-1.05, 0.85, 0);
+            millGroup.add(waterWheelMesh);
+
+            millGroup.position.set(6.7, 0, -1.5);
+            scene.add(millGroup);
+
+            // Casa Tradicional Otomana (Konak 3D) na esquerda
+            konakGroup = new THREE.Group();
+            konakGroup.position.set(-6.2, 0, -1.2);
+            scene.add(konakGroup);
+            rebuildKonak3D();
+
+            // Nuvens Fofas 3D
+            cloudGroup = new THREE.Group();
+            for (let i = 0; i < 4; i++) {
+                const singleCloud = new THREE.Group();
+                const cMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+                const p1 = new THREE.Mesh(new THREE.SphereGeometry(0.7, 10, 10), cMat);
+                const p2 = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 10), cMat);
+                p2.position.set(0.6, -0.1, 0.2);
+                const p3 = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 10), cMat);
+                p3.position.set(-0.6, -0.15, -0.1);
+                singleCloud.add(p1, p2, p3);
+                singleCloud.position.set(-6 + i * 4.2, 5.2 + (i % 2) * 0.6, -5.5);
+                cloudGroup.add(singleCloud);
+            }
+            scene.add(cloudGroup);
+        }
+
+        function rebuildKonak3D() {
+            while (konakGroup.children.length > 0) {
+                konakGroup.remove(konakGroup.children[0]);
+            }
+            // Piso térreo de pedra e madeira
+            const f1 = new THREE.Mesh(
+                new THREE.BoxGeometry(2.1, 1.2, 2.1),
+                new THREE.MeshLambertMaterial({ color: 0xd6d3d1 })
+            );
+            f1.position.y = 0.6;
+            f1.castShadow = true;
+            konakGroup.add(f1);
+
+            // Se nível >= 2, adiciona o andar superior típico de Kastamonu
+            let roofY = 1.7;
+            if (gameState.konakLevel >= 2) {
+                const f2 = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.4, 1.2, 2.4),
+                    new THREE.MeshLambertMaterial({ color: 0xfef3c7 })
+                );
+                f2.position.y = 1.8;
+                f2.castShadow = true;
+                konakGroup.add(f2);
+                roofY = 2.9;
+            }
+
+            // Se nível == 3, adiciona torre miradouro e bandeira dourada Slow Food
+            if (gameState.konakLevel >= 3) {
+                const banner = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.1, 0.1, 1.5),
+                    new THREE.MeshLambertMaterial({ color: 0xf59e0b })
+                );
+                banner.position.set(0, 3.6, 0);
+                konakGroup.add(banner);
+            }
+
+            const roof = new THREE.Mesh(
+                new THREE.ConeGeometry(1.95, 1.1, 4),
+                new THREE.MeshLambertMaterial({ color: 0xb91c1c })
+            );
+            roof.position.y = roofY;
+            roof.rotation.y = Math.PI / 4;
+            konakGroup.add(roof);
+        }
+
+        function buildFarmTiles3D() {
+            tileMeshes = [];
+            const spacing = 1.68;
+            const offset = ((GRID_SIZE - 1) * spacing) / 2;
+
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const geo = new THREE.BoxGeometry(1.52, 0.35, 1.52);
+                    const mat = new THREE.MeshLambertMaterial({ color: 0x84cc16 });
+                    const mesh = new THREE.Mesh(geo, mat);
+
+                    mesh.position.set(c * spacing - offset, 0.18, r * spacing - offset);
+                    mesh.receiveShadow = true;
+                    mesh.castShadow = true;
+                    mesh.userData = { r, c };
+
+                    scene.add(mesh);
+                    tileMeshes.push(mesh);
+                }
+            }
+        }
+
+        // Constrói os modelos 3D das plantas (Trigo, Alho, Pinheiro, Cânhamo, Escudos e Insetos)
+        function sync3DCrops() {
+            if (!cropObjectsGroup) return;
+
+            while (cropObjectsGroup.children.length > 0) {
+                cropObjectsGroup.remove(cropObjectsGroup.children[0]);
+            }
+
+            const spacing = 1.68;
+            const offset = ((GRID_SIZE - 1) * spacing) / 2;
+
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const cell = gameState.grid[r][c];
+                    const tileMesh = tileMeshes[r * GRID_SIZE + c];
+
+                    // Atualizar cor do bloco de terra 3D
+                    if (cell.soil === 'fertile') {
+                        tileMesh.material.color.setHex(0x65a30d); // Verde fértil alegre
+                    } else if (cell.soil === 'tired') {
+                        tileMesh.material.color.setHex(0xd97706); // Castanho claro cansado
+                    } else if (cell.soil === 'contaminated') {
+                        tileMesh.material.color.setHex(0x9333ea); // Roxo químico
+                    }
+
+                    const posX = c * spacing - offset;
+                    const posZ = r * spacing - offset;
+                    const itemGroup = new THREE.Group();
+                    itemGroup.position.set(posX, 0.35, posZ);
+
+                    // Escudo brilhante se protegido por Super Alho vizinho
+                    if (isProtectedByGarlic(r, c) && cell.crop !== 'garlic') {
+                        const shieldRing = new THREE.Mesh(
+                            new THREE.RingGeometry(0.55, 0.65, 16),
+                            new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide })
+                        );
+                        shieldRing.rotation.x = -Math.PI / 2;
+                        shieldRing.position.y = 0.03;
+                        itemGroup.add(shieldRing);
+                    }
+
+                    // 1. Modelo 3D: Pinheiro das Montanhas Küre
+                    if (cell.crop === 'hedge') {
+                        const trunk = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.14, 0.18, 0.5, 8),
+                            new THREE.MeshLambertMaterial({ color: 0x78350f })
+                        );
+                        trunk.position.y = 0.25;
+                        const leaves1 = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.62, 0.9, 8),
+                            new THREE.MeshLambertMaterial({ color: 0x0d9488 })
+                        );
+                        leaves1.position.y = 0.75;
+                        const leaves2 = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.48, 0.75, 8),
+                            new THREE.MeshLambertMaterial({ color: 0x14b8a6 })
+                        );
+                        leaves2.position.y = 1.25;
+                        itemGroup.add(trunk, leaves1, leaves2);
+                    }
+
+                    // 2. Modelo 3D: Trigo Siyez Dourado
+                    else if (cell.crop === 'siyez') {
+                        const heightScale = cell.stage === 1 ? 0.35 : (cell.stage === 2 ? 0.7 : 1.1);
+                        const wheatColor = cell.gmoContaminated ? 0x64748b : (cell.stage >= 3 ? 0xfbbf24 : 0x84cc16);
+
+                        // 5 hastes de trigo por bloco
+                        const offsets = [[0,0], [-0.28,-0.25], [0.28,-0.25], [-0.25,0.28], [0.28,0.25]];
+                        offsets.forEach(([ox, oz]) => {
+                            const stalk = new THREE.Mesh(
+                                new THREE.CylinderGeometry(0.05, 0.05, heightScale, 6),
+                                new THREE.MeshLambertMaterial({ color: wheatColor })
+                            );
+                            stalk.position.set(ox, heightScale / 2, oz);
+                            itemGroup.add(stalk);
+
+                            if (cell.stage >= 2) {
+                                const head = new THREE.Mesh(
+                                    new THREE.SphereGeometry(0.14, 8, 8),
+                                    new THREE.MeshLambertMaterial({ color: wheatColor })
+                                );
+                                head.scale.set(0.8, 1.6, 0.8);
+                                head.position.set(ox, heightScale + 0.1, oz);
+                                itemGroup.add(head);
+                            }
+                        });
+                    }
+
+                    // 3. Modelo 3D: Super Alho de Taşköprü
+                    else if (cell.crop === 'garlic') {
+                        const bulbSize = cell.stage >= 3 ? 0.42 : 0.25;
+                        const bulb = new THREE.Mesh(
+                            new THREE.SphereGeometry(bulbSize, 12, 10),
+                            new THREE.MeshLambertMaterial({ color: 0xf3e8ff })
+                        );
+                        bulb.position.y = bulbSize * 0.8;
+                        const sprout = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.15, 0.55, 6),
+                            new THREE.MeshLambertMaterial({ color: 0x22c55e })
+                        );
+                        sprout.position.y = bulbSize * 1.6 + 0.2;
+                        itemGroup.add(bulb, sprout);
+                    }
+
+                    // 4. Modelo 3D: Planta Limpa-Terra (Kendir)
+                    else if (cell.crop === 'hemp') {
+                        const bushSize = cell.stage >= 2 ? 0.45 : 0.28;
+                        const bush = new THREE.Mesh(
+                            new THREE.DodecahedronGeometry(bushSize),
+                            new THREE.MeshLambertMaterial({ color: 0x10b981 })
+                        );
+                        bush.position.y = bushSize;
+                        itemGroup.add(bush);
+                    }
+
+                    // Se tiver insetos/praga, mostra uma bolinha vermelha saltitante
+                    if (cell.pest) {
+                        const bug = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.2, 8, 8),
+                            new THREE.MeshLambertMaterial({ color: 0xef4444 })
+                        );
+                        bug.position.set(0, 1.35, 0);
+                        itemGroup.add(bug);
+                    }
+
+                    // Efeito de animação elástica ao atualizar
+                    itemGroup.scale.set(0.1, 0.1, 0.1);
+                    jumpingAnimations.push({ obj: itemGroup, progress: 0 });
+
+                    cropObjectsGroup.add(itemGroup);
+                }
+            }
+        }
+
+        function updateCameraPosition() {
+            const radius = 14.2;
+            camera.position.x = Math.sin(cameraAngle) * radius;
+            camera.position.z = Math.cos(cameraAngle) * radius;
+            camera.position.y = 10.5;
+            camera.lookAt(0, 0.2, 0);
+        }
+
+        function rotateCamera(delta) {
+            targetCameraAngle += delta;
+        }
+
+        function resetCameraView() {
+            targetCameraAngle = 0;
+        }
+
+        function setup3DInteractions(domElement) {
+            domElement.addEventListener('pointerdown', (e) => {
+                isDragging = true;
+                pointerMoved = false;
+                dragStartX = e.clientX;
+            });
+
+            domElement.addEventListener('pointermove', (e) => {
+                const rect = domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                if (isDragging) {
+                    const dx = e.clientX - dragStartX;
+                    if (Math.abs(dx) > 5) {
+                        pointerMoved = true;
+                        targetCameraAngle -= dx * 0.008;
+                        dragStartX = e.clientX;
+                    }
+                }
+
+                // Destacar o quadrado 3D debaixo do rato
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(tileMeshes);
+                if (intersects.length > 0) {
+                    const hitTile = intersects[0].object;
+                    hoverHighlightMesh.position.x = hitTile.position.x;
+                    hoverHighlightMesh.position.z = hitTile.position.z;
+                    hoverHighlightMesh.visible = true;
+                } else {
+                    hoverHighlightMesh.visible = false;
+                }
+            });
+
+            window.addEventListener('pointerup', () => {
+                isDragging = false;
+            });
+
+            domElement.addEventListener('click', (e) => {
+                if (pointerMoved) return; // Ignorar se estava apenas a rodar a câmara
+                const rect = domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(tileMeshes);
+                if (intersects.length > 0) {
+                    const { r, c } = intersects[0].object.userData;
+                    handleTileClick(r, c);
+                }
+            });
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('three-mount');
+            if (!container || !renderer) return;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            // Suavizar rotação da câmara
+            cameraAngle += (targetCameraAngle - cameraAngle) * 0.1;
+            updateCameraPosition();
+
+            // Rodar a roda do moinho de água
+            if (waterWheelMesh) {
+                waterWheelMesh.rotation.x += 0.025;
+            }
+
+            // Mover nuvens suavemente
+            if (cloudGroup) {
+                cloudGroup.position.x = Math.sin(Date.now() * 0.0005) * 1.2;
+            }
+
+            // Animações elásticas de crescimento 3D
+            for (let i = jumpingAnimations.length - 1; i >= 0; i--) {
+                const anim = jumpingAnimations[i];
+                anim.progress += 0.12;
+                if (anim.progress >= 1) {
+                    anim.obj.scale.set(1, 1, 1);
+                    jumpingAnimations.splice(i, 1);
+                } else {
+                    const s = 1 + Math.sin(anim.progress * Math.PI) * 0.25;
+                    anim.obj.scale.set(s, s, s);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // ==========================================
+        // 3. LÓGICA DO JOGO EDUCATIVO E INFANTIL
+        // ==========================================
+        function initGrid() {
+            gameState.grid = [];
+            for (let r = 0; r < GRID_SIZE; r++) {
+                let row = [];
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    let soil = 'fertile';
+                    let crop = null;
+                    let stage = 0;
+                    let pest = false;
+                    let gmoContaminated = false;
+
+                    if (r === 0 && (c === 1 || c === 3)) {
+                        crop = 'hedge';
+                        stage = 3;
+                    } else if (r === 2 && c === 2) {
+                        crop = 'garlic';
+                        stage = 2;
+                    } else if (r === 2 && (c === 1 || c === 3)) {
+                        crop = 'siyez';
+                        stage = 2;
+                    } else if (r === 0 && c === 4) {
+                        soil = 'contaminated';
+                    } else if (r === 4 && c === 0) {
+                        soil = 'tired';
+                    }
+
+                    row.push({ r, c, soil, crop, stage, pest, gmoContaminated });
+                }
+                gameState.grid.push(row);
+            }
+        }
+
+        function isProtectedByGarlic(r, c) {
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    let nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
+                        if (gameState.grid[nr][nc].crop === 'garlic') return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function isColumnProtectedFromWind(c) {
+            return gameState.grid[0][c].crop === 'hedge';
+        }
+
+        function renderAll() {
+            const season = SEASONS[gameState.seasonIndex];
+            document.getElementById('season-display').textContent = `${season.name} • Day ${gameState.day}`;
+            document.getElementById('season-emoji').textContent = season.emoji;
+
+            document.getElementById('stat-coins').textContent = gameState.coins;
+            document.getElementById('stat-raw-siyez').textContent = gameState.rawSiyez;
+            document.getElementById('stat-bulgur').textContent = gameState.bulgur;
+            document.getElementById('stat-garlic-spray').textContent = gameState.garlicSpray;
+            document.getElementById('stat-energy').textContent = gameState.energy;
+            document.getElementById('stat-max-energy').textContent = gameState.maxEnergy;
+            document.getElementById('btn-raw-count').textContent = gameState.rawSiyez;
+
+            const modalRawCountEl = document.getElementById('modal-raw-count');
+            if (modalRawCountEl) {
+                modalRawCountEl.textContent = gameState.rawSiyez;
+            }
+
+            gameState.ecoHealth = Math.max(0, Math.min(100, gameState.ecoHealth));
+            gameState.imecePoints = Math.max(0, Math.min(100, gameState.imecePoints));
+
+            document.getElementById('eco-percent').textContent = `${gameState.ecoHealth}%`;
+            document.getElementById('eco-bar').style.width = `${gameState.ecoHealth}%`;
+
+            document.getElementById('imece-percent').textContent = `${gameState.imecePoints} / 100 ⭐`;
+            document.getElementById('imece-bar').style.width = `${gameState.imecePoints}%`;
+
+            sync3DCrops();
+            checkVictoryCondition();
+        }
+
+        function selectTool(toolId) {
+            gameState.selectedTool = toolId;
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.remove('active-tool-kid');
+            });
+            const activeBtn = document.getElementById(`tool-${toolId}`);
+            if (activeBtn) activeBtn.classList.add('active-tool-kid');
+            document.getElementById('tool-desc-box').innerHTML = TOOL_DESCRIPTIONS[toolId] || '';
+        }
+
+        function handleTileClick(r, c) {
+            const cell = gameState.grid[r][c];
+            const tool = gameState.selectedTool;
+
+            if (gameState.energy <= 0) {
+                setLog('😴 You are tired! Click the orange "🌞 New Day!" button to recharge your energy!');
+                return;
+            }
+
+            if (tool === 'plant_siyez') {
+                if (cell.crop) {
+                    setLog('🌱 There is already a plant on this 3D block! Use the Basket 🧺 to harvest it first.');
+                    return;
+                }
+                if (cell.soil === 'contaminated') {
+                    setLog('💜 This purple soil is dirty! Plant the Earth-Cleaner Plant 🌿 or use the Garlic Spray 🫧!');
+                    return;
+                }
+                if (gameState.coins < 15) {
+                    setLog('🪙 You need 15 coins! Sell Bulgur at the Village Market on the right.');
+                    return;
+                }
+                gameState.coins -= 15;
+                gameState.energy -= 1;
+                cell.crop = 'siyez';
+                cell.stage = 1;
+                cell.gmoContaminated = false;
+                setLog('🌾 Awesome! You planted the 10,000-year-old Siyez Wheat!');
+            }
+
+            else if (tool === 'plant_garlic') {
+                if (cell.crop) {
+                    setLog('🌱 This square already has a plant!');
+                    return;
+                }
+                if (cell.soil === 'contaminated') {
+                    setLog('💜 Clean the purple square before planting Super Garlic!');
+                    return;
+                }
+                if (gameState.coins < 20) {
+                    setLog('🪙 You need 20 coins to plant Super Garlic!');
+                    return;
+                }
+                gameState.coins -= 20;
+                gameState.energy -= 1;
+                cell.crop = 'garlic';
+                cell.stage = 1;
+                clearAdjacentPests(r, c);
+                setLog('🧄 Taşköprü Super Garlic planted! Look at the magic purple rings protecting its neighbors!');
+            }
+
+            else if (tool === 'plant_hemp') {
+                if (cell.crop) {
+                    setLog('🌱 This square is already busy!');
+                    return;
+                }
+                if (gameState.coins < 10) {
+                    setLog('🪙 You need 10 coins!');
+                    return;
+                }
+                gameState.coins -= 10;
+                gameState.energy -= 1;
+                cell.crop = 'hemp';
+                cell.stage = 1;
+                setLog('🌿 Earth-Cleaner Plant sown! It will make this square green and healthy again!');
+            }
+
+            else if (tool === 'plant_hedge') {
+                if (cell.crop) {
+                    setLog('🌱 This square is already busy!');
+                    return;
+                }
+                if (gameState.coins < 25) {
+                    setLog('🪙 You need 25 coins to plant a Shield Pine Tree!');
+                    return;
+                }
+                gameState.coins -= 25;
+                gameState.energy -= 1;
+                cell.crop = 'hedge';
+                cell.stage = 3;
+                cell.soil = 'fertile';
+                gameState.ecoHealth += 3;
+                setLog('🌲 Küre Mountains Pine Tree planted! Little birds love it and the bad wind cannot pass!');
+            }
+
+            else if (tool === 'spray_garlic') {
+                if (gameState.garlicSpray <= 0) {
+                    setLog('🫧 You are out of Garlic Spray! Harvest ripe Super Garlic to get more!');
+                    return;
+                }
+                if (!cell.pest && cell.soil !== 'contaminated') {
+                    setLog('✨ This square is already super clean and happy!');
+                    return;
+                }
+                gameState.garlicSpray -= 1;
+                gameState.energy -= 1;
+                cell.pest = false;
+                if (cell.soil === 'contaminated') cell.soil = 'fertile';
+                gameState.ecoHealth += 2;
+                setLog('🫧 Pshhh! Natural Garlic Spray cleaned everything without hurting the fishes in the river!');
+            }
+
+            else if (tool === 'harvest') {
+                if (!cell.crop) {
+                    if (cell.soil === 'tired') {
+                        gameState.energy -= 1;
+                        cell.soil = 'fertile';
+                        setLog('🚜 You fluffed up the brown soil and now it is green and fertile again!');
+                    } else {
+                        setLog('👆 Pick a seed from your backpack on the left and click on the 3D land!');
+                    }
+                    renderAll();
+                    return;
+                }
+
+                gameState.energy -= 1;
+
+                if (cell.crop === 'siyez' && cell.stage >= 3) {
+                    if (cell.gmoContaminated) {
+                        gameState.coins += 10;
+                        setLog('☁️ Oh no! This wheat caught some grey wind (+10 🪙). Plant Pine Trees 🌲 in the back row!');
+                    } else {
+                        let yieldAmount = cell.soil === 'fertile' ? 2 : 1;
+                        gameState.rawSiyez += yieldAmount;
+                        gameState.ecoHealth += 2;
+                        setLog(`🧺 Hooray! You harvested +${yieldAmount} Golden Siyez Wheat! Now take it to the Creek Watermill!`);
+                    }
+                    cell.crop = null;
+                    cell.stage = 0;
+                    cell.pest = false;
+                    cell.gmoContaminated = false;
+                    cell.soil = 'tired';
+                }
+                else if (cell.crop === 'garlic' && cell.stage >= 3) {
+                    gameState.garlicSpray += 2;
+                    gameState.coins += 25;
+                    cell.crop = null;
+                    cell.stage = 0;
+                    cell.soil = 'fertile';
+                    setLog('🧄 Great job! You harvested Super Garlic! You got +25 🪙 and +2 Magic Sprays!');
+                }
+                else if (cell.crop === 'hemp' && cell.stage >= 2) {
+                    gameState.coins += 20;
+                    gameState.ecoHealth += 4;
+                    cell.crop = null;
+                    cell.stage = 0;
+                    cell.soil = 'fertile';
+                    cell.pest = false;
+                    setLog('🌿 Harvested the Earth-Cleaner Plant (+20 🪙) and the soil is super green and fertile!');
+                }
+                else {
+                    cell.crop = null;
+                    cell.stage = 0;
+                    cell.pest = false;
+                    cell.gmoContaminated = false;
+                    setLog('🧹 You cleared this 3D square so you can plant something new!');
+                }
+            }
+
+            renderAll();
+        }
+
+        function clearAdjacentPests(r, c) {
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    let nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
+                        gameState.grid[nr][nc].pest = false;
+                    }
+                }
+            }
+        }
+
+        function nextDay() {
+            gameState.day += 1;
+            gameState.seasonIndex = Math.floor(((gameState.day - 1) % 16) / 4);
+            gameState.energy = gameState.maxEnergy;
+
+            const currentSeason = SEASONS[gameState.seasonIndex];
+            let dailyEvents = [];
+
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const cell = gameState.grid[r][c];
+                    if (!cell.crop || cell.crop === 'hedge') continue;
+
+                    if (cell.crop === 'siyez' && !isColumnProtectedFromWind(c)) {
+                        if (Math.random() < currentSeason.windRisk) {
+                            cell.gmoContaminated = true;
+                            dailyEvents.push('The North wind blew! Plant Pine Trees 🌲 in the back row to protect the Wheat!');
+                        }
+                    }
+
+                    if (!isProtectedByGarlic(r, c) && !cell.pest) {
+                        let pestChance = cell.crop === 'siyez' ? 0.07 : 0.13;
+                        if (Math.random() < pestChance) {
+                            cell.pest = true;
+                            dailyEvents.push('A red bug ball appeared! Use the Garlic Spray 🫧!');
+                        }
+                    }
+
+                    if (!cell.pest) {
+                        cell.stage += 1;
+                    }
+
+                    if (cell.crop === 'hemp' && cell.stage >= 2) {
+                        cell.soil = 'fertile';
+                    }
+                }
+            }
+
+            const windLabels = ['🌬️ Gentle Breeze', '💨 Mountain Wind', '🍃 Fresh Wind', '☀️ Calm Air'];
+            document.getElementById('wind-forecast').textContent = windLabels[gameState.day % windLabels.length];
+
+            if (dailyEvents.length > 0) {
+                setLog(`🌞 Day ${gameState.day}: ${dailyEvents[0]}`);
+            } else {
+                setLog(`🌞 Good morning! It is Day ${gameState.day} (${currentSeason.name}) and your 3D plants have grown!`);
+            }
+
+            renderAll();
+        }
+
+        // ==========================================
+        // 4. MINIJOGO DO MOINHO & FEIRINHA
+        // ==========================================
+        let millInterval = null;
+        let millCursorPos = 10;
+        let millDirection = 1;
+
+        function openMillModal() {
+            if (gameState.rawSiyez <= 0) {
+                setLog('🌾 Your basket is empty! Plant and harvest Golden Siyez Wheat first!');
+                return;
+            }
+            document.getElementById('mill-result-msg').innerHTML = 'Click "GRIND NOW!" when the bar is in the GREEN zone!';
+            document.getElementById('mill-modal').classList.remove('hidden');
+            document.getElementById('mill-modal').classList.add('flex');
+            startMillCursor();
+        }
+
+        function closeMillModal() {
+            document.getElementById('mill-modal').classList.add('hidden');
+            document.getElementById('mill-modal').classList.remove('flex');
+            if (millInterval) clearInterval(millInterval);
+        }
+
+        function startMillCursor() {
+            if (millInterval) clearInterval(millInterval);
+            millCursorPos = 10;
+            millDirection = 1;
+            const cursorEl = document.getElementById('mill-cursor');
+
+            millInterval = setInterval(() => {
+                millCursorPos += millDirection * 2.1; // Velocidade amigável para crianças
+                if (millCursorPos >= 94) {
+                    millCursorPos = 94;
+                    millDirection = -1;
+                } else if (millCursorPos <= 4) {
+                    millCursorPos = 4;
+                    millDirection = 1;
+                }
+                cursorEl.style.left = `${millCursorPos}%`;
+            }, 22);
+        }
+
+        function triggerMillGrind() {
+            if (gameState.rawSiyez <= 0) return;
+
+            gameState.rawSiyez -= 1;
+            const msgEl = document.getElementById('mill-result-msg');
+
+            if (millCursorPos >= 38 && millCursorPos <= 62) {
+                gameState.bulgur += 2;
+                gameState.imecePoints += 4;
+                msgEl.innerHTML = '🌟 <span class="text-emerald-600">SUPER AIM! You won +2 Bowls of Bulgur 🥣 and +4 Stars ⭐!</span>';
+            } else if (millCursorPos >= 22 && millCursorPos <= 78) {
+                gameState.bulgur += 1;
+                gameState.imecePoints += 2;
+                msgEl.innerHTML = '👍 <span class="text-amber-600">Well done! You won +1 Bowl of Bulgur 🥣 and +2 Stars ⭐!</span>';
+            } else {
+                gameState.coins += 15;
+                msgEl.innerHTML = '😊 <span class="text-sky-600">It turned into fluffy flour! You got +15 Coins 🪙!</span>';
+            }
+
+            renderAll();
+
+            if (gameState.rawSiyez <= 0) {
+                setTimeout(() => {
+                    closeMillModal();
+                    setLog('🥣 Finished grinding at the Watermill! Now you can sell your Bulgur at the Village Market!');
+                }, 1100);
+            }
+        }
+
+        function sellBulgur() {
+            if (gameState.bulgur <= 0) {
+                setLog('🥣 You do not have any Bulgur yet! Click "Grind Wheat" at the Creek Watermill!');
+                return;
+            }
+            gameState.bulgur -= 1;
+            gameState.coins += 45;
+            gameState.imecePoints += 5;
+            setLog('🥖 The whole village loved your Siyez Bulgur! You earned +45 🪙 and +5 Stars ⭐!');
+            renderAll();
+        }
+
+        function donateSeedsImece() {
+            if (gameState.rawSiyez < 2) {
+                setLog('🌾 You need at least 2 harvested Wheat in your basket to gift to your friends!');
+                return;
+            }
+            gameState.rawSiyez -= 2;
+            gameState.imecePoints += 15;
+            gameState.ecoHealth += 8;
+            setLog('🎁 What a wonderful act of "İmece"! Your neighbors planted clean seeds (+15 ⭐ & +Clean River)!');
+            renderAll();
+        }
+
+        function buyCopperUpgrade() {
+            if (gameState.copperUpgrade) {
+                setLog('🍯 You already have the Magic Copper Pot from Kastamonu artisans!');
+                return;
+            }
+            if (gameState.coins < 150) {
+                setLog('🪙 You need 150 coins to buy the Copper Pot!');
+                return;
+            }
+            gameState.coins -= 150;
+            gameState.copperUpgrade = true;
+            gameState.maxEnergy = 8;
+            gameState.energy = 8;
+            gameState.imecePoints += 10;
+
+            const btn = document.getElementById('btn-copper-upgrade');
+            btn.innerHTML = '<span>✅ Copper Pot Active!</span><span>8 ⚡</span>';
+            btn.classList.add('opacity-60');
+
+            setLog('🍯 You bought the traditional Copper Pot! Now you have 8 Energy every day!');
+            renderAll();
+        }
+
+        function upgradeKonak() {
+            if (gameState.konakLevel >= 3) {
+                setLog('🏰 Your 3D House (Konak) is already at the maximum level!');
+                return;
+            }
+            const cost = gameState.konakLevel === 1 ? 180 : 260;
+            if (gameState.coins < cost) {
+                setLog(`🪙 You need ${cost} coins to upgrade your 3D House!`);
+                return;
+            }
+
+            gameState.coins -= cost;
+            gameState.konakLevel += 1;
+            gameState.imecePoints += 20;
+            gameState.ecoHealth += 5;
+
+            rebuildKonak3D();
+
+            const badge = document.getElementById('konak-level-badge');
+            const btn = document.getElementById('btn-konak-upgrade');
+
+            if (gameState.konakLevel === 2) {
+                badge.textContent = 'Level 2/3';
+                btn.textContent = '🔨 Complete 3D House (260 🪙)';
+                setLog('🏰 Look at the left side of the 3D island! Your house gained a nail-free wooden second floor! (+20 ⭐)');
+            } else {
+                badge.textContent = 'Level 3/3 ⭐';
+                btn.textContent = '🏰 House Complete!';
+                btn.classList.add('opacity-60');
+                setLog('🎉 Your 3D Ottoman House is complete with the golden banner! (+20 ⭐)');
+            }
+
+            renderAll();
+        }
+
+        function setLog(msg) {
+            document.getElementById('game-log').innerHTML = msg;
+        }
+
+        function toggleHelpModal() {
+            const modal = document.getElementById('help-modal');
+            modal.classList.toggle('hidden');
+            modal.classList.toggle('flex');
+        }
+
+        function checkVictoryCondition() {
+            if (gameState.imecePoints >= 100 && gameState.ecoHealth >= 75) {
+                const modal = document.getElementById('endgame-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function resetGame() {
+            gameState = {
+                day: 1,
+                seasonIndex: 0,
+                coins: 120,
+                rawSiyez: 2,
+                bulgur: 0,
+                garlicSpray: 2,
+                energy: 6,
+                maxEnergy: 6,
+                ecoHealth: 65,
+                imecePoints: 15,
+                konakLevel: 1,
+                copperUpgrade: false,
+                selectedTool: 'plant_siyez',
+                grid: []
+            };
+            document.getElementById('endgame-modal').classList.add('hidden');
+            document.getElementById('endgame-modal').classList.remove('flex');
+
+            const btnCopper = document.getElementById('btn-copper-upgrade');
+            btnCopper.innerHTML = '<span>🍯 Copper Pot (+2 ⚡)</span><span class="bg-white/25 px-2 py-0.5 rounded-lg">150 🪙</span>';
+            btnCopper.classList.remove('opacity-60');
+
+            document.getElementById('konak-level-badge').textContent = 'Level 1/3';
+            const btnKonak = document.getElementById('btn-konak-upgrade');
+            btnKonak.textContent = '🔨 Upgrade 3D House (180 🪙)';
+            btnKonak.classList.remove('opacity-60');
+
+            initGrid();
+            rebuildKonak3D();
+            selectTool('plant_siyez');
+            renderAll();
+        }
+
+        window.onload = function () {
+            initGrid();
+            init3DWorld();
+            renderAll();
+        };
+    </script>
+</body>
+</html>
