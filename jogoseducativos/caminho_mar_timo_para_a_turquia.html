@@ -1,0 +1,2623 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caminho Marítimo para a Turquia - Expedição 3D</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js r128 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Cinzel (Nautical/Historical) & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #061826;
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+        }
+        .font-nautical {
+            font-family: 'Cinzel', serif;
+        }
+        #canvas-container {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        /* Pergaminho e painéis náuticos */
+        .nautical-glass {
+            background: rgba(12, 29, 44, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(217, 160, 91, 0.45);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .parchment-card {
+            background: linear-gradient(145deg, #fdf6e3 0%, #f3e2c3 100%);
+            color: #2c1d11;
+            border: 2px solid #8c6239;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 0 35px rgba(139, 90, 43, 0.25);
+        }
+        .btn-gold {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            border: 1px solid #fcd34d;
+            color: #fffbeb;
+            box-shadow: 0 4px 15px rgba(217, 119, 6, 0.4);
+            transition: all 0.2s ease;
+        }
+        .btn-gold:hover {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6);
+        }
+        .btn-gold:active {
+            transform: translateY(0);
+        }
+        /* Scrollbar personalizada */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #b45309;
+            border-radius: 9999px;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.08); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .animate-pulse-ring {
+            animation: pulse-ring 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="text-amber-50">
+
+    <!-- Contentor do Mundo 3D -->
+    <div id="canvas-container"></div>
+
+    <!-- HUD Superior: Cabeçalho & Linha de Rota dos 11 Portos -->
+    <header class="fixed top-0 left-0 right-0 z-20 p-2 sm:p-4 pointer-events-none flex flex-col gap-2">
+        <div class="max-w-7xl mx-auto w-full flex flex-wrap items-center justify-between gap-2">
+            <!-- Título e Progresso -->
+            <div class="nautical-glass px-4 py-2.5 rounded-2xl pointer-events-auto flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-600/30 border border-amber-400/50 flex items-center justify-center text-amber-300 text-xl">
+                    <i class="fa-solid fa-compass fa-spin" style="animation-duration: 18s;"></i>
+                </div>
+                <div>
+                    <h1 id="hud-game-title" class="font-nautical text-sm sm:text-lg font-bold tracking-wider text-amber-300 leading-tight">
+                        Caminho Marítimo para a Turquia
+                    </h1>
+                    <p id="hud-next-destination" class="text-xs sm:text-sm text-amber-100/90 font-medium">
+                        Destino Atual: <span class="text-amber-400 font-semibold">1. Lisboa</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Botões de Ação Rápida + Seletor de Idioma (PT / TR / EN) -->
+            <div class="nautical-glass px-3 py-2 rounded-2xl pointer-events-auto flex flex-wrap items-center gap-2">
+                <!-- Seletor Trilingue -->
+                <div class="flex items-center bg-slate-950/70 p-1 rounded-xl border border-amber-500/30 mr-1" role="group" aria-label="Language Selector">
+                    <button data-lang="pt" class="lang-switch-btn px-2 py-1 rounded-lg text-xs font-bold transition bg-amber-600 text-white">PT</button>
+                    <button data-lang="tr" class="lang-switch-btn px-2 py-1 rounded-lg text-xs font-bold transition text-amber-200/80 hover:text-white">TR</button>
+                    <button data-lang="en" class="lang-switch-btn px-2 py-1 rounded-lg text-xs font-bold transition text-amber-200/80 hover:text-white">EN</button>
+                </div>
+
+                <button id="btn-autopilot" class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-800/70 hover:bg-emerald-700 border border-emerald-400/50 text-emerald-100 flex items-center gap-1.5 transition" title="Navegar automaticamente até ao próximo porto">
+                    <i class="fa-solid fa-wind"></i>
+                    <span id="autopilot-label">Piloto Auto: OFF</span>
+                </button>
+                <button id="btn-camera-view" class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-sky-900/70 hover:bg-sky-800 border border-sky-400/40 text-sky-100 flex items-center gap-1.5 transition" title="Alternar entre vista da caravela e mapa geral">
+                    <i class="fa-solid fa-eye"></i>
+                    <span id="hud-camera-label" class="hidden sm:inline">Vista Mapa</span>
+                </button>
+                <button id="btn-logbook" class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-amber-800/70 hover:bg-amber-700 border border-amber-400/40 text-amber-100 flex items-center gap-1.5 transition" title="Ver Diário de Bordo e todos os portos">
+                    <i class="fa-solid fa-book-atlas"></i>
+                    <span class="hidden md:inline"><span id="hud-logbook-label">Diário</span> (<span id="hud-progress-count">0/11</span>)</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Barra de Progresso Interativa com todas as 11 Paragens -->
+        <div class="max-w-7xl mx-auto w-full overflow-x-auto pointer-events-auto">
+            <div id="route-stepper" class="nautical-glass px-3 py-2 rounded-2xl flex items-center justify-between min-w-[680px] gap-1">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
+    </header>
+
+    <!-- Alerta de Porto ao Alcance (Centro Inferior) -->
+    <div id="dock-prompt" class="fixed bottom-28 sm:bottom-24 left-1/2 -translate-x-1/2 z-20 hidden pointer-events-auto">
+        <button id="btn-open-port-challenge" class="btn-gold px-6 py-3 rounded-2xl font-nautical text-sm sm:text-base font-bold tracking-wide flex items-center gap-3 animate-pulse-ring">
+            <i class="fa-solid fa-anchor text-lg"></i>
+            <span id="dock-prompt-text">Atracar em Lisboa</span>
+        </button>
+    </div>
+
+    <!-- Controlos de Navegação (Inferior) -->
+    <footer class="fixed bottom-0 left-0 right-0 z-20 p-3 sm:p-4 pointer-events-none flex justify-between items-end max-w-7xl mx-auto">
+        <!-- Painel de Estado da Caravela e Bússola -->
+        <div class="nautical-glass p-3 rounded-2xl pointer-events-auto max-w-xs hidden sm:block">
+            <div class="flex items-center justify-between mb-1">
+                <span id="hud-ship-status-title" class="text-xs uppercase tracking-wider text-amber-400 font-bold">Estado da Caravela</span>
+                <span id="ship-speed-badge" class="text-xs bg-amber-900/80 border border-amber-500/40 px-2 py-0.5 rounded text-amber-200">0 nós</span>
+            </div>
+            <!-- Barra de Progresso da Travessia (Delay de Navegação) -->
+            <div id="voyage-progress-panel" class="hidden my-2 p-2 rounded-lg bg-amber-950/90 border border-amber-500/40">
+                <div class="flex justify-between items-center text-[11px] text-amber-200 mb-1">
+                    <span id="voyage-status-label" class="font-semibold flex items-center gap-1.5">
+                        <i class="fa-solid fa-water fa-fade text-sky-400"></i> Em travessia marítima...
+                    </span>
+                    <span id="voyage-eta-label" class="font-bold text-amber-300">8s</span>
+                </div>
+                <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-amber-700/50">
+                    <div id="voyage-progress-bar" class="h-full bg-gradient-to-r from-sky-400 via-amber-400 to-amber-500 transition-all duration-150" style="width: 0%"></div>
+                </div>
+            </div>
+            <p id="compass-hint" class="text-xs text-amber-100/90 leading-relaxed">
+                Usa <kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px]">W</kbd><kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px] ml-0.5">A</kbd><kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px] ml-0.5">S</kbd><kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px] ml-0.5">D</kbd> ou as Setas para navegar. Arrasta o rato para rodar a câmara.
+            </p>
+        </div>
+
+        <!-- Botões Direcionais Táteis / Rato -->
+        <div class="nautical-glass p-2 rounded-2xl pointer-events-auto mx-auto sm:mx-0 flex items-center gap-1.5">
+            <button id="ctrl-left" class="w-12 h-12 rounded-xl bg-amber-950/90 hover:bg-amber-800 active:bg-amber-600 border border-amber-500/40 flex items-center justify-center text-amber-200 text-lg transition" aria-label="Virar a Bombordo">
+                <i class="fa-solid fa-rotate-left"></i>
+            </button>
+            <div class="flex flex-col gap-1.5">
+                <button id="ctrl-up" class="w-12 h-12 rounded-xl bg-amber-700/90 hover:bg-amber-600 active:bg-amber-500 border border-amber-300/60 flex items-center justify-center text-white text-lg transition" aria-label="Içar Velas / Avançar">
+                    <i class="fa-solid fa-angles-up"></i>
+                </button>
+                <button id="ctrl-down" class="w-12 h-10 rounded-xl bg-amber-950/90 hover:bg-amber-800 active:bg-amber-600 border border-amber-500/40 flex items-center justify-center text-amber-200 text-sm transition" aria-label="Colher Velas / Travar">
+                    <i class="fa-solid fa-anchor"></i>
+                </button>
+            </div>
+            <button id="ctrl-right" class="w-12 h-12 rounded-xl bg-amber-950/90 hover:bg-amber-800 active:bg-amber-600 border border-amber-500/40 flex items-center justify-center text-amber-200 text-lg transition" aria-label="Virar a Estibordo">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </div>
+    </footer>
+
+    <!-- MODAL DE PARAGEM / ENIGMA DO PORTO -->
+    <div id="port-modal" class="fixed inset-0 z-40 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <div class="parchment-card max-w-2xl w-full rounded-3xl p-5 sm:p-7 relative my-auto max-h-[92vh] overflow-y-auto">
+            <!-- Cabeçalho do Porto -->
+            <div class="flex justify-between items-start gap-4 mb-4 border-b border-amber-900/20 pb-3">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span id="modal-port-number" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-900 text-amber-100">Paragem 1 / 11</span>
+                        <span id="modal-port-theme" class="text-xs font-bold uppercase tracking-wider text-amber-800">Fundação da Cidade</span>
+                    </div>
+                    <h2 id="modal-port-title" class="font-nautical text-2xl md:text-3xl font-black text-amber-950 mt-1">Lisboa</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-regenerate-image" class="px-2.5 py-1.5 rounded-lg bg-amber-900/15 hover:bg-amber-900/30 text-amber-950 text-xs font-semibold flex items-center gap-1.5 transition" title="Regerar imagem realista com Nano Banana">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-700"></i>
+                        <span id="modal-btn-regen-label" class="hidden sm:inline">Nova Pintura IA</span>
+                    </button>
+                    <button id="btn-close-port-modal" class="w-9 h-9 rounded-lg bg-amber-900/15 hover:bg-amber-900/30 text-amber-950 flex items-center justify-center transition" title="Voltar ao Mar">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Ilustração Alusiva ao Destino (Gerada com Nano Banana / gemini-3.1-flash-image) -->
+            <div id="modal-illustration-container" class="w-full h-56 sm:h-72 rounded-xl overflow-hidden border-2 border-amber-900/40 shadow-inner mb-4 bg-slate-900 relative flex items-center justify-center">
+                <!-- Imagem Realista Nano Banana ou Ilustração Detalhada -->
+            </div>
+
+            <!-- Contexto Histórico / Ambiental -->
+            <div class="bg-amber-900/10 border-l-4 border-amber-800 p-3.5 rounded-r-xl mb-5">
+                <p id="modal-port-lore" class="text-xs sm:text-sm text-amber-950 leading-relaxed font-medium"></p>
+            </div>
+
+            <!-- Desafio / Pergunta -->
+            <div id="modal-quiz-section">
+                <h3 class="font-nautical text-sm sm:text-base font-bold text-amber-900 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-scroll text-amber-700"></i>
+                    <span id="modal-challenge-heading">Desafio do Capitão:</span>
+                </h3>
+                <p id="modal-question-text" class="text-sm sm:text-base font-bold text-amber-950 mb-3"></p>
+
+                <!-- Opções de Resposta -->
+                <div id="modal-options-list" class="flex flex-col gap-2.5"></div>
+
+                <!-- Feedback de Resposta -->
+                <div id="modal-feedback" class="mt-4 p-3.5 rounded-xl hidden text-xs sm:text-sm font-semibold"></div>
+            </div>
+
+            <!-- Botão para Seguir Viagem -->
+            <div id="modal-next-actions" class="mt-5 pt-4 border-t border-amber-900/20 flex justify-end gap-3 hidden">
+                <button id="btn-depart-next" class="btn-gold px-5 py-2.5 rounded-xl font-nautical font-bold text-sm flex items-center gap-2">
+                    <span id="btn-depart-text">Zarpar para o Próximo Porto</span>
+                    <i class="fa-solid fa-sailboat"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE BOAS-VINDAS / INSTRUÇÕES INICIAIS -->
+    <div id="intro-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="parchment-card max-w-xl w-full rounded-3xl p-6 sm:p-8 text-center">
+            <!-- Seletor de Idioma no Ecrã Inicial -->
+            <div class="flex justify-center gap-2 mb-4">
+                <button data-lang="pt" class="lang-switch-btn px-3 py-1 rounded-xl text-xs font-bold transition bg-amber-800 text-amber-100 border border-amber-600">🇵🇹 Português</button>
+                <button data-lang="tr" class="lang-switch-btn px-3 py-1 rounded-xl text-xs font-bold transition bg-amber-900/15 text-amber-950 border border-amber-800/30">🇹🇷 Türkçe</button>
+                <button data-lang="en" class="lang-switch-btn px-3 py-1 rounded-xl text-xs font-bold transition bg-amber-900/15 text-amber-950 border border-amber-800/30">🇬🇧 English</button>
+            </div>
+            <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-amber-900 text-amber-200 flex items-center justify-center text-3xl shadow-lg">
+                <i class="fa-solid fa-dharmachakra"></i>
+            </div>
+            <h2 id="intro-title" class="font-nautical text-2xl sm:text-3xl font-black text-amber-950">Caminho Marítimo para a Turquia</h2>
+            <p id="intro-subtitle" class="text-xs sm:text-sm font-bold uppercase tracking-widest text-amber-800 mt-1 mb-4">De Lisboa a İnebolu • Expedição Histórica & Ambiental 3D</p>
+            <p id="intro-description" class="text-xs sm:text-sm text-amber-950/90 leading-relaxed mb-5 text-left bg-amber-900/10 p-4 rounded-2xl border border-amber-900/20">
+                Bem-vindo a bordo da tua <strong>Caravela Portuguesa</strong>! A tua missão é comandar uma expedição marítima desde o estuário do Tejo, atravessando o Estreito de Gibraltar, o Mar Mediterrâneo, o Mar Egeu, os Dardanelos e o Bósforo até <strong>İnebolu</strong>, no Mar Negro.<br><br>
+                Em cada um dos <strong>11 portos históricos</strong>, contempla a ilustração alusiva ao destino e resolve o enigma sobre a sua história ou ambiente para desbloquear a etapa seguinte!
+            </p>
+            <div class="grid grid-cols-2 gap-2.5 text-left text-xs text-amber-950 mb-6">
+                <div class="bg-amber-900/10 p-2.5 rounded-xl flex items-center gap-2.5">
+                    <i class="fa-solid fa-gamepad text-lg text-amber-800"></i>
+                    <span id="intro-ctrl-manual"><strong>Controlo Manual:</strong> Teclas WASD / Setas ou botões no ecrã.</span>
+                </div>
+                <div class="bg-amber-900/10 p-2.5 rounded-xl flex items-center gap-2.5">
+                    <i class="fa-solid fa-wind text-lg text-amber-800"></i>
+                    <span id="intro-ctrl-auto"><strong>Piloto Automático:</strong> Navega e sente a travessia até ao porto.</span>
+                </div>
+            </div>
+            <button id="btn-start-voyage" class="btn-gold w-full py-3.5 rounded-2xl font-nautical text-base sm:text-lg font-bold tracking-wider flex items-center justify-center gap-2">
+                <i class="fa-solid fa-anchor-circle-check"></i>
+                <span id="intro-btn-start">Içar Velas em Lisboa!</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL DO DIÁRIO DE BORDO (TODOS OS PORTOS) -->
+    <div id="logbook-modal" class="fixed inset-0 z-40 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="parchment-card max-w-3xl w-full rounded-3xl p-5 sm:p-7 max-h-[88vh] flex flex-col">
+            <div class="flex justify-between items-center border-b border-amber-900/20 pb-3 mb-4">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-book-journal-whills text-2xl text-amber-900"></i>
+                    <h2 id="logbook-title" class="font-nautical text-xl sm:text-2xl font-black text-amber-950">Diário de Bordo da Expedição</h2>
+                </div>
+                <button id="btn-close-logbook" class="w-9 h-9 rounded-lg bg-amber-900/15 hover:bg-amber-900/30 text-amber-950 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div id="logbook-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto pr-1">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE VITÓRIA FINAL EM INEBOLU -->
+    <div id="victory-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="parchment-card max-w-xl w-full rounded-3xl p-6 sm:p-8 text-center">
+            <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-500/20 border-2 border-amber-700 text-amber-800 flex items-center justify-center text-4xl">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <span id="victory-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-emerald-800 text-emerald-100">Expedição Concluída!</span>
+            <h2 id="victory-title" class="font-nautical text-2xl sm:text-3xl font-black text-amber-950 mt-2">Chegaste a İnebolu, Porta de Kastamonu!</h2>
+            <p id="victory-desc" class="text-xs sm:text-sm text-amber-950/90 leading-relaxed my-4">
+                Parabéns, Capitão! Navegaste com mestria desde Lisboa, passando por Lagos & Faro, Gibraltar, Argel, La Valetta, Palermo, Atenas, Esmirna, Çanakkale e Istambul até à histórica costa de <strong>İnebolu</strong> no Mar Negro, superando todos os 11 desafios culturais e ambientais!
+            </p>
+            <div class="flex flex-col sm:flex-row gap-3 mt-6">
+                <button id="btn-victory-explore" class="flex-1 py-3 rounded-xl font-nautical font-bold text-sm bg-amber-900/20 hover:bg-amber-900/30 text-amber-950 border border-amber-900/40 transition">
+                    Continuar a Navegar Livremente
+                </button>
+                <button id="btn-victory-restart" class="btn-gold flex-1 py-3 rounded-xl font-nautical font-bold text-sm">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> <span id="victory-btn-restart-label">Nova Expedição</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /***********************************************************************
+         * 1. SISTEMA TRILINGUE (PORTUGUÊS, TURCO E INGLÊS) & DADOS DOS PORTOS
+         ***********************************************************************/
+        const apiKey = ""; // Fornecido automaticamente pelo ambiente em runtime
+        const portImageCache = {}; // Cache em memória das imagens geradas pelo Nano Banana
+        let currentLang = 'pt'; // 'pt' | 'tr' | 'en'
+
+        const UI_TRANSLATIONS = {
+            pt: {
+                gameTitle: 'Caminho Marítimo para a Turquia',
+                currentDest: 'Destino Atual:',
+                routeComplete: 'Rota Completa até İnebolu!',
+                autopilotOn: 'Piloto Auto: ON',
+                autopilotOff: 'Piloto Auto: OFF',
+                mapView: 'Vista Mapa',
+                logbook: 'Diário',
+                dockIn: 'Atracar em',
+                shipStatus: 'Estado da Caravela',
+                knots: 'nós',
+                sailingTo: 'Rumo a',
+                compassHint: 'Usa <kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px]">W</kbd><kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px] ml-0.5">A</kbd><kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px] ml-0.5">S</kbd><kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px] ml-0.5">D</kbd> ou as Setas para navegar. Arrasta o rato para rodar a câmara.',
+                stopOf: (order, total) => `Paragem ${order} de ${total}`,
+                stopShort: (order) => `Paragem ${order}`,
+                newAiPaint: 'Nova Pintura IA',
+                refiningAi: 'A aperfeiçoar com Nano Banana...',
+                historicalPainting: 'Pintura Histórica',
+                captainChallenge: 'Desafio do Capitão:',
+                wrongAnswer: 'Resposta incorreta, Capitão! Releia a crónica histórica ou ambiental acima e tente outra opção.',
+                celebrateFinal: 'Celebrar Chegada Final a İnebolu!',
+                departTo: (name) => `Zarpar rumo a ${name}`,
+                introTitle: 'Caminho Marítimo para a Turquia',
+                introSubtitle: 'De Lisboa a İnebolu • Expedição Histórica & Ambiental 3D',
+                introDesc: 'Bem-vindo a bordo da tua <strong>Caravela Portuguesa</strong>! A tua missão é comandar uma expedição marítima desde o estuário do Tejo, atravessando o Estreito de Gibraltar, o Mar Mediterrâneo, o Mar Egeu, os Dardanelos e o Bósforo até <strong>İnebolu</strong>, no Mar Negro.<br><br>Em cada um dos <strong>11 portos históricos</strong>, contempla a ilustração alusiva ao destino e resolve o enigma sobre a sua história ou ambiente para desbloquear a etapa seguinte!',
+                introManual: '<strong>Controlo Manual:</strong> Teclas WASD / Setas ou botões no ecrã.',
+                introAuto: '<strong>Piloto Automático:</strong> Navega e sente a travessia até ao porto.',
+                introStartBtn: 'Içar Velas em Lisboa!',
+                logbookTitle: 'Diário de Bordo da Expedição',
+                solvedBadge: 'Resolvido',
+                toExploreBadge: 'Por Explorar',
+                sailHereBtn: 'Navegar até Aqui',
+                viewChallengeBtn: 'Ver Desafio',
+                victoryBadge: 'Expedição Concluída!',
+                victoryTitle: 'Chegaste a İnebolu, Porta de Kastamonu!',
+                victoryDesc: 'Parabéns, Capitão! Navegaste com mestria desde Lisboa, passando por Lagos & Faro, Gibraltar, Argel, La Valetta, Palermo, Atenas, Esmirna, Çanakkale e Istambul até à histórica costa de <strong>İnebolu</strong> no Mar Negro, superando todos os 11 desafios culturais e ambientais!',
+                victoryExploreBtn: 'Continuar a Navegar Livremente',
+                victoryRestartBtn: 'Nova Expedição'
+            },
+            tr: {
+                gameTitle: "Türkiye'ye Deniz Yolu",
+                currentDest: 'Mevcut Rota:',
+                routeComplete: "İnebolu'ya Tüm Rota Tamamlandı!",
+                autopilotOn: 'Otopilot: AÇIK',
+                autopilotOff: 'Otopilot: KAPALI',
+                mapView: 'Harita Görünümü',
+                logbook: 'Seyir Defteri',
+                dockIn: 'Demir At:',
+                shipStatus: 'Karavela Durumu',
+                knots: 'deniz mili',
+                sailingTo: 'Rota:',
+                compassHint: 'Yelken açmak için <kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px]">W</kbd><kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px] ml-0.5">A</kbd><kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px] ml-0.5">S</kbd><kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px] ml-0.5">D</kbd> veya Ok tuşlarını kullanın. Kamerayı döndürmek için fareyi sürükleyin.',
+                stopOf: (order, total) => `Durak ${order} / ${total}`,
+                stopShort: (order) => `Durak ${order}`,
+                newAiPaint: 'Yeni YZ Tablosu',
+                refiningAi: 'Nano Banana ile işleniyor...',
+                historicalPainting: 'Tarihi Tablo',
+                captainChallenge: 'Kaptanın Sınavı:',
+                wrongAnswer: 'Yanlış cevap Kaptan! Yukarıdaki tarihi veya çevresel bilgileri tekrar okuyup başka bir seçeneği deneyin.',
+                celebrateFinal: "İnebolu'ya Zafer Varışını Kutla!",
+                departTo: (name) => `${name} Limanına Yelken Aç`,
+                introTitle: "Türkiye'ye Deniz Yolu",
+                introSubtitle: "Lizbon'dan İnebolu'ya • 3B Tarihi ve Çevresel Keşif Seferi",
+                introDesc: "<strong>Portekiz Karavelanıza</strong> hoş geldiniz! Göreviniz Tejo Nehri ağzından başlayıp Cebelitarık Boğazı, Akdeniz, Ege Denizi, Çanakkale ve İstanbul Boğazı'nı geçerek Karadeniz'deki <strong>İnebolu</strong> limanına kadar uzanan bir deniz seferine komuta etmektir.<br><br><strong>11 tarihi limanın</strong> her birinde o yere özgü tabloyu inceleyin ve bir sonraki aşamayı açmak için yerel tarih veya çevreyle ilgili bulmacayı çözün!",
+                introManual: '<strong>Manuel Kontrol:</strong> WASD / Ok tuşları veya ekran düğmeleri.',
+                introAuto: '<strong>Otopilot:</strong> Limana kadar deniz yolculuğunu hissederek ilerleyin.',
+                introStartBtn: "Lizbon'dan Yelken Aç!",
+                logbookTitle: 'Sefer Seyir Defteri',
+                solvedBadge: 'Çözüldü',
+                toExploreBadge: 'Keşfedilecek',
+                sailHereBtn: 'Buraya Yelken Aç',
+                viewChallengeBtn: 'Soruyu Gör',
+                victoryBadge: 'Sefer Tamamlandı!',
+                victoryTitle: "Kastamonu'nun Kapısı İnebolu'ya Ulaştınız!",
+                victoryDesc: "Tebrikler Kaptan! Lizbon'dan başlayıp Lagos & Faro, Cebelitarık, Cezayir, Valletta, Palermo, Atina, İzmir, Çanakkale ve İstanbul üzerinden Karadeniz'in tarihi kıyısı <strong>İnebolu</strong>'ya kadar ustalıkla yelken açtınız ve 11 kültürel ve çevresel sınavın tamamını başarıyla geçtiniz!",
+                victoryExploreBtn: 'Serbestçe Yelken Açmaya Devam Et',
+                victoryRestartBtn: 'Yeni Sefer'
+            },
+            en: {
+                gameTitle: 'Sea Route to Turkey',
+                currentDest: 'Current Destination:',
+                routeComplete: 'Full Route to İnebolu Completed!',
+                autopilotOn: 'Autopilot: ON',
+                autopilotOff: 'Autopilot: OFF',
+                mapView: 'Map View',
+                logbook: 'Logbook',
+                dockIn: 'Dock at',
+                shipStatus: 'Caravel Status',
+                knots: 'knots',
+                sailingTo: 'Sailing to',
+                compassHint: 'Use <kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px]">W</kbd><kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px] ml-0.5">A</kbd><kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px] ml-0.5">S</kbd><kbd class="px-1.5 py-0.5 bg-amber-950 border border-amber-600 rounded text-[10px] ml-0.5">D</kbd> or Arrow keys to sail. Drag mouse to rotate camera.',
+                stopOf: (order, total) => `Stop ${order} of ${total}`,
+                stopShort: (order) => `Stop ${order}`,
+                newAiPaint: 'New AI Painting',
+                refiningAi: 'Refining with Nano Banana...',
+                historicalPainting: 'Historical Painting',
+                captainChallenge: "Captain's Challenge:",
+                wrongAnswer: 'Incorrect answer, Captain! Re-read the historical or environmental chronicle above and try another option.',
+                celebrateFinal: 'Celebrate Final Arrival in İnebolu!',
+                departTo: (name) => `Set Sail for ${name}`,
+                introTitle: 'Sea Route to Turkey',
+                introSubtitle: 'From Lisbon to İnebolu • 3D Historical & Environmental Expedition',
+                introDesc: 'Welcome aboard your <strong>Portuguese Caravel</strong>! Your mission is to command a maritime expedition from the Tagus estuary, crossing the Strait of Gibraltar, the Mediterranean Sea, the Aegean Sea, the Dardanelles, and the Bosphorus all the way to <strong>İnebolu</strong> on the Black Sea.<br><br>At each of the <strong>11 historic ports</strong>, admire the destination artwork and solve the local history or environmental challenge to unlock the next leg!',
+                introManual: '<strong>Manual Control:</strong> WASD / Arrow keys or on-screen buttons.',
+                introAuto: '<strong>Autopilot:</strong> Sail automatically and feel the voyage to the port.',
+                introStartBtn: 'Hoist Sails in Lisbon!',
+                logbookTitle: 'Expedition Logbook',
+                solvedBadge: 'Solved',
+                toExploreBadge: 'To Explore',
+                sailHereBtn: 'Sail Here',
+                viewChallengeBtn: 'View Challenge',
+                victoryBadge: 'Expedition Completed!',
+                victoryTitle: 'You Reached İnebolu, Gateway to Kastamonu!',
+                victoryDesc: 'Congratulations, Captain! You masterfully sailed from Lisbon through Lagos & Faro, Gibraltar, Algiers, Valletta, Palermo, Athens, İzmir, Çanakkale, and Istanbul to the historic Black Sea coast of <strong>İnebolu</strong>, overcoming all 11 cultural and environmental challenges!',
+                victoryExploreBtn: 'Continue Sailing Freely',
+                victoryRestartBtn: 'New Expedition'
+            }
+        };
+
+        const PORTS_DATA = [
+            {
+                id: 'lisboa',
+                order: 1,
+                coords: { x: -128, z: 18 },
+                color: '#f59e0b',
+                imagePrompt: 'Cinematic photorealistic historical painting of Lisbon harbor on the Tagus river at golden sunset, 16th century Portuguese Caravel with red Cross of Christ on white triangular lateen sails anchored near Belém Tower and the seven hills of old Olisipo, warm golden hour lighting, ultra detailed masterpiece, 16:9.',
+                correctIndex: 0,
+                i18n: {
+                    pt: {
+                        name: 'Lisboa',
+                        subtitle: 'Fundação da Cidade',
+                        lore: 'Banhada pelo estuário do rio Tejo, Lisboa é uma das cidades mais antigas da Europa Ocidental. Segundo a lenda clássica, foi fundada pelo herói grego Ulisses com o nome de "Olisipo"; historicamente, os Fenícios estabeleceram aqui um importante entreposto comercial (Alis Ubbo, "Enseada Amena") cerca de 1200 a.C., antes da chegada dos Romanos.',
+                        question: 'Que antigo povo navegador do Mediterrâneo fundou o entreposto comercial de "Alis Ubbo" no estuário do Tejo, e que herói mítico grego está associado à lenda da fundação de Lisboa (Olisipo)?',
+                        options: [
+                            'Os Fenícios (histórico) e o herói Ulisses / Odisseu (lenda)',
+                            'Os Vikings (histórico) e o herói Hércules (lenda)',
+                            'Os Persas (histórico) e o herói Aquiles (lenda)',
+                            'Os Astecas (histórico) e o rei Salomão (lenda)'
+                        ],
+                        explanation: 'Correto! Os Fenícios criaram um porto seguro no Tejo ("Alis Ubbo") no século XII a.C., enquanto o mito clássico atribui a fundação de Olisipo a Ulisses durante o seu regresso de Troia.'
+                    },
+                    tr: {
+                        name: 'Lizbon',
+                        subtitle: 'Şehrin Kuruluşu',
+                        lore: 'Tejo Nehri haliçinde yer alan Lizbon, Batı Avrupa’nın en eski şehirlerinden biridir. Klasik efsaneye göre Yunan kahramanı Odysseus (Ulisses) tarafından "Olisipo" adıyla kurulmuştur; tarihsel olarak ise Romalılardan önce MÖ 1200 civarında Fenikeliler burada önemli bir ticaret limanı (Alis Ubbo, "Güvenli Koy") kurmuşlardır.',
+                        question: 'Tejo haliçinde "Alis Ubbo" ticaret limanını kuran antik Akdeniz denizci halkı hangisidir ve Lizbon’un (Olisipo) kuruluş efsanesi hangi Yunan kahramanıyla ilişkilendirilir?',
+                        options: [
+                            'Fenikeliler (tarihsel) ve kahraman Odysseus / Ulisses (efsane)',
+                            'Vikingler (tarihsel) ve kahraman Herkül (efsane)',
+                            'Persler (tarihsel) ve kahraman Akhilleus (efsane)',
+                            'Aztekler (tarihsel) ve Kral Süleyman (efsane)'
+                        ],
+                        explanation: 'Doğru! Fenikeliler MÖ 12. yüzyılda Tejo Nehrinde güvenli bir liman ("Alis Ubbo") kurmuş, klasik efsane ise Olisipo’nun kuruluşunu Truva’dan dönen Odysseus’a atfetmiştir.'
+                    },
+                    en: {
+                        name: 'Lisbon',
+                        subtitle: 'Foundation of the City',
+                        lore: 'Washed by the Tagus river estuary, Lisbon is one of the oldest cities in Western Europe. According to classical legend, it was founded by the Greek hero Ulysses under the name "Olisipo"; historically, the Phoenicians established a major trading post here (Alis Ubbo, "Safe Harbor") around 1200 BC, long before the Romans arrived.',
+                        question: 'Which ancient Mediterranean seafaring people founded the trading post of "Alis Ubbo" on the Tagus estuary, and which mythical Greek hero is linked to the legend of Lisbon’s foundation (Olisipo)?',
+                        options: [
+                            'The Phoenicians (historical) and the hero Ulysses / Odysseus (legend)',
+                            'The Vikings (historical) and the hero Hercules (legend)',
+                            'The Persians (historical) and the hero Achilles (legend)',
+                            'The Aztecs (historical) and King Solomon (legend)'
+                        ],
+                        explanation: 'Correct! The Phoenicians established a safe harbor on the Tagus ("Alis Ubbo") in the 12th century BC, while classical myth attributes the founding of Olisipo to Ulysses on his return from Troy.'
+                    }
+                }
+            },
+            {
+                id: 'lagos_faro',
+                order: 2,
+                coords: { x: -124, z: 36 },
+                color: '#eab308',
+                imagePrompt: 'Photorealistic cinematic coastal view of Lagos and Faro in the Algarve, Portugal during the Age of Discovery, dramatic golden limestone sea cliffs of Ponta da Piedade, turquoise Atlantic water, a realistic 15th-century Portuguese lateen-rigged Caravel sailing out to sea, brass astrolabe motif in the sky, ultra detailed.',
+                correctIndex: 0,
+                i18n: {
+                    pt: {
+                        name: 'Lagos & Faro',
+                        subtitle: 'Ponto de Partida para os Descobrimentos Portugueses',
+                        lore: 'Na costa do Algarve, Lagos e Faro foram fundamentais no arranque da Expansão Marítima Portuguesa no século XV. Sob o impulso do Infante D. Henrique, a partir de Lagos, Sagres e Faro armaram-se e aperfeiçoaram-se as caravelas de vela latina e os instrumentos de navegação astronómica (como o astrolábio e o quadrante) que permitiram dobrar o Cabo Bojador.',
+                        question: 'Porque foram os portos algarvios de Lagos e Faro e a caravela portuguesa tão decisivos como ponto de partida dos Descobrimentos?',
+                        options: [
+                            'As velas latinas triangulares permitiam "bolinar" (navegar contra o vento) e explorar o Atlântico com precisão astronómica',
+                            'Usavam motores a vapor movidos a carvão mineral extraído na Serra de Monchique',
+                            'Dependiam exclusivamente de remadores para nunca precisar de vento no oceano',
+                            'Navegavam apenas junto à praia sem nunca usar bússola nem astrolábio'
+                        ],
+                        explanation: 'Exato! A caravela com velas latinas permitia navegar à bolina (em ziguezague contra os ventos alísios no regresso a Portugal), tornando Lagos e Faro o verdadeiro laboratório náutico dos Descobrimentos.'
+                    },
+                    tr: {
+                        name: 'Lagos & Faro',
+                        subtitle: 'Portekiz Keşiflerinin Başlangıç Noktası',
+                        lore: 'Algarve kıyısındaki Lagos ve Faro, 15. yüzyılda Portekiz Deniz Keşiflerinin başlamasında kilit rol oynamıştır. Prens Gemici Henrique’nin öncülüğünde, Bojador Burnu’nu aşmayı sağlayan latin yelkenli karavelalar ve astronomik seyir aletleri (usturlap ve kadran gibi) Lagos, Sagres ve Faro’da geliştirilip donatılmıştır.',
+                        question: 'Algarve limanları Lagos ve Faro ile Portekiz karavelası, Coğrafi Keşiflerin başlangıç noktası olarak neden bu kadar belirleyici olmuştur?',
+                        options: [
+                            'Üçgen latin yelkenleri rüzgâra karşı zikzak çizerek (orsa seyri) ilerlemeyi ve astronomik seyirle okyanusu keşfetmeyi sağlıyordu',
+                            'Monchique Dağlarından çıkarılan kömürle çalışan buharlı motorlar kullanıyorlardı',
+                            'Okyanusta rüzgâra hiç ihtiyaç duymamak için yalnızca kürekçilere güveniyorlardı',
+                            'Pusula veya usturlap kullanmadan sadece kıyı şeridinde yüzüyorlardı'
+                        ],
+                        explanation: 'Kesinlikle doğru! Latin yelkenli karavelalar rüzgâra karşı orsa seyrine olanak tanıyarak Lagos ve Faro’yu Keşifler Çağı’nın gerçek denizcilik laboratuvarı haline getirmiştir.'
+                    },
+                    en: {
+                        name: 'Lagos & Faro',
+                        subtitle: 'Starting Point for the Portuguese Discoveries',
+                        lore: 'On the Algarve coast, Lagos and Faro were pivotal to launching the 15th-century Portuguese Maritime Expansion. Driven by Prince Henry the Navigator, lateen-rigged caravels and astronomical navigation instruments (such as the astrolabe and quadrant) were outfitted and perfected in Lagos, Sagres, and Faro, enabling sailors to round Cape Bojador.',
+                        question: 'Why were the Algarve ports of Lagos and Faro and the Portuguese caravel so decisive as the starting point for the Age of Discovery?',
+                        options: [
+                            'Triangular lateen sails allowed tacking into the wind and exploring the Atlantic with astronomical precision',
+                            'They used coal-fired steam engines mined from the Monchique mountains',
+                            'They relied exclusively on rowers so they never needed wind on the ocean',
+                            'They sailed only along the beach without ever using a compass or astrolabe'
+                        ],
+                        explanation: 'Spot on! The lateen-rigged caravel could tack against the trade winds on the return voyage to Portugal, making Lagos and Faro the true nautical laboratory of the Discoveries.'
+                    }
+                }
+            },
+            {
+                id: 'gibraltar',
+                order: 3,
+                coords: { x: -102, z: 45 },
+                color: '#10b981',
+                imagePrompt: 'Photorealistic nature and historical scene of the iconic Rock of Gibraltar towering over the blue Strait of Gibraltar, wild Barbary macaques (Macaca sylvanus) in the foreground on Mediterranean limestone rocks with natural vegetation, a classic Portuguese Caravel ship passing through the strait below, National Geographic style photography.',
+                correctIndex: 0,
+                i18n: {
+                    pt: {
+                        name: 'Gibraltar',
+                        subtitle: 'Os Macacos do Rochedo e o Estreito',
+                        lore: 'Guardião da passagem única entre o Oceano Atlântico e o Mar Mediterrâneo, o Rochedo de Gibraltar (as antigas Colunas de Hércules) alberga a única população selvagem de primatas da Europa: os macacos-de-gibraltar (Macaca sylvanus), originários das montanhas do Atlas no Norte de África.',
+                        question: 'Para preservar o equilíbrio ambiental e a saúde dos famosos macacos-de-gibraltar (Macaca sylvanus) no Rochedo, qual é a regra ecológica essencial que visitantes e marinheiros devem respeitar?',
+                        options: [
+                            'Não alimentar os macacos com comida humana, pois causa diabetes, agressividade e perda dos seus hábitos naturais de procura de alimento',
+                            'Capturar os macacos para os levar nas caravelas como mascotes de convés',
+                            'Alimentá-los diariamente com doces e refrigerantes para que fiquem junto às estradas',
+                            'Cortar toda a vegetação mediterrânica do Rochedo para construir parques de estacionamento'
+                        ],
+                        explanation: 'Muito bem! A conservação dos macacos-de-gibraltar exige que dependam da alimentação natural e dos postos controlados pelos biólogos da reserva, evitando doenças e conflitos com humanos.'
+                    },
+                    tr: {
+                        name: 'Cebelitarık',
+                        subtitle: 'Kaya Maymunları ve Boğaz',
+                        lore: 'Atlantik Okyanusu ile Akdeniz arasındaki tek geçişin bekçisi olan Cebelitarık Kayası (antik Herkül Sütunları), Kuzey Afrika’daki Atlas Dağları kökenli olup Avrupa’daki tek vahşi primat popülasyonu olan Berberi makaklarına (Macaca sylvanus) ev sahipliği yapar.',
+                        question: 'Cebelitarık Kayası’ndaki ünlü makakların (Macaca sylvanus) sağlığını ve ekolojik dengeyi korumak için ziyaretçilerin ve denizcilerin uyması gereken temel çevre kuralı nedir?',
+                        options: [
+                            'Maymunları insan gıdasıyla beslememek; çünkü bu durum diyabete, saldırganlığa ve doğal besin arama alışkanlıklarının kaybına yol açar',
+                            'Maymunları yakalayıp karavelalarda güverte maskotu olarak taşımak',
+                            'Yol kenarlarında kalmaları için onları her gün tatlı ve gazlı içeceklerle beslemek',
+                            'Otopark yapmak için Kayadaki tüm Akdeniz bitki örtüsünü kesmek'
+                        ],
+                        explanation: 'Çok doğru! Cebelitarık makaklarının korunması, hastalıkları ve insanlarla çatışmaları önlemek için doğal beslenmelerine ve koruma biyologlarının denetimli noktalarına bağlı kalmalarını gerektirir.'
+                    },
+                    en: {
+                        name: 'Gibraltar',
+                        subtitle: 'The Barbary Macaques & The Strait',
+                        lore: 'Guardian of the sole gateway between the Atlantic Ocean and the Mediterranean Sea, the Rock of Gibraltar (the ancient Pillars of Hercules) is home to Europe’s only wild monkey population: the Barbary macaques (Macaca sylvanus), originally from the Atlas Mountains of North Africa.',
+                        question: 'To preserve the ecological balance and health of the famous Barbary macaques (Macaca sylvanus) on the Rock, what essential conservation rule must visitors and sailors respect?',
+                        options: [
+                            'Do not feed the macaques human food, as it causes diabetes, aggression, and loss of their natural foraging behavior',
+                            'Capture the macaques to bring them aboard caravels as deck mascots',
+                            'Feed them sweets and sodas daily so they stay next to the roads',
+                            'Cut down all Mediterranean vegetation on the Rock to build parking lots'
+                        ],
+                        explanation: 'Well done! Conserving the Barbary macaques requires keeping them on their natural diet and reserve-managed feeding stations, preventing disease and conflict with humans.'
+                    }
+                }
+            },
+            {
+                id: 'argel',
+                order: 4,
+                coords: { x: -55, z: 50 },
+                color: '#f97316',
+                imagePrompt: 'Photorealistic panoramic view of Algiers (El Djazair) showing the historic whitewashed Casbah overlooking the deep blue Mediterranean Sea, transitioning inland toward the Atlas mountains and a lush green reforestation belt (Green Dam) holding back golden Sahara desert sand dunes, Caravel anchored in the bay, cinematic lighting.',
+                correctIndex: 0,
+                i18n: {
+                    pt: {
+                        name: 'Argel',
+                        subtitle: 'O Desafio Ambiental da Desertificação',
+                        lore: 'Ergue-se em anfiteatro branco sobre o Mediterrâneo ("Argel, a Branca"), mas a sul das montanhas do Atlas estende-se o imenso Deserto do Saara. A Argélia enfrenta o grave desafio ambiental da desertificação — o avanço das areias e a degradação dos solos agrícolas devido às secas prolongadas e às alterações climáticas.',
+                        question: 'Que estratégia ambiental e florestal tem sido implementada na Argélia e no Norte de África para travar o avanço da desertificação para norte?',
+                        options: [
+                            'A criação de uma "Barragem Verde" (reflorestação com milhões de árvores resistentes à seca, conservação de água e gestão sustentável do solo)',
+                            'A bombagem de água salgada do mar diretamente sobre os campos agrícolas de trigo',
+                            'O abate total dos oásis e palmeirais para permitir que o vento leve a areia para o mar',
+                            'A substituição de todas as terras férteis por camadas de cimento impermeável'
+                        ],
+                        explanation: 'Perfeito! O projeto da "Barragem Verde" (Barrage Vert) visa criar uma cintura ecológica de vegetação adaptada ao clima semiárido para fixar dunas, reter humidade e travar a desertificação.'
+                    },
+                    tr: {
+                        name: 'Cezayir',
+                        subtitle: 'Çölleşmeye Karşı Çevresel Mücadele',
+                        lore: 'Akdeniz’in üzerinde beyaz bir amfitiyatro gibi yükselen ("Beyaz Cezayir") şehrin güneyinde, Atlas Dağları’nın ötesinde uçsuz bucaksız Sahra Çölü uzanır. Cezayir, uzun süreli kuraklıklar ve iklim değişikliği nedeniyle kumulların ilerlemesi ve tarım topraklarının bozulması anlamına gelen ciddi çölleşme tehdidiyle karşı karşıyadır.',
+                        question: 'Çölleşmenin kuzeye doğru ilerlemesini durdurmak için Cezayir ve Kuzey Afrika’da hangi çevresel ve ormancılık stratejisi uygulanmaktadır?',
+                        options: [
+                            '"Yeşil Baraj" (Barrage Vert) projesiyle kuraklığa dayanıklı milyonlarca ağaç dikilmesi, suyun korunması ve sürdürülebilir toprak yönetimi',
+                            'Tuzlu deniz suyunun doğrudan buğday tarlalarının üzerine pompalanması',
+                            'Rüzgârın kumları denize taşıması için tüm vahaların ve hurma ağaçlarının kesilmesi',
+                            'Tüm verimli arazilerin geçirimsiz beton tabakalarla kaplanması'
+                        ],
+                        explanation: 'Mükemmel! "Yeşil Baraj" (Barrage Vert) projesi, kumulları sabitlemek, nemi tutmak ve çölleşmeyi durdurmak için yarı kurak iklime uyumlu ekolojik bir bitki kuşağı oluşturmayı amaçlar.'
+                    },
+                    en: {
+                        name: 'Algiers',
+                        subtitle: 'The Environmental Challenge of Desertification',
+                        lore: 'Rising like a white amphitheater above the Mediterranean ("Algiers the White"), south of its Atlas mountains lies the vast Sahara Desert. Algeria faces the severe environmental challenge of desertification—the encroachment of sand and degradation of fertile soil caused by prolonged droughts and climate change.',
+                        question: 'What environmental and forestry strategy has been implemented in Algeria and North Africa to halt the northward advance of desertification?',
+                        options: [
+                            'Creating a "Green Dam" (reforestation with millions of drought-resistant trees, water conservation, and sustainable soil management)',
+                            'Pumping salty seawater directly onto agricultural wheat fields',
+                            'Cutting down all oases and palm groves so the wind blows the sand into the sea',
+                            'Replacing all fertile farmland with layers of impermeable concrete'
+                        ],
+                        explanation: 'Perfect! The "Green Dam" (Barrage Vert) project builds an ecological belt of vegetation adapted to semi-arid climates to stabilize dunes, retain moisture, and stop desertification.'
+                    }
+                }
+            },
+            {
+                id: 'valetta',
+                order: 5,
+                coords: { x: 8, z: 54 },
+                color: '#ef4444',
+                imagePrompt: 'Photorealistic epic view of the Grand Harbour of Valletta, Malta at sunrise, honey-colored limestone fortress bastions and Baroque domes of the Knights of Malta, banners with the eight-pointed Maltese Cross, a Portuguese Caravel entering the fortified harbor, dramatic clouds and reflections on the water.',
+                correctIndex: 0,
+                i18n: {
+                    pt: {
+                        name: 'La Valetta',
+                        subtitle: 'Os Cavaleiros da Ordem de Malta',
+                        lore: 'Situada no coração estratégico do Mediterrâneo, La Valetta foi fundada em 1566 pelo Grão-Mestre Jean Parisot de Valette após o Grande Cerco de Malta (1565). Os Cavaleiros Hospitalários de São João (conhecidos como Cavaleiros de Malta) ergueram aqui uma cidade-fortaleza inexpugnável e um dos hospitais mais avançados da época (a Sacra Infermeria).',
+                        question: 'Qual é o famoso símbolo associado aos Cavaleiros de Malta e que dupla missão desempenhava esta Ordem na ilha?',
+                        options: [
+                            'A Cruz de Oito Pontas (Cruz de Malta), combinando a defesa marítima das rotas cristãs com a assistência médica e hospitalar aos doentes e feridos',
+                            'O Tridente de Neptuno, dedicando-se apenas à pesca de coral no Mar Vermelho',
+                            'A Águia Imperial Romana, proibindo a entrada de qualquer navio ou médico na ilha',
+                            'A Flor-de-Lis Dourada, tendo abandonado a ilha sem construir muralhas nem portos'
+                        ],
+                        explanation: 'Correto! A Cruz de Malta de oito pontas simboliza as oito bem-aventuranças e as oito "Línguas" da Ordem, célebre tanto pelos seus bastiões defensivos em La Valetta como pela sua tradição hospitalar.'
+                    },
+                    tr: {
+                        name: 'La Valetta',
+                        subtitle: 'Malta Şövalyeleri Tarikatı',
+                        lore: 'Akdeniz’in stratejik kalbinde yer alan Valletta, 1565 Büyük Malta Kuşatması’nın ardından 1566 yılında Büyük Üstat Jean Parisot de Valette tarafından kurulmuştur. Aziz Yuhanna Hospitalier Şövalyeleri (Malta Şövalyeleri), burada aşılmaz bir kale-şehir ve dönemin en gelişmiş hastanelerinden biri olan Sacra Infermeria’yı inşa etmişlerdir.',
+                        question: 'Malta Şövalyeleri ile özdeşleşen ünlü sembol hangisidir ve bu Tarikat adada hangi ikili görevi üstlenmiştir?',
+                        options: [
+                            'Sekiz Uçlu Haç (Malta Haçı); deniz yollarının savunulmasını hastalar ve yaralılar için tıbbi ve hastane bakımıyla birleştirmiştir',
+                            'Neptün’ün Üç Dişli Mızrağı; yalnızca Kızıldeniz’de mercan avcılığı yapmışlardır',
+                            'Roma İmparatorluk Kartalı; adaya herhangi bir gemi veya doktorun girmesini yasaklamışlardır',
+                            'Altın Zambak; hiçbir sur veya liman inşa etmeden adayı terk etmişlerdir'
+                        ],
+                        explanation: 'Doğru! Sekiz uçlu Malta Haçı, hem Valletta’daki güçlü savunma burçlarıyla hem de köklü hastane geleneğiyle tanınan Tarikatın sekiz erdemini ve sekiz "Dilini" simgeler.'
+                    },
+                    en: {
+                        name: 'Valletta',
+                        subtitle: 'The Knights of Malta',
+                        lore: 'Located at the strategic heart of the Mediterranean, Valletta was founded in 1566 by Grand Master Jean Parisot de Valette after the Great Siege of Malta (1565). The Knights Hospitaller of Saint John (known as the Knights of Malta) built an impregnable fortress-city here alongside one of the most advanced hospitals of the era (the Sacra Infermeria).',
+                        question: 'What is the famous symbol associated with the Knights of Malta, and what dual mission did this Order fulfill on the island?',
+                        options: [
+                            'The Eight-Pointed Cross (Maltese Cross), combining maritime defense with medical and hospital care for the sick and wounded',
+                            'Neptune’s Trident, devoting themselves solely to coral fishing in the Red Sea',
+                            'The Roman Imperial Eagle, forbidding any ship or physician from entering the island',
+                            'The Golden Fleur-de-Lis, having abandoned the island without building walls or ports'
+                        ],
+                        explanation: 'Correct! The eight-pointed Maltese Cross symbolizes the eight beatitudes and eight "Langues" of the Order, renowned both for Valletta’s defensive bastions and its hospital tradition.'
+                    }
+                }
+            },
+            {
+                id: 'palermo',
+                order: 6,
+                coords: { x: 4, z: 24 },
+                color: '#a855f7',
+                imagePrompt: 'Photorealistic view of Palermo, Sicily, showcasing the Arab-Norman architecture with red domes of San Giovanni degli Eremiti and Palermo Cathedral, lush Mediterranean citrus groves with ripe oranges in the Conca d Oro, Mount Pellegrino and the Tyrrhenian Sea with a sailing Caravel in the background, warm sunlight.',
+                correctIndex: 0,
+                i18n: {
+                    pt: {
+                        name: 'Palermo',
+                        subtitle: 'Encruzilhada Cultural da Sicília',
+                        lore: 'Capital da Sicília, Palermo foi ao longo dos séculos um extraordinário ponto de encontro de civilizações: Fenícios, Gregos, Romanos, Bizantinos, Árabes e Normandos. No século XII, o estilo Árabe-Normando-Bizantino de Palermo uniu mosaicos dourados bizantinos, tetos em muqarnas islâmicos e arquitetura românica europeia, enquanto os árabes introduziram citrinos (laranjas e limões) e engenhosos sistemas de irrigação.',
+                        question: 'O que torna o património histórico e agrícola de Palermo um exemplo único de convivência mediterrânica?',
+                        options: [
+                            'A síntese arquitetónica Árabe-Normando-Bizantina e a introdução histórica dos pomares de citrinos e redes hidráulicas na Conca d’Oro',
+                            'O isolamento absoluto face ao comércio marítimo durante mais de dois mil anos',
+                            'A construção exclusiva de pirâmides de gelo no topo do vulcão Etna',
+                            'A proibição de qualquer influência grega, árabe ou latina nas artes da ilha'
+                        ],
+                        explanation: 'Exatamente! Palermo brilhou na Idade Média como um centro de tolerância intelectual, científica e artística onde conviviam as culturas grega, árabe e latina.'
+                    },
+                    tr: {
+                        name: 'Palermo',
+                        subtitle: 'Sicilya’nın Kültürler Kavşağı',
+                        lore: 'Sicilya’nın başkenti Palermo, yüzyıllar boyunca Fenikeliler, Yunanlılar, Romalılar, Bizanslılar, Araplar ve Normanlar gibi medeniyetlerin olağanüstü buluşma noktası olmuştur. 12. yüzyılda Palermo’nun Arap-Norman-Bizans üslubu; altın Bizans mozaiklerini, İslami mukarnas tavanları ve Avrupa Romanesk mimarisini birleştirirken, Araplar da narenciye bahçelerini (portakal ve limon) ve gelişmiş sulama sistemlerini adaya kazandırmıştır.',
+                        question: 'Palermo’nun tarihi ve tarımsal mirasını Akdeniz’deki kültürel etkileşimin eşsiz bir örneği yapan nedir?',
+                        options: [
+                            'Arap-Norman-Bizans mimari sentezi ile Conca d’Oro ovasına narenciye bahçeleri ve su kanallarının kazandırılması',
+                            'İki bin yılı aşkın süre boyunca deniz ticaretinden tamamen izole kalması',
+                            'Etna Yanardağı’nın zirvesine yalnızca buz piramitleri inşa edilmesi',
+                            'Adadaki sanatlarda Yunan, Arap veya Latin etkilerinin tamamen yasaklanması'
+                        ],
+                        explanation: 'Kesinlikle! Palermo, Orta Çağ’da Yunan, Arap ve Latin kültürlerinin bir arada yaşadığı entelektüel, bilimsel ve sanatsal bir hoşgörü merkezi olarak parlamıştır.'
+                    },
+                    en: {
+                        name: 'Palermo',
+                        subtitle: 'Cultural Crossroads of Sicily',
+                        lore: 'Capital of Sicily, Palermo has been an extraordinary meeting point of civilizations across the centuries: Phoenicians, Greeks, Romans, Byzantines, Arabs, and Normans. In the 12th century, Palermo’s Arab-Norman-Byzantine style blended golden Byzantine mosaics, Islamic muqarnas ceilings, and European Romanesque architecture, while Arab agronomists introduced citrus groves (oranges and lemons) and ingenious irrigation networks.',
+                        question: 'What makes Palermo’s historical and agricultural heritage a unique example of Mediterranean coexistence?',
+                        options: [
+                            'The Arab-Norman-Byzantine architectural synthesis and the historical introduction of citrus orchards and hydraulic networks in the Conca d’Oro',
+                            'Complete isolation from maritime trade for over two thousand years',
+                            'The exclusive construction of ice pyramids atop Mount Etna',
+                            'The prohibition of any Greek, Arab, or Latin influence in the island’s arts'
+                        ],
+                        explanation: 'Exactly! Palermo shone in the Middle Ages as a center of intellectual, scientific, and artistic tolerance where Greek, Arab, and Latin cultures thrived together.'
+                    }
+                }
+            },
+            {
+                id: 'atenas',
+                order: 7,
+                coords: { x: 64, z: 26 },
+                color: '#38bdf8',
+                imagePrompt: 'Photorealistic majestic view of the Acropolis of Athens and the marble Parthenon temple illuminated by golden Mediterranean sunlight, olive trees in the foreground, looking out toward the port of Piraeus and the Aegean Sea where a classic wooden Caravel is anchored, ultra high detail.',
+                correctIndex: 0,
+                i18n: {
+                    pt: {
+                        name: 'Atenas',
+                        subtitle: 'O Legado da Grécia Antiga',
+                        lore: 'Aportando no Pireu, porto de Atenas, contemplamos a Acrópole coroada pelo Pártenon, dedicado à deusa Atena. No século V a.C., a pólis ateniense lançou as bases da Democracia (onde os cidadãos debatiam e votavam na Ágora e na Pnyx), da Filosofia (Sócrates, Platão e Aristóteles), do Teatro e do pensamento científico ocidental.',
+                        question: 'Que instituição política revolucionária nasceu na Atenas Clássica e qual é o templo principal que domina o alto da Acrópole?',
+                        options: [
+                            'A Democracia (governo do povo / cidadãos) e o templo do Pártenon dedicado a Atena',
+                            'O Feudalismo Medieval e o Coliseu Flávio dedicado a Júpiter',
+                            'O Império Inca e o Templo do Sol de Machu Picchu',
+                            'A Monarquia Absoluta Babilónica e os Jardins Suspensos'
+                        ],
+                        explanation: 'Brilhante! Em Atenas nasceu a Democracia (Demos = povo, Kratos = poder) e ergueu-se o Pártenon no século de Péricles, símbolo eterno da Grécia Antiga.'
+                    },
+                    tr: {
+                        name: 'Atina',
+                        subtitle: 'Antik Yunan Mirası',
+                        lore: 'Atina’nın limanı Pire’ye demirlediğimizde, tanrıça Athena’ya adanmış Parthenon tapınağıyla taçlanan Akropolis’i görürüz. MÖ 5. yüzyılda Atina şehir devleti (polis); vatandaşların Agora ve Pnyx’te tartışıp oy kullandığı Demokrasinin, Felsefenin (Sokrates, Platon ve Aristoteles), Tiyatronun ve bilimsel düşüncenin temellerini atmıştır.',
+                        question: 'Klasik Atina’da hangi devrimci siyasi yönetim biçimi doğmuştur ve Akropolis’in zirvesine hâkim olan ana tapınak hangisidir?',
+                        options: [
+                            'Demokrasi (halkın / yurttaşların yönetimi) ve Athena’ya adanmış Parthenon Tapınağı',
+                            'Orta Çağ Feodalizmi ve Jüpiter’e adanmış Kolezyum',
+                            'İnka İmparatorluğu ve Machu Picchu Güneş Tapınağı',
+                            'Babil Mutlak Monarşisi ve Asma Bahçeler'
+                        ],
+                        explanation: 'Harika! Demokrasi (Demos = halk, Kratos = iktidar) Atina’da doğmuş ve Antik Yunan’ın ölümsüz simgesi Parthenon, Perikles Çağı’nda yükselmiştir.'
+                    },
+                    en: {
+                        name: 'Athens',
+                        subtitle: 'The Legacy of Ancient Greece',
+                        lore: 'Docking at Piraeus, the port of Athens, we behold the Acropolis crowned by the Parthenon, dedicated to the goddess Athena. In the 5th century BC, the Athenian polis laid the foundations of Democracy (where citizens debated and voted in the Agora and on the Pnyx), Philosophy (Socrates, Plato, and Aristotle), Theater, and Western scientific thought.',
+                        question: 'What revolutionary political institution was born in Classical Athens, and what is the main temple dominating the top of the Acropolis?',
+                        options: [
+                            'Democracy (rule by the people / citizens) and the Parthenon temple dedicated to Athena',
+                            'Medieval Feudalism and the Flavian Colosseum dedicated to Jupiter',
+                            'The Inca Empire and the Temple of the Sun at Machu Picchu',
+                            'Babylonian Absolute Monarchy and the Hanging Gardens'
+                        ],
+                        explanation: 'Brilliant! Democracy (Demos = people, Kratos = power) was born in Athens, and the Parthenon was erected during the Age of Pericles as an eternal symbol of Ancient Greece.'
+                    }
+                }
+            },
+            {
+                id: 'esmirna',
+                order: 8,
+                coords: { x: 92, z: 22 },
+                color: '#14b8a6',
+                imagePrompt: 'Photorealistic scenic view of Izmir (historic Smyrna) on the Aegean coast of Turkey, blending the ancient Roman Agora marble colonnades with the iconic ornate Ottoman Izmir Clock Tower (Saat Kulesi) at Konak Square by the sea, a wooden Caravel sailing on the shimmering bay of Izmir at sunset.',
+                correctIndex: 0,
+                i18n: {
+                    pt: {
+                        name: 'Esmirna (İzmir)',
+                        subtitle: 'Da Cidade Greco-Romana à Metrópole Turca',
+                        lore: 'Banhada pelo Mar Egeu na costa da Anatólia, a antiga Smyrna (hoje İzmir) é uma cidade milenar. Foi uma das maiores urbes do mundo helenístico e romano — cuja famosa Ágora de Esmirna ainda preserva galerias subterrâneas e arcos romanos — e transformou-se numa vibrante metrópole portuária turca, simbolizada pela icónica Torre do Relógio (Saat Kulesi) na Praça Konak.',
+                        question: 'Como se reflete em Esmirna (İzmir) a continuidade histórica desde a Antiguidade Romana até à Turquia contemporânea?',
+                        options: [
+                            'Pela preservação da Ágora Romana de Smyrna lado a lado com o porto moderno e a emblemática Torre do Relógio (Saat Kulesi) de 1901',
+                            'Pelo abandono total do comércio marítimo desde o fim do Império Romano',
+                            'Por ser uma cidade situada no interior montanhoso sem qualquer ligação ao Mar Egeu',
+                            'Por ter sido fundada apenas no final do século XX sem vestígios arqueológicos antigos'
+                        ],
+                        explanation: 'Correto! Esmirna une mais de 3.000 anos de história marítima no Egeu, desde a Ágora greco-romana até à moderna İzmir e à sua elegante Torre do Relógio.'
+                    },
+                    tr: {
+                        name: 'İzmir (Smyrna)',
+                        subtitle: 'Roma Kentinden Modern Türk Metropolüne',
+                        lore: 'Anadolu’nun Ege kıyısında yer alan antik Smyrna (bugünkü İzmir) binlerce yıllık bir liman kentidir. Helenistik ve Roma dünyasının en önemli merkezlerinden biri olmuş — ünlü İzmir Agorası yeraltı galerilerini ve Roma kemerlerini hâlâ korur — ve Konak Meydanı’ndaki simgesel Saat Kulesi ile temsil edilen canlı, modern bir Türk liman metropolüne dönüşmüştür.',
+                        question: 'İzmir’de Roma Antik Çağı’ndan günümüz Türkiye’sine uzanan tarihsel süreklilik nasıl görülür?',
+                        options: [
+                            'Antik Smyrna Roma Agorası’nın, modern liman ve 1901 tarihli simgesel İzmir Saat Kulesi ile yan yana korunmasıyla',
+                            'Roma İmparatorluğu’nun sonundan beri deniz ticaretinin tamamen terk edilmesiyle',
+                            'Ege Denizi ile hiçbir bağlantısı olmayan dağlık bir iç şehir olmasıyla',
+                            'Hiçbir antik arkeolojik kalıntı olmadan yalnızca 20. yüzyılın sonunda kurulmuş olmasıyla'
+                        ],
+                        explanation: 'Doğru! İzmir, Greko-Romen Agorası’ndan modern kente ve zarif Saat Kulesi’ne kadar Ege’de 3.000 yılı aşkın denizcilik tarihini birleştirir.'
+                    },
+                    en: {
+                        name: 'İzmir (Smyrna)',
+                        subtitle: 'From Greco-Roman City to Turkish Metropolis',
+                        lore: 'Washed by the Aegean Sea on the Anatolian coast, ancient Smyrna (modern İzmir) is a millennia-old city. It was one of the greatest urban centers of the Hellenistic and Roman worlds—whose famous Agora of Smyrna still preserves subterranean galleries and Roman arches—and evolved into a vibrant Turkish port metropolis symbolized by the iconic Clock Tower (Saat Kulesi) at Konak Square.',
+                        question: 'How does İzmir (Smyrna) reflect historical continuity from Roman Antiquity to contemporary Turkey?',
+                        options: [
+                            'Through the preservation of the Roman Agora of Smyrna alongside the modern port and the emblematic 1901 Clock Tower (Saat Kulesi)',
+                            'Through the complete abandonment of maritime trade since the fall of the Roman Empire',
+                            'By being a landlocked mountain city with no connection to the Aegean Sea',
+                            'By having been founded only in the late 20th century with no ancient archaeological remains'
+                        ],
+                        explanation: 'Correct! İzmir unites over 3,000 years of Aegean maritime history, from the Greco-Roman Agora to modern İzmir and its elegant Clock Tower.'
+                    }
+                }
+            },
+            {
+                id: 'canakkale',
+                order: 9,
+                coords: { x: 93, z: -2 },
+                color: '#f43f5e',
+                imagePrompt: 'Photorealistic solemn and majestic view of the Dardanelles Strait in Canakkale, Turkey, featuring the monumental Canakkale Martyrs Memorial (Sehitler Aniti) overlooking the deep blue strait between Europe and Asia, peaceful olive branches, dramatic golden sunset sky, a historical Caravel sailing peacefully on the water.',
+                correctIndex: 0,
+                i18n: {
+                    pt: {
+                        name: 'Çanakkale',
+                        subtitle: 'O Estreito dos Dardanelos e a Batalha de Gallipoli',
+                        lore: 'Guardiã do estreito dos Dardanelos (o antigo Helesponto, perto da lendária Troia), Çanakkale foi palco em 1915 da histórica Campanha de Gallipoli (Batalha de Çanakkale) durante a Primeira Guerra Mundial. As forças otomanas, com destaque para a liderança de Mustafa Kemal (futuro Atatürk), defenderam o estreito sob o lema "Çanakkale é intransponível". Hoje, o local é um santuário de paz e reconciliação entre nações.',
+                        question: 'Que importância histórica teve a Batalha de Gallipoli (Çanakkale) em 1915 e que mensagem transmite hoje o seu memorial?',
+                        options: [
+                            'Marcou a defesa decisiva do estreito dos Dardanelos com o destaque de Mustafa Kemal Atatürk, sendo hoje um símbolo mundial de honra, memória e paz entre antigos adversários',
+                            'Foi uma batalha naval travada no século XII entre caravelas portuguesas e drakares nórdicos',
+                            'Resultou no encerramento definitivo da ligação marítima entre o Mar Egeu e o Mar de Mármara',
+                            'Ocorreu no interior do deserto da Anatólia sem qualquer envolvimento naval'
+                        ],
+                        explanation: 'Exato! A resistência em Çanakkale (1915) foi crucial para o nascimento da identidade da moderna República da Turquia sob Mustafa Kemal Atatürk, e os seus memoriais honram todos os caídos num espírito de paz.'
+                    },
+                    tr: {
+                        name: 'Çanakkale',
+                        subtitle: 'Çanakkale Boğazı ve Gelibolu Destanı',
+                        lore: 'Efsanevi Truva yakınlarındaki Çanakkale Boğazı’nın (antik Hellespontos) bekçisi olan Çanakkale, 1915 yılında Birinci Dünya Savaşı sırasında tarihi Çanakkale Savaşları’na (Gelibolu Cephesi) sahne olmuştur. Mustafa Kemal’in (Atatürk) üstün liderliğiyle öne çıkan savunma, "Çanakkale Geçilmez" sözünü tarihe yazdırmıştır. Bugün yarımada, uluslar arasında barış ve dostluğun simgesidir.',
+                        question: '1915 Çanakkale (Gelibolu) Savaşı’nın tarihsel önemi nedir ve bugünkü anıtları dünyaya hangi mesajı vermektedir?',
+                        options: [
+                            'Mustafa Kemal Atatürk’ün liderliğiyle Çanakkale Boğazı’nın tarihi savunmasını simgeler; bugün eski muharipler arasında onur, saygı ve evrensel barış mesajı verir',
+                            '12. yüzyılda Portekiz karavelaları ile Viking gemileri arasında yapılan bir savaştır',
+                            'Ege Denizi ile Marmara Denizi arasındaki deniz bağlantısının kalıcı olarak kapanmasına yol açmıştır',
+                            'Hiçbir deniz gücü olmadan Anadolu’nun iç kesimlerinde gerçekleşmiştir'
+                        ],
+                        explanation: 'Kesinlikle! 1915 Çanakkale direnişi, Mustafa Kemal Atatürk önderliğinde modern Türkiye Cumhuriyeti’nin doğuşunda dönüm noktası olmuş ve anıtları tüm şehitleri barış ruhuyla onurlandırmıştır.'
+                    },
+                    en: {
+                        name: 'Çanakkale',
+                        subtitle: 'The Dardanelles Strait & Battle of Gallipoli',
+                        lore: 'Guardian of the Dardanelles Strait (the ancient Hellespont, near legendary Troy), Çanakkale was the stage in 1915 for the historic Gallipoli Campaign (Battle of Çanakkale) during World War I. Ottoman forces, with the decisive leadership of Mustafa Kemal (later Atatürk), defended the strait under the motto "Çanakkale is impassable." Today, the site stands as a sanctuary of peace and reconciliation among nations.',
+                        question: 'What was the historical significance of the Battle of Gallipoli (Çanakkale) in 1915, and what message does its memorial convey today?',
+                        options: [
+                            'It marked the decisive defense of the Dardanelles featuring Mustafa Kemal Atatürk, standing today as a global symbol of honor, remembrance, and peace among former adversaries',
+                            'It was a 12th-century naval battle fought between Portuguese caravels and Norse longships',
+                            'It resulted in the permanent closure of the sea link between the Aegean Sea and the Sea of Marmara',
+                            'It took place in the interior Anatolian desert without any naval involvement'
+                        ],
+                        explanation: 'Spot on! The defense at Çanakkale (1915) was pivotal to the birth of the modern Republic of Turkey under Mustafa Kemal Atatürk, and its memorials honor all the fallen in a spirit of peace.'
+                    }
+                }
+            },
+            {
+                id: 'istambul',
+                order: 10,
+                coords: { x: 112, z: -18 },
+                color: '#ec4899',
+                imagePrompt: 'Photorealistic breathtaking panorama of Istanbul across the Bosphorus Strait at twilight, showing Hagia Sophia and the Blue Mosque with domes and minarets on the European side, the Bosphorus Bridge connecting Europe and Asia in the distance, and a classic Portuguese Caravel sailing through the golden reflections on the water.',
+                correctIndex: 0,
+                i18n: {
+                    pt: {
+                        name: 'Istambul',
+                        subtitle: 'A Ponte entre o Ocidente e o Oriente',
+                        lore: 'Outrora Bizâncio e Constantinopla, Istambul é a única grande metrópole do mundo situada em dois continentes — Europa e Ásia — separados pelo estreito do Bósforo, que liga o Mar de Mármara ao Mar Negro. Com monumentos eternos como a Basílica de Santa Sofia (Ayasofya), a Mesquita Azul, o Palácio de Topkapı e as pontes sobre o Bósforo, Istambul é o elo vivo entre o Ocidente e o Oriente.',
+                        question: 'Que característica geográfica e cultural única faz de Istambul a "Ponte entre o Ocidente e o Oriente"?',
+                        options: [
+                            'Estende-se simultaneamente pela Europa e pela Ásia, unidas pelo estreito do Bósforo, sintetizando os legados Romano, Bizantino e Otomano',
+                            'Situa-se numa ilha isolada no meio do Oceano Atlântico sem contacto com a Ásia',
+                            'Separa o continente africano da Antártida através do Canal do Suez',
+                            'Não possui saída para o mar, comunicando apenas por caravanas terrestres'
+                        ],
+                        explanation: 'Fantástico! Atravessar o Bósforo em Istambul é navegar literalmente na fronteira entre a Europa e a Ásia, rumo às águas do Mar Negro.'
+                    },
+                    tr: {
+                        name: 'İstanbul',
+                        subtitle: 'Doğu ile Batı Arasındaki Köprü',
+                        lore: 'Tarihte Byzantion ve Konstantinopolis olarak bilinen İstanbul, Marmara Denizi’ni Karadeniz’e bağlayan İstanbul Boğazı ile ayrılan iki kıta — Avrupa ve Asya — üzerinde yer alan dünyanın tek büyük metropolüdür. Ayasofya, Sultanahmet Camii, Topkapı Sarayı ve Boğaz köprüleri gibi ölümsüz eserleriyle İstanbul, Batı ile Doğu arasındaki canlı bağdır.',
+                        question: 'İstanbul’u "Doğu ile Batı Arasındaki Köprü" yapan eşsiz coğrafi ve kültürel özellik nedir?',
+                        options: [
+                            'İstanbul Boğazı ile birleşen Avrupa ve Asya kıtalarına yayılarak Roma, Bizans ve Osmanlı miraslarını sentezlemesi',
+                            'Asya ile hiçbir bağlantısı olmayan Atlantik Okyanusu’nun ortasında ıssız bir adada yer alması',
+                            'Süveyş Kanalı aracılığıyla Afrika kıtasını Antarktika’dan ayırması',
+                            'Denize kıyısı olmayıp yalnızca kara kervanlarıyla iletişim kurması'
+                        ],
+                        explanation: 'Muhteşem! İstanbul Boğazı’ndan geçmek, kelimenin tam anlamıyla Avrupa ile Asya sınırında Karadeniz sularına doğru yelken açmaktır.'
+                    },
+                    en: {
+                        name: 'Istanbul',
+                        subtitle: 'The Bridge Between West and East',
+                        lore: 'Once Byzantium and Constantinople, Istanbul is the only major metropolis in the world spanning two continents—Europe and Asia—divided by the Bosphorus Strait, which links the Sea of Marmara to the Black Sea. With timeless landmarks like Hagia Sophia (Ayasofya), the Blue Mosque, Topkapı Palace, and the Bosphorus bridges, Istanbul is the living link between West and East.',
+                        question: 'What unique geographical and cultural feature makes Istanbul the "Bridge between West and East"?',
+                        options: [
+                            'It spans both Europe and Asia across the Bosphorus Strait, synthesizing Roman, Byzantine, and Ottoman legacies',
+                            'It sits on an isolated island in the middle of the Atlantic Ocean with no contact with Asia',
+                            'It separates the African continent from Antarctica via the Suez Canal',
+                            'It has no access to the sea, communicating solely through overland caravans'
+                        ],
+                        explanation: 'Fantastic! Sailing through the Bosphorus in Istanbul is literally navigating along the border between Europe and Asia toward the Black Sea.'
+                    }
+                }
+            },
+            {
+                id: 'inebolu',
+                order: 11,
+                coords: { x: 146, z: -36 },
+                color: '#22c55e',
+                imagePrompt: 'Photorealistic scenic view of the historic Black Sea port town of Inebolu, Kastamonu, Turkey, featuring traditional three-story ochre-red painted Ottoman timber houses with grey slate roofs rising on lush green hillsides of the Kure Mountains, a Portuguese Caravel and traditional wooden rowboats in the harbor.',
+                correctIndex: 0,
+                i18n: {
+                    pt: {
+                        name: 'İnebolu',
+                        subtitle: 'A Porta de Entrada Marítima para Kastamonu',
+                        lore: 'Chegamos ao destino final da nossa expedição no Mar Negro! İnebolu (a antiga Ionópolis) é a histórica porta de entrada marítima para a província montanhosa de Kastamonu. É famosa pelas suas casas tradicionais pintadas de ocre/vermelho com telhados de ardósia ("abana taş") e pelo seu papel heroico na Guerra da Independência Turca: os barqueiros de İnebolu descarregavam suprimentos que seguiam pelo "Caminho da Independência" (İstiklal Yolu) através dos Montes Küre até Kastamonu e Ancara — feito que valeu a İnebolu a única Medalha da Independência atribuída a um distrito costeiro.',
+                        question: 'Porque é que o porto de İnebolu é celebrado como a histórica "Porta de Entrada para Kastamonu" e o coração do Caminho da Independência (İstiklal Yolu)?',
+                        options: [
+                            'Porque ligava o Mar Negro ao interior da Anatólia através das montanhas de Kastamonu, assegurando a rota vital de abastecimento e preservando a arquitetura tradicional costeira',
+                            'Porque fica localizado na costa sul do Mediterrâneo, na fronteira com o Egito',
+                            'Porque é uma cidade subterrânea sem porto nem casas tradicionais',
+                            'Porque proibia qualquer transporte entre o porto e a cidade de Kastamonu'
+                        ],
+                        explanation: 'Vitória histórica! İnebolu é a porta marítima de Kastamonu e um símbolo de coragem e património no Mar Negro. Concluíste o Caminho Marítimo para a Turquia!'
+                    },
+                    tr: {
+                        name: 'İnebolu',
+                        subtitle: 'Kastamonu’ya Açılan Tarihi Deniz Kapısı',
+                        lore: 'Karadeniz’deki keşif seferimizin son durağına ulaştık! İnebolu (antik İonopolis), dağlık Kastamonu ilinin Karadeniz’e açılan tarihi kapısıdır. Aşı boyalı geleneksel ahşap konakları, taş ("marla") çatıları ve Kurtuluş Savaşı’ndaki kahramanlığıyla ünlüdür: İnebolulu kayıkçıların kıyıya çıkardığı cephane, Küre Dağları’nı aşan "İstiklal Yolu" üzerinden Kastamonu ve Ankara’ya ulaştırılmış; bu destan İnebolu’ya Türkiye’nin İstiklal Madalyası sahibi tek ilçesi unvanını kazandırmıştır.',
+                        question: 'İnebolu limanı neden "Kastamonu’ya Açılan Kapı" ve İstiklal Yolu’nun kalbi olarak anılmaktadır?',
+                        options: [
+                            'Karadeniz’i Kastamonu dağları üzerinden Anadolu’nun içlerine bağlayarak hayati lojistik hattı sağladığı ve geleneksel Karadeniz mimarisini koruduğu için',
+                            'Akdeniz’in güney kıyısında, Mısır sınırında yer aldığı için',
+                            'Limanı ve geleneksel evleri olmayan bir yeraltı şehri olduğu için',
+                            'Liman ile Kastamonu şehri arasındaki her türlü ulaşımı yasakladığı için'
+                        ],
+                        explanation: 'Tarihi zafer! İnebolu, Kastamonu’nun deniz kapısı ve Karadeniz’de cesaret ile kültürel mirasın simgesidir. Türkiye’ye Deniz Yolu seferini başarıyla tamamladınız!'
+                    },
+                    en: {
+                        name: 'İnebolu',
+                        subtitle: 'The Maritime Gateway to Kastamonu',
+                        lore: 'We have reached the final destination of our expedition on the Black Sea! İnebolu (ancient Ionopolis) is the historic maritime gateway to the mountainous province of Kastamonu. It is famed for its ochre-red Ottoman timber houses with grey slate roofs and its heroic role in the Turkish War of Independence: İnebolu boatmen unloaded vital supplies carried along the "Independence Road" (İstiklal Yolu) across the Küre Mountains to Kastamonu and Ankara—earning İnebolu the only Medal of Independence awarded to a coastal district.',
+                        question: 'Why is the port of İnebolu celebrated as the historic "Gateway to Kastamonu" and the heart of the Independence Road (İstiklal Yolu)?',
+                        options: [
+                            'Because it linked the Black Sea to the Anatolian interior across the Kastamonu mountains, securing the vital supply route while preserving traditional coastal architecture',
+                            'Because it is located on the southern coast of the Mediterranean on the border with Egypt',
+                            'Because it is an underground city with neither a harbor nor traditional houses',
+                            'Because it prohibited any transport between the port and the city of Kastamonu'
+                        ],
+                        explanation: 'Historic victory! İnebolu is the maritime gateway to Kastamonu and a symbol of courage and heritage on the Black Sea. You have completed the Sea Route to Turkey!'
+                    }
+                }
+            }
+        ];
+
+        // Funções auxiliares para obter textos traduzidos do idioma ativo
+        function tUI() {
+            return UI_TRANSLATIONS[currentLang] || UI_TRANSLATIONS.pt;
+        }
+
+        function getPortText(port) {
+            return port.i18n[currentLang] || port.i18n.pt;
+        }
+
+        function setLanguage(lang) {
+            if (!UI_TRANSLATIONS[lang]) return;
+            currentLang = lang;
+            document.documentElement.lang = lang === 'pt' ? 'pt-PT' : lang;
+
+            // Atualizar estado visual de todos os botões seletores de língua
+            document.querySelectorAll('.lang-switch-btn').forEach(btn => {
+                const isSelected = btn.getAttribute('data-lang') === lang;
+                if (btn.closest('#intro-modal')) {
+                    btn.className = isSelected
+                        ? 'lang-switch-btn px-3 py-1 rounded-xl text-xs font-bold transition bg-amber-800 text-amber-100 border border-amber-600 shadow'
+                        : 'lang-switch-btn px-3 py-1 rounded-xl text-xs font-bold transition bg-amber-900/15 text-amber-950 border border-amber-800/30 hover:bg-amber-900/25';
+                } else {
+                    btn.className = isSelected
+                        ? 'lang-switch-btn px-2 py-1 rounded-lg text-xs font-bold transition bg-amber-600 text-white shadow'
+                        : 'lang-switch-btn px-2 py-1 rounded-lg text-xs font-bold transition text-amber-200/80 hover:text-white';
+                }
+            });
+
+            const ui = tUI();
+            document.title = `${ui.gameTitle} - 3D`;
+            document.getElementById('hud-game-title').textContent = ui.gameTitle;
+            document.getElementById('hud-camera-label').textContent = ui.mapView;
+            document.getElementById('hud-logbook-label').textContent = ui.logbook;
+            document.getElementById('hud-ship-status-title').textContent = ui.shipStatus;
+            document.getElementById('compass-hint').innerHTML = ui.compassHint;
+            document.getElementById('modal-btn-regen-label').textContent = ui.newAiPaint;
+            document.getElementById('modal-challenge-heading').textContent = ui.captainChallenge;
+
+            // Atualizar textos do Modal Inicial
+            document.getElementById('intro-title').textContent = ui.introTitle;
+            document.getElementById('intro-subtitle').textContent = ui.introSubtitle;
+            document.getElementById('intro-description').innerHTML = ui.introDesc;
+            document.getElementById('intro-ctrl-manual').innerHTML = ui.introManual;
+            document.getElementById('intro-ctrl-auto').innerHTML = ui.introAuto;
+            document.getElementById('intro-btn-start').textContent = ui.introStartBtn;
+
+            // Atualizar textos do Diário e Modal de Vitória
+            document.getElementById('logbook-title').textContent = ui.logbookTitle;
+            document.getElementById('victory-badge').textContent = ui.victoryBadge;
+            document.getElementById('victory-title').textContent = ui.victoryTitle;
+            document.getElementById('victory-desc').innerHTML = ui.victoryDesc;
+            document.getElementById('btn-victory-explore').textContent = ui.victoryExploreBtn;
+            document.getElementById('victory-btn-restart-label').textContent = ui.victoryRestartBtn;
+
+            updateAutopilotButton();
+            updateHUD();
+
+            // Se o modal de um porto estiver aberto, re-renderizar o seu conteúdo no novo idioma
+            if (gameState.modalOpen && gameState.activeModalPortIndex !== null && !document.getElementById('port-modal').classList.contains('hidden')) {
+                refreshOpenPortModalLanguage();
+            }
+            // Se o diário de bordo estiver aberto, atualizar cartões
+            if (gameState.modalOpen && !document.getElementById('logbook-modal').classList.contains('hidden')) {
+                openLogbookModal();
+            }
+        }
+
+        /***********************************************************************
+         * 1B. GERAÇÃO DE IMAGENS REALISTAS COM NANO BANANA (gemini-3.1-flash-image)
+         *     + PINTURA EM CANVAS 2D DE ALTA DEFINIÇÃO COMO FALLBACK IMEDIATO
+         ***********************************************************************/
+        async function fetchWithRetry(url, options, maxRetries = 3) {
+            let delay = 900;
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) return await response.json();
+                } catch (e) {
+                    // Continua para tentativa seguinte
+                }
+                await new Promise(r => setTimeout(r, delay));
+                delay *= 2;
+            }
+            return null;
+        }
+
+        // Gera uma pintura realista em Canvas 2D caso a API ainda esteja a processar ou sem chave
+        function generateHighResCanvasPainting(port) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 960;
+            canvas.height = 540;
+            const ctx = canvas.getContext('2d');
+
+            // Paletas atmosféricas específicas por porto
+            const palettes = {
+                lisboa: ['#1e1b4b', '#b45309', '#f59e0b', '#fde68a'],
+                lagos_faro: ['#0c4a6e', '#0284c7', '#eab308', '#fef08a'],
+                gibraltar: ['#064e3b', '#047857', '#34d399', '#ecfdf5'],
+                argel: ['#7c2d12', '#ea580c', '#fbbf24', '#fef3c7'],
+                valetta: ['#450a0a', '#b91c1c', '#f59e0b', '#fef3c7'],
+                palermo: ['#3b0764', '#7e22ce', '#f97316', '#ffedd5'],
+                atenas: ['#0c4a6e', '#0284c7', '#38bdf8', '#f0f9ff'],
+                esmirna: ['#134e4a', '#0d9488', '#f59e0b', '#f0fdfa'],
+                canakkale: ['#4c0519', '#be123c', '#fb7185', '#ffe4e6'],
+                istambul: ['#31102f', '#9d174d', '#f59e0b', '#fdf2f8'],
+                inebolu: ['#052e16', '#15803d', '#eab308', '#f0fdf4']
+            };
+            const pal = palettes[port.id] || ['#0f172a', '#1e3a8a', '#f59e0b', '#fef3c7'];
+
+            // Céu com gradiente cinematográfico
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, 340);
+            skyGrad.addColorStop(0, pal[0]);
+            skyGrad.addColorStop(0.55, pal[1]);
+            skyGrad.addColorStop(1, pal[2]);
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, 960, 340);
+
+            // Sol / Lua resplandecente no horizonte
+            const sunX = 680;
+            const sunY = 210;
+            const sunGlow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 180);
+            sunGlow.addColorStop(0, pal[3]);
+            sunGlow.addColorStop(0.35, pal[2] + 'aa');
+            sunGlow.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = sunGlow;
+            ctx.beginPath();
+            ctx.arc(sunX, sunY, 180, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Silhueta distante de montanhas e monumentos característicos do porto
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.moveTo(0, 340);
+            for (let x = 0; x <= 960; x += 40) {
+                const h = 55 + Math.sin(x * 0.015 + port.order) * 35 + Math.cos(x * 0.04) * 18;
+                ctx.lineTo(x, 340 - h);
+            }
+            ctx.lineTo(960, 340);
+            ctx.closePath();
+            ctx.fill();
+
+            // Silhueta arquitetónica específica do destino
+            ctx.fillStyle = '#0f172a';
+            if (port.id === 'lisboa') {
+                // Torre de Belém estilizada
+                ctx.fillRect(180, 230, 65, 110);
+                ctx.fillRect(168, 220, 89, 16);
+                ctx.fillRect(190, 195, 45, 25);
+            } else if (port.id === 'atenas') {
+                // Pártenon no alto da Acrópole
+                ctx.fillRect(150, 210, 130, 12);
+                for (let c = 158; c <= 268; c += 18) ctx.fillRect(c, 222, 8, 42);
+                ctx.beginPath();
+                ctx.moveTo(145, 210);
+                ctx.lineTo(215, 182);
+                ctx.lineTo(285, 210);
+                ctx.fill();
+            } else if (port.id === 'istambul') {
+                // Cúpula e minaretes de Santa Sofia / Mesquita Azul
+                ctx.beginPath();
+                ctx.arc(230, 265, 45, Math.PI, 0);
+                ctx.fill();
+                ctx.fillRect(165, 180, 8, 120);
+                ctx.fillRect(290, 180, 8, 120);
+            } else if (port.id === 'esmirna') {
+                // Torre do Relógio de Esmirna
+                ctx.fillRect(210, 185, 28, 135);
+                ctx.beginPath();
+                ctx.arc(224, 185, 16, Math.PI, 0);
+                ctx.fill();
+            } else if (port.id === 'canakkale') {
+                // Memorial dos Mártires de Çanakkale
+                ctx.fillRect(185, 190, 18, 115);
+                ctx.fillRect(225, 190, 18, 115);
+                ctx.fillRect(178, 175, 72, 20);
+            }
+
+            // Oceano com reflexos dourados
+            const seaGrad = ctx.createLinearGradient(0, 340, 0, 540);
+            seaGrad.addColorStop(0, '#0c4a6e');
+            seaGrad.addColorStop(0.5, '#082f49');
+            seaGrad.addColorStop(1, '#020617');
+            ctx.fillStyle = seaGrad;
+            ctx.fillRect(0, 340, 960, 200);
+
+            // Reflexos de luz na água
+            ctx.fillStyle = pal[3] + '55';
+            for (let i = 0; i < 38; i++) {
+                const wy = 348 + i * 4.8;
+                const ww = 130 - i * 1.8 + Math.sin(i * 1.7) * 25;
+                ctx.fillRect(sunX - ww / 2, wy, ww, 2.2);
+            }
+
+            // Caravela Portuguesa em primeiro plano
+            const sx = 470, sy = 385;
+            ctx.fillStyle = '#271206';
+            ctx.beginPath();
+            ctx.moveTo(sx - 85, sy);
+            ctx.lineTo(sx + 95, sy - 6);
+            ctx.lineTo(sx + 68, sy + 28);
+            ctx.lineTo(sx - 65, sy + 28);
+            ctx.closePath();
+            ctx.fill();
+
+            // Castelo de popa
+            ctx.fillRect(sx - 85, sy - 26, 48, 28);
+
+            // Mastros e Velas Latinas com Cruz de Cristo
+            const drawSail = (mx, mh, sw) => {
+                ctx.strokeStyle = '#1c0d04';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(mx, sy);
+                ctx.lineTo(mx, sy - mh);
+                ctx.stroke();
+
+                ctx.fillStyle = '#fffbeb';
+                ctx.beginPath();
+                ctx.moveTo(mx - sw * 0.45, sy - mh * 0.25);
+                ctx.quadraticCurveTo(mx + sw * 0.35, sy - mh * 0.65, mx + sw * 0.15, sy - mh * 0.98);
+                ctx.lineTo(mx + sw * 0.58, sy - mh * 0.18);
+                ctx.closePath();
+                ctx.fill();
+
+                // Cruz de Cristo vermelha
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(mx + 4, sy - mh * 0.58, 18, 5);
+                ctx.fillRect(mx + 10.5, sy - mh * 0.64, 5, 18);
+            };
+            drawSail(sx - 35, 95, 65);
+            drawSail(sx + 10, 130, 88);
+            drawSail(sx + 55, 85, 55);
+
+            return canvas.toDataURL('image/png');
+        }
+
+        async function generatePortIllustration(port, forceRegenerate = false) {
+            const container = document.getElementById('modal-illustration-container');
+            if (!container) return;
+
+            if (!forceRegenerate && portImageCache[port.id]) {
+                renderPortImageInContainer(port, portImageCache[port.id].url, portImageCache[port.id].source);
+                return;
+            }
+
+            // Mostrar pintura artística imediata com indicador de aperfeiçoamento Nano Banana
+            const fallbackUrl = generateHighResCanvasPainting(port);
+            renderPortImageInContainer(port, fallbackUrl, tUI().refiningAi);
+
+            const payload = {
+                contents: [{
+                    role: 'user',
+                    parts: [{ text: port.imagePrompt }]
+                }],
+                generationConfig: {
+                    responseModalities: ['IMAGE'],
+                    imageConfig: { aspectRatio: "16:9" }
+                }
+            };
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`;
+            const result = await fetchWithRetry(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+            if (part && part.inlineData?.data) {
+                const imageUrl = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+                portImageCache[port.id] = { url: imageUrl, source: 'Nano Banana AI' };
+
+                if (gameState.activeModalPortIndex !== null && PORTS_DATA[gameState.activeModalPortIndex]?.id === port.id) {
+                    renderPortImageInContainer(port, imageUrl, 'Nano Banana AI');
+                }
+            } else {
+                portImageCache[port.id] = { url: fallbackUrl, source: tUI().historicalPainting };
+                if (gameState.activeModalPortIndex !== null && PORTS_DATA[gameState.activeModalPortIndex]?.id === port.id) {
+                    renderPortImageInContainer(port, fallbackUrl, tUI().historicalPainting);
+                }
+            }
+        }
+
+        function renderPortImageInContainer(port, imageUrl, badgeText = 'Nano Banana AI') {
+            const container = document.getElementById('modal-illustration-container');
+            if (!container) return;
+            const ptText = getPortText(port);
+            container.innerHTML = `
+                <img src="${imageUrl}" alt="${ptText.name}" class="w-full h-full object-cover transition-opacity duration-500" />
+                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent p-3 flex items-end justify-between">
+                    <div>
+                        <span class="text-[10px] uppercase tracking-widest text-amber-300 font-bold block">${tUI().stopShort(port.order)} • ${ptText.subtitle}</span>
+                        <h3 class="font-nautical text-white text-base md:text-lg font-bold leading-tight">${ptText.name}</h3>
+                    </div>
+                    <span class="text-[10px] bg-amber-500/20 border border-amber-400/40 text-amber-200 px-2 py-0.5 rounded-full">${badgeText}</span>
+                </div>
+            `;
+        }
+
+        // Pré-carregar em background a imagem do próximo porto durante a navegação
+        function prefetchPortImage(portIndex) {
+            const port = PORTS_DATA[portIndex];
+            if (!port || portImageCache[port.id]) return;
+            const payload = {
+                contents: [{ role: 'user', parts: [{ text: port.imagePrompt }] }],
+                generationConfig: {
+                    responseModalities: ['IMAGE'],
+                    imageConfig: { aspectRatio: "16:9" }
+                }
+            };
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`;
+            fetchWithRetry(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(result => {
+                const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                if (part && part.inlineData?.data) {
+                    const imageUrl = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+                    portImageCache[port.id] = { url: imageUrl, source: 'Nano Banana AI' };
+                }
+            });
+        }
+
+        /***********************************************************************
+         * 2. EFEITOS SONOROS WEB AUDIO (SEM FICHEIROS EXTERNOS)
+         ***********************************************************************/
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) audioCtx = new AudioContextClass();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            try {
+                initAudio();
+                if (!audioCtx) return;
+                const now = audioCtx.currentTime;
+
+                if (type === 'port') {
+                    // Sino de navio ao chegar ao porto
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, now); // D5
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.18);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.9);
+                } else if (type === 'success') {
+                    // Acorde triunfal
+                    [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + i * 0.08);
+                        gain.gain.setValueAtTime(0.14, now + i * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.6);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + i * 0.08);
+                        osc.stop(now + i * 0.08 + 0.6);
+                    });
+                } else if (type === 'error') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(190, now);
+                    osc.frequency.linearRampToValueAtTime(130, now + 0.3);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'victory') {
+                    [440, 554.37, 659.25, 880, 1108.73].forEach((freq, i) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + i * 0.12);
+                        gain.gain.setValueAtTime(0.16, now + i * 0.12);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.9);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + i * 0.12);
+                        osc.stop(now + i * 0.12 + 0.9);
+                    });
+                }
+            } catch (e) {
+                // Ignorar caso o navegador bloqueie áudio
+            }
+        }
+
+        /***********************************************************************
+         * 3. ESTADO DO JOGO COM DELAY DE NAVEGAÇÃO ENTRE PORTOS
+         ***********************************************************************/
+        const VOYAGE_MIN_DURATION = 7.5; // Segundos mínimos de navegação entre cada porto para sentir a viagem
+
+        const gameState = {
+            currentPortIndex: 0,       // Índice do porto atual a resolver (0 = Lisboa)
+            completedPorts: new Set(), // Conjunto de IDs de portos já resolvidos
+            autopilot: false,          // Navegação automática até ao porto alvo
+            cameraOverview: false,     // Vista de carta náutica vs Vista de perseguição
+            modalOpen: false,
+            activeModalPortIndex: null,
+            voyageTimer: 0,            // Tempo decorrido de navegação desde a última largada
+            voyageRequiredTime: 0      // Tempo necessário (delay) antes de poder atracar no próximo porto
+        };
+
+        /***********************************************************************
+         * 4. CENA 3D (THREE.JS): OCEANO, RELEVO COSTEIRO, CARAVELA E PORTOS
+         ***********************************************************************/
+        let scene, camera, renderer, clock;
+        let caravelGroup, flagMesh, wakeGroup = [];
+        let oceanMesh, oceanGeo;
+        let targetBeaconMesh, compassArrowMesh;
+        const portMeshes = [];
+
+        // Estado físico da Caravela (velocidade ajustada para sentir a travessia)
+        const shipState = {
+            x: -136,
+            z: 20,
+            angle: Math.PI * 0.5, // Apontada para Este
+            speed: 0,
+            maxSpeed: 8.5,        // Velocidade realista e cadenciada para sentir a navegação
+            turnSpeed: 1.7
+        };
+
+        // Controlo de câmara orbital pelo utilizador
+        const cameraControl = {
+            isDragging: false,
+            prevX: 0,
+            prevY: 0,
+            yawOffset: 0,
+            pitchOffset: 0.38
+        };
+
+        // Controlo de Teclado / Botões
+        const keys = { up: false, down: false, left: false, right: false };
+
+        function initThreeScene() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x071a2c);
+            scene.fog = new THREE.FogExp2(0x0c253d, 0.0028);
+
+            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.5, 900);
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            clock = new THREE.Clock();
+
+            // Iluminação Solar Dourada e Ambiente Marítimo
+            const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.72);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfef08a, 1.25);
+            sunLight.position.set(-60, 110, 50);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            scene.add(sunLight);
+
+            const hemiLight = new THREE.HemisphereLight(0xfde68a, 0x0369a1, 0.45);
+            scene.add(hemiLight);
+
+            createOcean();
+            createMediterraneanLandmasses();
+            createPortsAndRouteLine();
+            createCaravel();
+            setupInputs();
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function createOcean() {
+            oceanGeo = new THREE.PlaneGeometry(520, 320, 110, 70);
+            oceanGeo.rotateX(-Math.PI / 2);
+
+            const oceanMat = new THREE.MeshStandardMaterial({
+                color: 0x0284c7,
+                roughness: 0.25,
+                metalness: 0.15,
+                flatShading: true
+            });
+
+            oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
+            oceanMesh.receiveShadow = true;
+            scene.add(oceanMesh);
+        }
+
+        function createLandPolygon(points2D, height = 4.5, colorHex = 0x4d7c0f) {
+            const shape = new THREE.Shape();
+            points2D.forEach((pt, idx) => {
+                if (idx === 0) shape.moveTo(pt[0], -pt[1]);
+                else shape.lineTo(pt[0], -pt[1]);
+            });
+            shape.closePath();
+
+            const extrudeSettings = {
+                depth: height,
+                bevelEnabled: true,
+                bevelSegments: 2,
+                steps: 1,
+                bevelSize: 1.6,
+                bevelThickness: 1.5
+            };
+
+            const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            geo.rotateX(-Math.PI / 2);
+
+            const mat = new THREE.MeshStandardMaterial({
+                color: colorHex,
+                roughness: 0.88,
+                flatShading: true
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.y = -0.3;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+
+            // Rebordo de areia costeira
+            const sandGeo = geo.clone();
+            sandGeo.scale(1.02, 0.25, 1.02);
+            const sandMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.95 });
+            const sandMesh = new THREE.Mesh(sandGeo, sandMat);
+            sandMesh.position.y = -0.1;
+            scene.add(sandMesh);
+        }
+
+        function createMediterraneanLandmasses() {
+            // 1. Península Ibérica (Portugal e Espanha)
+            createLandPolygon([
+                [-129, 3], [-126, 17], [-125, 34], [-103, 41],
+                [-86, 26], [-80, 4], [-108, -2]
+            ], 5.5, 0x3f6212);
+
+            // 2. Norte de África (Marrocos, Argélia, Tunísia, Líbia)
+            createLandPolygon([
+                [-115, 52], [-101, 51], [-55, 55], [-8, 56],
+                [35, 76], [120, 88], [120, 125], [-135, 125]
+            ], 6.0, 0xb45309);
+
+            // 3. Europa Central / França / Norte de Itália / Balcãs
+            createLandPolygon([
+                [-80, 4], [-50, -8], [-5, -14], [15, -18],
+                [55, -22], [88, -10], [88, -42], [105, -26],
+                [108, -68], [-110, -68]
+            ], 6.5, 0x365314);
+
+            // 4. Península Itálica
+            createLandPolygon([
+                [-5, -10], [18, 12], [24, 20], [16, 24], [-2, 4]
+            ], 5.0, 0x4d7c0f);
+
+            // 5. Ilha da Sicília (Palermo)
+            createLandPolygon([
+                [-2, 26], [11, 25], [8, 33], [-1, 31]
+            ], 4.2, 0x65a30d);
+
+            // 6. Ilha de Malta (La Valetta)
+            createLandPolygon([
+                [5, 55], [11, 55], [10, 59], [5, 58]
+            ], 2.8, 0xd97706);
+
+            // 7. Grécia / Peloponeso (Atenas)
+            createLandPolygon([
+                [50, -10], [66, 16], [62, 24], [52, 28], [46, 10]
+            ], 5.5, 0x4d7c0f);
+
+            // 8. Anatólia / Turquia (Esmirna, Costa Asiática de Çanakkale e Istambul, e İnebolu no Mar Negro)
+            createLandPolygon([
+                [97, 3], [96, 20], [104, 38], [165, 38],
+                [188, -22], [150, -32], [124, -19], [116, -15], [105, -2]
+            ], 7.0, 0x3f6212);
+
+            // 9. Margem Europeia da Trácia / Gallipoli / Istambul Europeia
+            createLandPolygon([
+                [84, -12], [90, -4], [109, -19], [106, -30]
+            ], 4.5, 0x365314);
+        }
+
+        function createPortsAndRouteLine() {
+            const routePoints = [];
+
+            PORTS_DATA.forEach((port, idx) => {
+                routePoints.push(new THREE.Vector3(port.coords.x, 0.6, port.coords.z));
+
+                const portGroup = new THREE.Group();
+                portGroup.position.set(port.coords.x, 0, port.coords.z);
+
+                // Base do Cais / Farol
+                const pierGeo = new THREE.CylinderGeometry(2.6, 3.2, 1.4, 16);
+                const pierMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+                const pier = new THREE.Mesh(pierGeo, pierMat);
+                pier.position.y = 0.7;
+                portGroup.add(pier);
+
+                // Torre do Farol
+                const towerGeo = new THREE.CylinderGeometry(0.7, 1.1, 5.5, 12);
+                const towerMat = new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.5 });
+                const tower = new THREE.Mesh(towerGeo, towerMat);
+                tower.position.y = 3.5;
+                portGroup.add(tower);
+
+                // Cúpula Luminosa do Farol
+                const lanternGeo = new THREE.SphereGeometry(1.1, 16, 16);
+                const lanternMat = new THREE.MeshBasicMaterial({ color: port.color });
+                const lantern = new THREE.Mesh(lanternGeo, lanternMat);
+                lantern.position.y = 6.7;
+                portGroup.add(lantern);
+
+                // Anel Flutuante de Atracagem no Mar
+                const ringGeo = new THREE.RingGeometry(4.2, 5.0, 32);
+                ringGeo.rotateX(-Math.PI / 2);
+                const ringMat = new THREE.MeshBasicMaterial({
+                    color: port.color,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.75
+                });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.position.y = 0.35;
+                portGroup.add(ring);
+
+                scene.add(portGroup);
+                portMeshes.push({ group: portGroup, ring, lantern, data: port, index: idx });
+            });
+
+            // Linha Pontilhada Dourada da Rota Marítima
+            const curve = new THREE.CatmullRomCurve3(routePoints);
+            const curvePoints = curve.getPoints(200);
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(curvePoints);
+            const lineMat = new THREE.LineDashedMaterial({
+                color: 0xfbbf24,
+                dashSize: 2.2,
+                gapSize: 1.4,
+                linewidth: 2
+            });
+            const routeLine = new THREE.Line(lineGeo, lineMat);
+            routeLine.computeLineDistances();
+            scene.add(routeLine);
+
+            // Feixe Vertical Dourado indicando o Porto Alvo Atual
+            const beaconGeo = new THREE.CylinderGeometry(0.4, 2.2, 28, 16, 1, true);
+            const beaconMat = new THREE.MeshBasicMaterial({
+                color: 0xfbbf24,
+                transparent: true,
+                opacity: 0.35,
+                side: THREE.DoubleSide
+            });
+            targetBeaconMesh = new THREE.Mesh(beaconGeo, beaconMat);
+            targetBeaconMesh.position.y = 14;
+            scene.add(targetBeaconMesh);
+        }
+
+        // Criação de textura de vela com a Cruz da Ordem de Cristo desenhada em Canvas 2D
+        function createCrossOfChristSailTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Fundo de linho envelhecido
+            const grad = ctx.createLinearGradient(0, 0, 512, 512);
+            grad.addColorStop(0, '#fffbeb');
+            grad.addColorStop(0.5, '#fef3c7');
+            grad.addColorStop(1, '#fde68a');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Costuras dos panos da vela
+            ctx.strokeStyle = 'rgba(146, 64, 14, 0.18)';
+            ctx.lineWidth = 3;
+            for (let x = 64; x < 512; x += 64) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, 512);
+                ctx.stroke();
+            }
+
+            // Desenhar Cruz da Ordem de Cristo ao centro
+            ctx.save();
+            ctx.translate(256, 270);
+            ctx.fillStyle = '#b91c1c';
+
+            const drawArm = (rot) => {
+                ctx.save();
+                ctx.rotate(rot);
+                ctx.beginPath();
+                ctx.moveTo(-22, -20);
+                ctx.lineTo(-22, -75);
+                ctx.lineTo(-48, -105);
+                ctx.lineTo(48, -105);
+                ctx.lineTo(22, -75);
+                ctx.lineTo(22, -20);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            };
+            drawArm(0);
+            drawArm(Math.PI / 2);
+            drawArm(Math.PI);
+            drawArm(-Math.PI / 2);
+            ctx.fillRect(-24, -24, 48, 48);
+
+            // Cruz branca interior
+            ctx.fillStyle = '#fffbeb';
+            ctx.fillRect(-10, -78, 20, 156);
+            ctx.fillRect(-78, -10, 156, 20);
+            ctx.restore();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            return tex;
+        }
+
+        // Construção 3D detalhada de uma Vela Latina enfunada pelo vento
+        function createBillowedLateenSail(yardLength, dropHeight, sailTexture) {
+            const sailGroup = new THREE.Group();
+
+            // Verga inclinada de madeira (antenna)
+            const yardGeo = new THREE.CylinderGeometry(0.06, 0.08, yardLength, 10);
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0x3b1d0a, roughness: 0.75 });
+            const yardMesh = new THREE.Mesh(yardGeo, woodMat);
+            yardMesh.rotation.x = Math.PI / 3.1;
+            sailGroup.add(yardMesh);
+
+            // Malha triangular subdividida com curvatura de vento (barriga da vela)
+            const segs = 12;
+            const positions = [];
+            const uvs = [];
+            const indices = [];
+
+            const topPt = new THREE.Vector3(0, Math.cos(Math.PI / 3.1) * (yardLength * 0.48), Math.sin(Math.PI / 3.1) * (yardLength * 0.48));
+            const botYardPt = new THREE.Vector3(0, -Math.cos(Math.PI / 3.1) * (yardLength * 0.48), -Math.sin(Math.PI / 3.1) * (yardLength * 0.48));
+            const clewPt = new THREE.Vector3(0.35, -dropHeight * 0.35, -yardLength * 0.18);
+
+            for (let i = 0; i <= segs; i++) {
+                const u = i / segs;
+                for (let j = 0; j <= segs - i; j++) {
+                    const v = j / segs;
+                    const w = 1 - u - v;
+
+                    const px = u * topPt.x + v * botYardPt.x + w * clewPt.x;
+                    const py = u * topPt.y + v * botYardPt.y + w * clewPt.y;
+                    const pz = u * topPt.z + v * botYardPt.z + w * clewPt.z;
+
+                    const belly = Math.sin(u * Math.PI) * Math.sin((v + w) * Math.PI) * 0.85;
+                    positions.push(px + belly, py, pz);
+                    uvs.push(v + w * 0.5, 1 - u);
+                }
+            }
+
+            let rowStart = 0;
+            for (let i = 0; i < segs; i++) {
+                const rowLen = segs - i + 1;
+                const nextRowStart = rowStart + rowLen;
+                for (let j = 0; j < segs - i; j++) {
+                    indices.push(rowStart + j, nextRowStart + j, rowStart + j + 1);
+                    if (j < segs - i - 1) {
+                        indices.push(rowStart + j + 1, nextRowStart + j, nextRowStart + j + 1);
+                    }
+                }
+                rowStart = nextRowStart;
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setIndex(indices);
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+            geo.computeVertexNormals();
+
+            const mat = new THREE.MeshStandardMaterial({
+                map: sailTexture,
+                roughness: 0.55,
+                side: THREE.DoubleSide
+            });
+
+            const sailMesh = new THREE.Mesh(geo, mat);
+            sailMesh.castShadow = true;
+            sailGroup.add(sailMesh);
+
+            return sailGroup;
+        }
+
+        function createCaravel() {
+            caravelGroup = new THREE.Group();
+
+            // Materiais de madeira histórica
+            const darkOakMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.75 });
+            const plankWoodMat = new THREE.MeshStandardMaterial({ color: 0x6b3410, roughness: 0.65 });
+            const deckWoodMat = new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.7 });
+            const goldTrimMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.6, roughness: 0.3 });
+            const ironMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.4 });
+            const ropeMat = new THREE.MeshBasicMaterial({ color: 0xd6d3d1 });
+
+            // 1. Casco Curvo e Bojo da Caravela (Costado e Quilha)
+            const keel = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.9, 8.8), darkOakMat);
+            keel.position.set(0, 0.4, 0.2);
+            caravelGroup.add(keel);
+
+            const hullSegments = [
+                { z: -3.2, w: 2.3, h: 1.7, y: 1.2 },
+                { z: -1.8, w: 2.9, h: 1.6, y: 1.05 },
+                { z: -0.3, w: 3.2, h: 1.5, y: 0.95 },
+                { z: 1.2,  w: 2.9, h: 1.5, y: 1.0 },
+                { z: 2.6,  w: 2.1, h: 1.5, y: 1.1 },
+                { z: 3.8,  w: 1.1, h: 1.5, y: 1.25 }
+            ];
+            hullSegments.forEach(seg => {
+                const part = new THREE.Mesh(new THREE.BoxGeometry(seg.w, seg.h, 1.55), plankWoodMat);
+                part.position.set(0, seg.y, seg.z);
+                part.castShadow = true;
+                part.receiveShadow = true;
+                caravelGroup.add(part);
+
+                const wale = new THREE.Mesh(new THREE.BoxGeometry(seg.w + 0.14, 0.18, 1.58), darkOakMat);
+                wale.position.set(0, seg.y + 0.25, seg.z);
+                caravelGroup.add(wale);
+            });
+
+            // Convés Principal (Tolda)
+            const mainDeck = new THREE.Mesh(new THREE.BoxGeometry(2.85, 0.2, 6.6), deckWoodMat);
+            mainDeck.position.set(0, 1.68, 0.2);
+            caravelGroup.add(mainDeck);
+
+            // Amuradas laterais (Bulwarks)
+            const leftRail = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.45, 6.2), darkOakMat);
+            leftRail.position.set(1.42, 1.95, 0.2);
+            caravelGroup.add(leftRail);
+
+            const rightRail = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.45, 6.2), darkOakMat);
+            rightRail.position.set(-1.42, 1.95, 0.2);
+            caravelGroup.add(rightRail);
+
+            // 2. Castelo de Popa Elevado (Toldilha e Tombadilho)
+            const sterncastle = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.45, 2.7), plankWoodMat);
+            sterncastle.position.set(0, 2.35, -2.55);
+            sterncastle.castShadow = true;
+            caravelGroup.add(sterncastle);
+
+            const poopDeck = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.18, 2.8), deckWoodMat);
+            poopDeck.position.set(0, 3.1, -2.55);
+            caravelGroup.add(poopDeck);
+
+            const sternTrim = new THREE.Mesh(new THREE.BoxGeometry(2.74, 0.22, 2.84), goldTrimMat);
+            sternTrim.position.set(0, 3.28, -2.55);
+            caravelGroup.add(sternTrim);
+
+            // Farol de Popa Dourado (Lanterna da Capitânia)
+            const lanternStand = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.7, 8), goldTrimMat);
+            lanternStand.position.set(0, 3.6, -3.9);
+            caravelGroup.add(lanternStand);
+
+            const lanternGlass = new THREE.Mesh(
+                new THREE.SphereGeometry(0.26, 10, 10),
+                new THREE.MeshBasicMaterial({ color: 0xfef08a })
+            );
+            lanternGlass.position.set(0, 3.95, -3.9);
+            caravelGroup.add(lanternGlass);
+
+            // Leme na Popa
+            const rudder = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.9, 0.75), darkOakMat);
+            rudder.position.set(0, 0.9, -4.15);
+            caravelGroup.add(rudder);
+
+            // 3. Castelo de Proa e Gurupés (Bowsprit)
+            const forecastle = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.85, 1.7), plankWoodMat);
+            forecastle.position.set(0, 2.0, 3.55);
+            caravelGroup.add(forecastle);
+
+            const bowProw = new THREE.Mesh(new THREE.ConeGeometry(0.95, 2.2, 4), darkOakMat);
+            bowProw.rotation.x = Math.PI / 2.2;
+            bowProw.rotation.z = Math.PI / 4;
+            bowProw.position.set(0, 1.85, 4.75);
+            caravelGroup.add(bowProw);
+
+            const bowsprit = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.11, 3.4, 8), darkOakMat);
+            bowsprit.rotation.x = Math.PI / 3.1;
+            bowsprit.position.set(0, 2.65, 5.4);
+            caravelGroup.add(bowsprit);
+
+            // Canhões Laterais de Convés
+            [-0.6, 0.9].forEach(zPos => {
+                [-1.48, 1.48].forEach(xPos => {
+                    const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.7, 8), ironMat);
+                    cannon.rotation.z = Math.PI / 2;
+                    cannon.position.set(xPos, 1.85, zPos);
+                    caravelGroup.add(cannon);
+                });
+            });
+
+            // 4. Três Mastros com Cestos da Gávea e Enxárcias (Cordame)
+            const sailTexture = createCrossOfChristSailTexture();
+
+            // Mastro de Vante (Traquete)
+            const foreMast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 6.2, 10), darkOakMat);
+            foreMast.position.set(0, 4.6, 2.3);
+            caravelGroup.add(foreMast);
+
+            const foreSail = createBillowedLateenSail(5.8, 4.2, sailTexture);
+            foreSail.position.set(0.12, 5.2, 2.3);
+            caravelGroup.add(foreSail);
+
+            // Mastro Grande (Central com Cesto da Gávea)
+            const mainMast = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.2, 8.2, 12), darkOakMat);
+            mainMast.position.set(0, 5.5, 0.0);
+            caravelGroup.add(mainMast);
+
+            const crowsNest = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.32, 0.45, 12), darkOakMat);
+            crowsNest.position.set(0, 8.5, 0.0);
+            caravelGroup.add(crowsNest);
+
+            const mainSail = createBillowedLateenSail(7.6, 5.5, sailTexture);
+            mainSail.position.set(0.15, 6.0, 0.0);
+            caravelGroup.add(mainSail);
+
+            // Mastro da Mezena (Popa)
+            const mizzenMast = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.14, 5.8, 10), darkOakMat);
+            mizzenMast.position.set(0, 5.2, -2.35);
+            caravelGroup.add(mizzenMast);
+
+            const mizzenSail = createBillowedLateenSail(4.8, 3.6, sailTexture);
+            mizzenSail.position.set(0.1, 5.5, -2.35);
+            caravelGroup.add(mizzenSail);
+
+            // Cabos e Enxárcias (Rigging Lines)
+            const shroudPoints = [
+                new THREE.Vector3(1.4, 1.9, 0.4), new THREE.Vector3(0, 8.4, 0),
+                new THREE.Vector3(-1.4, 1.9, 0.4), new THREE.Vector3(0, 8.4, 0),
+                new THREE.Vector3(1.3, 1.9, 2.3), new THREE.Vector3(0, 7.2, 2.3),
+                new THREE.Vector3(-1.3, 1.9, 2.3), new THREE.Vector3(0, 7.2, 2.3),
+                new THREE.Vector3(0, 8.5, 0), new THREE.Vector3(0, 3.1, 6.2),
+                new THREE.Vector3(0, 8.5, 0), new THREE.Vector3(0, 7.6, -2.35)
+            ];
+            const shroudGeo = new THREE.BufferGeometry().setFromPoints(shroudPoints);
+            const shrouds = new THREE.LineSegments(shroudGeo, ropeMat);
+            caravelGroup.add(shrouds);
+
+            // Flâmula / Bandeira Real no topo do Mastro Grande
+            const flagGeo = new THREE.PlaneGeometry(1.5, 0.55, 8, 2);
+            const flagMat = new THREE.MeshBasicMaterial({ color: 0xdc2626, side: THREE.DoubleSide });
+            flagMesh = new THREE.Mesh(flagGeo, flagMat);
+            flagMesh.position.set(0, 9.5, -0.75);
+            flagMesh.rotation.y = Math.PI / 2;
+            caravelGroup.add(flagMesh);
+
+            // Esteira de Espuma Branca na Água (Wake)
+            for (let i = 0; i < 6; i++) {
+                const foamGeo = new THREE.RingGeometry(0.3 + i * 0.25, 0.55 + i * 0.3, 16);
+                foamGeo.rotateX(-Math.PI / 2);
+                const foamMat = new THREE.MeshBasicMaterial({
+                    color: 0xe0f2fe,
+                    transparent: true,
+                    opacity: Math.max(0.08, 0.45 - i * 0.07),
+                    side: THREE.DoubleSide
+                });
+                const foam = new THREE.Mesh(foamGeo, foamMat);
+                foam.position.set(0, 0.15, -3.5 - i * 1.3);
+                caravelGroup.add(foam);
+                wakeGroup.push(foam);
+            }
+
+            // Seta de Bússola Dourada à frente da Caravela apontando para o próximo porto
+            const arrowGeo = new THREE.ConeGeometry(0.5, 1.5, 6);
+            arrowGeo.rotateX(Math.PI / 2);
+            const arrowMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
+            compassArrowMesh = new THREE.Mesh(arrowGeo, arrowMat);
+            compassArrowMesh.position.set(0, 2.4, 7.4);
+            caravelGroup.add(compassArrowMesh);
+
+            caravelGroup.position.set(shipState.x, 0, shipState.z);
+            scene.add(caravelGroup);
+        }
+
+        /***********************************************************************
+         * 5. INTERFACE DO UTILIZADOR, DIÁRIO DE BORDO E SISTEMA DE ENIGMAS
+         ***********************************************************************/
+        function updateHUD() {
+            const ui = tUI();
+            const currentPort = PORTS_DATA[Math.min(gameState.currentPortIndex, PORTS_DATA.length - 1)];
+            const currentPortText = getPortText(currentPort);
+            const destEl = document.getElementById('hud-next-destination');
+            if (gameState.completedPorts.size === PORTS_DATA.length) {
+                destEl.innerHTML = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-check-double mr-1"></i>${ui.routeComplete}</span>`;
+            } else {
+                destEl.innerHTML = `${ui.currentDest} <span class="text-amber-400 font-semibold">${currentPort.order}. ${currentPortText.name}</span>`;
+            }
+
+            document.getElementById('hud-progress-count').textContent = `${gameState.completedPorts.size}/${PORTS_DATA.length}`;
+
+            // Renderizar Stepper de Portos no Topo
+            const stepper = document.getElementById('route-stepper');
+            stepper.innerHTML = '';
+
+            PORTS_DATA.forEach((port, idx) => {
+                const ptText = getPortText(port);
+                const isDone = gameState.completedPorts.has(port.id);
+                const isCurrent = idx === gameState.currentPortIndex && !isDone;
+
+                const btn = document.createElement('button');
+                btn.className = `px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shrink-0 ${
+                    isDone
+                        ? 'bg-emerald-800/80 text-emerald-100 border border-emerald-400/50'
+                        : isCurrent
+                        ? 'bg-amber-600 text-white border border-amber-200 shadow-md scale-105'
+                        : 'bg-slate-800/70 text-slate-300 hover:bg-slate-700/80 border border-slate-600/40'
+                }`;
+
+                const iconHtml = isDone
+                    ? '<i class="fa-solid fa-circle-check text-emerald-300"></i>'
+                    : isCurrent
+                    ? '<i class="fa-solid fa-location-dot text-amber-200 animate-bounce"></i>'
+                    : `<span class="text-[10px] opacity-75">${port.order}.</span>`;
+
+                btn.innerHTML = `${iconHtml}<span>${ptText.name.split(' ')[0]}</span>`;
+                btn.title = `${port.order}. ${ptText.name} - ${ptText.subtitle}`;
+
+                btn.addEventListener('click', () => {
+                    startVoyageLegTo(idx);
+                });
+
+                stepper.appendChild(btn);
+            });
+        }
+
+        function refreshOpenPortModalLanguage() {
+            const portIndex = gameState.activeModalPortIndex;
+            const port = PORTS_DATA[portIndex];
+            if (!port) return;
+            const ui = tUI();
+            const ptText = getPortText(port);
+
+            document.getElementById('modal-port-number').textContent = ui.stopOf(port.order, PORTS_DATA.length);
+            document.getElementById('modal-port-theme').textContent = ptText.subtitle;
+            document.getElementById('modal-port-title').textContent = ptText.name;
+            document.getElementById('modal-port-lore').textContent = ptText.lore;
+            document.getElementById('modal-question-text').textContent = ptText.question;
+
+            if (portImageCache[port.id]) {
+                renderPortImageInContainer(port, portImageCache[port.id].url, portImageCache[port.id].source);
+            }
+
+            const optionsList = document.getElementById('modal-options-list');
+            const alreadyCompleted = gameState.completedPorts.has(port.id);
+            optionsList.innerHTML = '';
+
+            ptText.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                if (alreadyCompleted && idx === port.correctIndex) {
+                    btn.className = 'w-full text-left p-3 rounded-xl border-2 border-emerald-700 bg-emerald-100 text-emerald-950 font-bold text-xs md:text-sm flex items-start gap-2.5';
+                    btn.disabled = true;
+                } else {
+                    btn.className = 'w-full text-left p-3 rounded-xl border border-amber-900/30 bg-amber-50/80 hover:bg-amber-200/70 transition text-xs md:text-sm font-medium text-amber-950 flex items-start gap-2.5';
+                    if (alreadyCompleted) {
+                        btn.disabled = true;
+                        btn.classList.add('opacity-50');
+                    }
+                }
+                btn.innerHTML = `
+                    <span class="w-6 h-6 rounded-lg bg-amber-900 text-amber-100 font-bold flex items-center justify-center shrink-0 text-xs">${String.fromCharCode(65 + idx)}</span>
+                    <span>${optText}</span>
+                `;
+                btn.onclick = () => handleAnswerSelection(portIndex, idx, btn);
+                optionsList.appendChild(btn);
+            });
+
+            if (alreadyCompleted) {
+                showCompletedFeedback(portIndex);
+            } else {
+                document.getElementById('modal-feedback').classList.add('hidden');
+            }
+        }
+
+        function openPortModal(portIndex) {
+            const port = PORTS_DATA[portIndex];
+            if (!port) return;
+
+            initAudio();
+            playSound('port');
+
+            gameState.modalOpen = true;
+            gameState.activeModalPortIndex = portIndex;
+            gameState.autopilot = false;
+            updateAutopilotButton();
+            shipState.speed = 0;
+
+            const nextActionsEl = document.getElementById('modal-next-actions');
+            nextActionsEl.classList.add('hidden');
+
+            refreshOpenPortModalLanguage();
+
+            // Gerar ou mostrar imagem realista com Nano Banana (gemini-3.1-flash-image)
+            generatePortIllustration(port, false);
+
+            // Pré-carregar em background a imagem do porto seguinte
+            if (portIndex + 1 < PORTS_DATA.length) {
+                prefetchPortImage(portIndex + 1);
+            }
+
+            const modal = document.getElementById('port-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function handleAnswerSelection(portIndex, selectedOptionIdx, clickedBtn) {
+            const port = PORTS_DATA[portIndex];
+            const feedbackEl = document.getElementById('modal-feedback');
+            const optionsButtons = document.getElementById('modal-options-list').querySelectorAll('button');
+
+            feedbackEl.classList.remove('hidden');
+
+            if (selectedOptionIdx === port.correctIndex) {
+                playSound('success');
+                gameState.completedPorts.add(port.id);
+
+                if (portIndex === gameState.currentPortIndex && gameState.currentPortIndex < PORTS_DATA.length - 1) {
+                    gameState.currentPortIndex = portIndex + 1;
+                }
+
+                optionsButtons.forEach((b, idx) => {
+                    b.disabled = true;
+                    if (idx === port.correctIndex) {
+                        b.className = 'w-full text-left p-3 rounded-xl border-2 border-emerald-700 bg-emerald-100 text-emerald-950 font-bold text-xs md:text-sm flex items-start gap-2.5';
+                    } else {
+                        b.classList.add('opacity-50');
+                    }
+                });
+
+                showCompletedFeedback(portIndex);
+                updateHUD();
+            } else {
+                playSound('error');
+                clickedBtn.className = 'w-full text-left p-3 rounded-xl border-2 border-rose-700 bg-rose-100 text-rose-950 font-semibold text-xs md:text-sm flex items-start gap-2.5';
+                feedbackEl.className = 'mt-4 p-3.5 rounded-xl bg-rose-900/15 border border-rose-800 text-rose-950 text-xs sm:text-sm font-semibold';
+                feedbackEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-700 mr-1.5"></i> ${tUI().wrongAnswer}`;
+            }
+        }
+
+        function showCompletedFeedback(portIndex) {
+            const port = PORTS_DATA[portIndex];
+            const ptText = getPortText(port);
+            const ui = tUI();
+            const feedbackEl = document.getElementById('modal-feedback');
+            const nextActionsEl = document.getElementById('modal-next-actions');
+            const departTextEl = document.getElementById('btn-depart-text');
+
+            feedbackEl.classList.remove('hidden');
+            feedbackEl.className = 'mt-4 p-3.5 rounded-xl bg-emerald-900/15 border border-emerald-800 text-emerald-950 text-xs sm:text-sm font-semibold';
+            feedbackEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-700 mr-1.5"></i> ${ptText.explanation}`;
+
+            nextActionsEl.classList.remove('hidden');
+            if (gameState.completedPorts.size === PORTS_DATA.length) {
+                departTextEl.textContent = ui.celebrateFinal;
+            } else {
+                const nextPort = PORTS_DATA[Math.min(portIndex + 1, PORTS_DATA.length - 1)];
+                departTextEl.textContent = ui.departTo(getPortText(nextPort).name);
+            }
+        }
+
+        function closePortModal() {
+            const modal = document.getElementById('port-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            gameState.modalOpen = false;
+        }
+
+        function openLogbookModal() {
+            const ui = tUI();
+            const grid = document.getElementById('logbook-grid');
+            grid.innerHTML = '';
+
+            PORTS_DATA.forEach((port, idx) => {
+                const ptText = getPortText(port);
+                const isDone = gameState.completedPorts.has(port.id);
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-2xl border flex flex-col justify-between gap-2 ${
+                    isDone ? 'bg-emerald-900/10 border-emerald-800/40' : 'bg-amber-900/10 border-amber-900/25'
+                }`;
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-amber-900">${ui.stopShort(port.order)}</span>
+                            ${
+                                isDone
+                                    ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-800 text-emerald-100"><i class="fa-solid fa-check mr-1"></i>${ui.solvedBadge}</span>`
+                                    : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-800/20 text-amber-900">${ui.toExploreBadge}</span>`
+                            }
+                        </div>
+                        <h4 class="font-nautical text-base font-bold text-amber-950 mt-0.5">${ptText.name}</h4>
+                        <p class="text-xs font-semibold text-amber-800 mb-1">${ptText.subtitle}</p>
+                        <p class="text-xs text-amber-950/80 line-clamp-2">${ptText.lore}</p>
+                    </div>
+                    <div class="flex gap-2 mt-2 pt-2 border-t border-amber-900/15">
+                        <button data-sail-idx="${idx}" class="flex-1 py-1.5 px-2.5 rounded-lg bg-amber-900 text-amber-100 hover:bg-amber-800 text-xs font-semibold transition flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-compass"></i> ${ui.sailHereBtn}
+                        </button>
+                        <button data-open-idx="${idx}" class="py-1.5 px-3 rounded-lg bg-amber-900/15 hover:bg-amber-900/30 text-amber-950 text-xs font-semibold transition">
+                            ${ui.viewChallengeBtn}
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            grid.querySelectorAll('[data-sail-idx]').forEach(btn => {
+                btn.onclick = () => {
+                    const idx = parseInt(btn.getAttribute('data-sail-idx'), 10);
+                    startVoyageLegTo(idx);
+                    document.getElementById('logbook-modal').classList.add('hidden');
+                    document.getElementById('logbook-modal').classList.remove('flex');
+                    gameState.modalOpen = false;
+                };
+            });
+
+            grid.querySelectorAll('[data-open-idx]').forEach(btn => {
+                btn.onclick = () => {
+                    const idx = parseInt(btn.getAttribute('data-open-idx'), 10);
+                    document.getElementById('logbook-modal').classList.add('hidden');
+                    document.getElementById('logbook-modal').classList.remove('flex');
+                    openPortModal(idx);
+                };
+            });
+
+            const modal = document.getElementById('logbook-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            gameState.modalOpen = true;
+        }
+
+        // Inicia formalmente uma etapa de navegação com delay realista para sentir o mar
+        function startVoyageLegTo(portIndex) {
+            gameState.currentPortIndex = portIndex;
+            gameState.voyageTimer = 0;
+            gameState.voyageRequiredTime = portIndex === 0 && gameState.completedPorts.size === 0 ? 3.5 : VOYAGE_MIN_DURATION;
+            gameState.autopilot = true;
+            updateAutopilotButton();
+            updateHUD();
+            prefetchPortImage(portIndex);
+        }
+
+        function updateAutopilotButton() {
+            const ui = tUI();
+            const btn = document.getElementById('btn-autopilot');
+            const label = document.getElementById('autopilot-label');
+            if (gameState.autopilot) {
+                label.textContent = ui.autopilotOn;
+                btn.className = 'px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500 text-amber-950 border border-amber-200 flex items-center gap-1.5 transition shadow-lg';
+            } else {
+                label.textContent = ui.autopilotOff;
+                btn.className = 'px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-800/70 hover:bg-emerald-700 border border-emerald-400/50 text-emerald-100 flex items-center gap-1.5 transition';
+            }
+        }
+
+        /***********************************************************************
+         * 6. INPUTS (TECLADO, RATO, TOUCH E BOTÕES UI)
+         ***********************************************************************/
+        function setupInputs() {
+            // Botões de mudança de idioma (PT / TR / EN)
+            document.querySelectorAll('.lang-switch-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const chosenLang = btn.getAttribute('data-lang');
+                    setLanguage(chosenLang);
+                });
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (gameState.modalOpen) return;
+                const k = e.key.toLowerCase();
+                if (k === 'w' || k === 'arrowup') { keys.up = true; gameState.autopilot = false; updateAutopilotButton(); }
+                if (k === 's' || k === 'arrowdown') { keys.down = true; gameState.autopilot = false; updateAutopilotButton(); }
+                if (k === 'a' || k === 'arrowleft') { keys.left = true; gameState.autopilot = false; updateAutopilotButton(); }
+                if (k === 'd' || k === 'arrowright') { keys.right = true; gameState.autopilot = false; updateAutopilotButton(); }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w' || k === 'arrowup') keys.up = false;
+                if (k === 's' || k === 'arrowdown') keys.down = false;
+                if (k === 'a' || k === 'arrowleft') keys.left = false;
+                if (k === 'd' || k === 'arrowright') keys.right = false;
+            });
+
+            // Botões Táteis / Rato no Ecrã
+            const bindHoldButton = (id, keyProp) => {
+                const el = document.getElementById(id);
+                const start = (ev) => {
+                    ev.preventDefault();
+                    keys[keyProp] = true;
+                    gameState.autopilot = false;
+                    updateAutopilotButton();
+                };
+                const end = (ev) => {
+                    ev.preventDefault();
+                    keys[keyProp] = false;
+                };
+                el.addEventListener('mousedown', start);
+                el.addEventListener('touchstart', start, { passive: false });
+                window.addEventListener('mouseup', end);
+                window.addEventListener('touchend', end);
+            };
+
+            bindHoldButton('ctrl-up', 'up');
+            bindHoldButton('ctrl-down', 'down');
+            bindHoldButton('ctrl-left', 'left');
+            bindHoldButton('ctrl-right', 'right');
+
+            // Controlo de Câmara por Rato no Canvas
+            const domEl = renderer.domElement;
+            domEl.addEventListener('mousedown', (e) => {
+                cameraControl.isDragging = true;
+                cameraControl.prevX = e.clientX;
+                cameraControl.prevY = e.clientY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!cameraControl.isDragging) return;
+                const dx = e.clientX - cameraControl.prevX;
+                const dy = e.clientY - cameraControl.prevY;
+                cameraControl.prevX = e.clientX;
+                cameraControl.prevY = e.clientY;
+
+                cameraControl.yawOffset -= dx * 0.007;
+                cameraControl.pitchOffset = Math.max(0.15, Math.min(1.15, cameraControl.pitchOffset + dy * 0.006));
+            });
+
+            window.addEventListener('mouseup', () => {
+                cameraControl.isDragging = false;
+            });
+
+            // Botões do HUD e Modais
+            document.getElementById('btn-start-voyage').onclick = () => {
+                initAudio();
+                document.getElementById('intro-modal').classList.add('hidden');
+                startVoyageLegTo(0);
+            };
+
+            document.getElementById('btn-regenerate-image').onclick = () => {
+                if (gameState.activeModalPortIndex !== null) {
+                    const port = PORTS_DATA[gameState.activeModalPortIndex];
+                    generatePortIllustration(port, true);
+                }
+            };
+
+            document.getElementById('btn-autopilot').onclick = () => {
+                initAudio();
+                gameState.autopilot = !gameState.autopilot;
+                if (gameState.autopilot && gameState.voyageRequiredTime === 0) {
+                    gameState.voyageTimer = 0;
+                    gameState.voyageRequiredTime = VOYAGE_MIN_DURATION;
+                }
+                updateAutopilotButton();
+            };
+
+            document.getElementById('btn-camera-view').onclick = () => {
+                gameState.cameraOverview = !gameState.cameraOverview;
+            };
+
+            document.getElementById('btn-logbook').onclick = () => openLogbookModal();
+            document.getElementById('btn-close-logbook').onclick = () => {
+                document.getElementById('logbook-modal').classList.add('hidden');
+                document.getElementById('logbook-modal').classList.remove('flex');
+                gameState.modalOpen = false;
+            };
+
+            document.getElementById('btn-close-port-modal').onclick = () => closePortModal();
+
+            document.getElementById('btn-depart-next').onclick = () => {
+                closePortModal();
+                if (gameState.completedPorts.size === PORTS_DATA.length) {
+                    playSound('victory');
+                    const vic = document.getElementById('victory-modal');
+                    vic.classList.remove('hidden');
+                    vic.classList.add('flex');
+                } else {
+                    startVoyageLegTo(gameState.currentPortIndex);
+                }
+            };
+
+            document.getElementById('btn-victory-explore').onclick = () => {
+                const vic = document.getElementById('victory-modal');
+                vic.classList.add('hidden');
+                vic.classList.remove('flex');
+            };
+
+            document.getElementById('btn-victory-restart').onclick = () => {
+                gameState.completedPorts.clear();
+                gameState.currentPortIndex = 0;
+                shipState.x = -136;
+                shipState.z = 20;
+                shipState.angle = Math.PI * 0.5;
+                shipState.speed = 0;
+                updateHUD();
+                const vic = document.getElementById('victory-modal');
+                vic.classList.add('hidden');
+                vic.classList.remove('flex');
+                startVoyageLegTo(0);
+            };
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        /***********************************************************************
+         * 7. LOOP DE SIMULAÇÃO FÍSICA, NAVEGAÇÃO E ANIMAÇÃO 3D
+         ***********************************************************************/
+        function updateShipPhysics(dt, elapsedTime) {
+            const targetIdx = Math.min(gameState.currentPortIndex, PORTS_DATA.length - 1);
+            const targetPort = PORTS_DATA[targetIdx];
+            const progressPanel = document.getElementById('voyage-progress-panel');
+            const progressBar = document.getElementById('voyage-progress-bar');
+            const etaLabel = document.getElementById('voyage-eta-label');
+            const statusLabel = document.getElementById('voyage-status-label');
+
+            if (!gameState.modalOpen) {
+                // Contabilizar o tempo de navegação quando a caravela está em movimento
+                if (Math.abs(shipState.speed) > 0.5 || gameState.autopilot) {
+                    gameState.voyageTimer += dt;
+                }
+
+                const remainingDelay = Math.max(0, gameState.voyageRequiredTime - gameState.voyageTimer);
+
+                if (gameState.autopilot && targetPort) {
+                    const dx = targetPort.coords.x - shipState.x;
+                    const dz = targetPort.coords.z - shipState.z;
+                    const dist = Math.hypot(dx, dz);
+                    const desiredAngle = Math.atan2(dx, dz);
+
+                    // Rotação suave rumo ao porto
+                    let diff = desiredAngle - shipState.angle;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+
+                    shipState.angle += diff * Math.min(1, dt * 3.2);
+
+                    if (dist > 3.2) {
+                        const speedForRemainingTime = remainingDelay > 0.5 ? dist / remainingDelay : shipState.maxSpeed;
+                        shipState.speed = Math.min(shipState.maxSpeed, Math.max(4.5, speedForRemainingTime));
+                    } else if (remainingDelay > 0) {
+                        shipState.speed = 2.2;
+                        shipState.angle += dt * 0.9;
+                    } else {
+                        shipState.speed = 0;
+                        gameState.autopilot = false;
+                        gameState.voyageRequiredTime = 0;
+                        updateAutopilotButton();
+                        openPortModal(targetIdx);
+                    }
+                } else {
+                    // Controlo Manual
+                    if (keys.left) shipState.angle += shipState.turnSpeed * dt;
+                    if (keys.right) shipState.angle -= shipState.turnSpeed * dt;
+
+                    if (keys.up) {
+                        shipState.speed = Math.min(shipState.maxSpeed, shipState.speed + 14 * dt);
+                    } else if (keys.down) {
+                        shipState.speed = Math.max(-shipState.maxSpeed * 0.45, shipState.speed - 12 * dt);
+                    } else {
+                        shipState.speed *= Math.pow(0.25, dt);
+                        if (Math.abs(shipState.speed) < 0.15) shipState.speed = 0;
+                    }
+                }
+
+                // Atualizar barra visual de travessia marítima
+                if (gameState.voyageRequiredTime > 0 && remainingDelay > 0) {
+                    progressPanel.classList.remove('hidden');
+                    const pct = Math.min(100, Math.round((gameState.voyageTimer / gameState.voyageRequiredTime) * 100));
+                    progressBar.style.width = `${pct}%`;
+                    etaLabel.textContent = `${Math.ceil(remainingDelay)}s`;
+                    statusLabel.innerHTML = `<i class="fa-solid fa-water fa-fade text-sky-400"></i> ${tUI().sailingTo} ${getPortText(targetPort).name}...`;
+                } else {
+                    progressPanel.classList.add('hidden');
+                }
+
+                // Atualizar posição no Mar
+                shipState.x += Math.sin(shipState.angle) * shipState.speed * dt;
+                shipState.z += Math.cos(shipState.angle) * shipState.speed * dt;
+
+                // Limites da Carta Náutica
+                shipState.x = Math.max(-180, Math.min(195, shipState.x));
+                shipState.z = Math.max(-85, Math.min(95, shipState.z));
+            }
+
+            // Aplicar posição e balanço realista das ondas à Caravela
+            caravelGroup.position.x = shipState.x;
+            caravelGroup.position.z = shipState.z;
+            caravelGroup.position.y = Math.sin(elapsedTime * 2.4) * 0.28;
+            caravelGroup.rotation.y = shipState.angle;
+            caravelGroup.rotation.z = Math.sin(elapsedTime * 2.0) * 0.06;
+            caravelGroup.rotation.x = Math.cos(elapsedTime * 1.7) * 0.045;
+
+            // Animação da bandeira no topo do mastro e da espuma de esteira
+            if (flagMesh) {
+                flagMesh.rotation.y = Math.PI / 2 + Math.sin(elapsedTime * 6.5) * 0.22;
+            }
+            const wakeVisible = Math.abs(shipState.speed) > 0.8;
+            wakeGroup.forEach((foam, i) => {
+                foam.visible = wakeVisible;
+                if (wakeVisible) {
+                    const pulse = 1 + Math.sin(elapsedTime * 5 - i) * 0.15;
+                    foam.scale.set(pulse, pulse, 1);
+                }
+            });
+
+            // Orientar Seta de Bússola Dourada para o Porto Alvo
+            if (compassArrowMesh && targetPort) {
+                const dx = targetPort.coords.x - shipState.x;
+                const dz = targetPort.coords.z - shipState.z;
+                const worldAngleToTarget = Math.atan2(dx, dz);
+                compassArrowMesh.rotation.y = worldAngleToTarget - shipState.angle;
+            }
+
+            // Atualizar Velocímetro em Nós
+            const knots = Math.round(Math.abs(shipState.speed) * 1.4);
+            document.getElementById('ship-speed-badge').textContent = `${knots} ${tUI().knots}`;
+
+            // Verificar Proximidade a qualquer Porto para mostrar Botão de Atracar
+            let closestPort = null;
+            let minDist = Infinity;
+            PORTS_DATA.forEach((p, idx) => {
+                const d = Math.hypot(p.coords.x - shipState.x, p.coords.z - shipState.z);
+                if (d < minDist) {
+                    minDist = d;
+                    closestPort = { port: p, idx };
+                }
+            });
+
+            const dockPrompt = document.getElementById('dock-prompt');
+            const remainingDelay = Math.max(0, gameState.voyageRequiredTime - gameState.voyageTimer);
+            if (closestPort && minDist < 9.5 && remainingDelay <= 0) {
+                dockPrompt.classList.remove('hidden');
+                const btnOpen = document.getElementById('btn-open-port-challenge');
+                document.getElementById('dock-prompt-text').textContent = `${tUI().dockIn} ${getPortText(closestPort.port).name}`;
+                btnOpen.onclick = () => openPortModal(closestPort.idx);
+            } else {
+                dockPrompt.classList.add('hidden');
+            }
+        }
+
+        function animateOceanAndPorts(elapsedTime) {
+            const posAttr = oceanGeo.attributes.position;
+            for (let i = 0; i < posAttr.count; i++) {
+                const vx = posAttr.getX(i);
+                const vz = posAttr.getZ(i);
+                const waveY = Math.sin(vx * 0.08 + elapsedTime * 1.8) * 0.42 +
+                              Math.cos(vz * 0.09 + elapsedTime * 1.5) * 0.35;
+                posAttr.setY(i, waveY);
+            }
+            posAttr.needsUpdate = true;
+
+            const targetIdx = Math.min(gameState.currentPortIndex, PORTS_DATA.length - 1);
+            portMeshes.forEach((pm) => {
+                const scale = 1 + Math.sin(elapsedTime * 3 + pm.index) * 0.14;
+                pm.ring.scale.set(scale, scale, 1);
+
+                if (pm.index === targetIdx) {
+                    targetBeaconMesh.position.x = pm.data.coords.x;
+                    targetBeaconMesh.position.z = pm.data.coords.z;
+                    targetBeaconMesh.rotation.y = elapsedTime * 0.8;
+                }
+            });
+        }
+
+        function updateCamera() {
+            if (gameState.cameraOverview) {
+                const desiredPos = new THREE.Vector3(shipState.x * 0.4, 155, shipState.z * 0.4 + 95);
+                camera.position.lerp(desiredPos, 0.05);
+                camera.lookAt(shipState.x * 0.5, 0, shipState.z * 0.5);
+            } else {
+                const dist = 26;
+                const camAngle = shipState.angle + Math.PI + cameraControl.yawOffset;
+                const height = 14 + cameraControl.pitchOffset * 18;
+
+                const targetCamX = shipState.x + Math.sin(camAngle) * dist;
+                const targetCamZ = shipState.z + Math.cos(camAngle) * dist;
+
+                camera.position.x += (targetCamX - camera.position.x) * 0.08;
+                camera.position.z += (targetCamZ - camera.position.z) * 0.08;
+                camera.position.y += (height - camera.position.y) * 0.08;
+
+                camera.lookAt(shipState.x, 2.5, shipState.z);
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.1);
+            const elapsedTime = clock.getElapsedTime();
+
+            updateShipPhysics(dt, elapsedTime);
+            animateOceanAndPorts(elapsedTime);
+            updateCamera();
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function () {
+            initThreeScene();
+            updateHUD();
+            prefetchPortImage(0);
+            animate();
+        };
+    </script>
+</body>
+</html>
